@@ -137,7 +137,7 @@ EOF
 }
 function get_feedback_reply() {
 	update=$1
-	first_normal=$(echo $text | sed 's/@neekshellbot//')
+	first_normal=$(echo $text | sed "s/@$(cat ./botinfo | jq ".result.username" | sed "s/\"//g")//")
 	normaldice=$(echo $first_normal | tr -d '/![:alpha:]')
 	inlinedice=$(echo $results | tr -d '[:alpha:]')
 	return_query=$(inline_help)
@@ -406,6 +406,10 @@ function process_reply() {
 			touch $file_user
 			echo "$username_id $normal_user" > $file_user
 		fi
+	fi
+	if [ ! -f ./botinfo ]; then
+		touch ./botinfo
+		wget -q -O ./botinfo "${TELEAPI}/getMe"
 	fi
 	get_feedback_reply "$update"
     if      [ "$first_normal" != "null" ] && [ -n "$first_normal" ]
