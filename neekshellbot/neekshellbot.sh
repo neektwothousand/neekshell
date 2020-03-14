@@ -146,7 +146,7 @@ function get_feedback_reply() {
 			return_feedback=$(echo -e "source: https://github.com/neektwothousand/neekshell-telegrambot")
 		;;
 		'!help'|'/help')
-			return_feedback=$(echo -e "!d[number] (dice)\n!bin [system command]\n!setadmin @username\n!deladmin @username\n!fortune (fortune cookie)\n!owoifer (on reply)\n!sed [regexp] (on reply)\n!forward [usertag] (in private, on reply)\n!ping\n!bang (on reply to mute)")
+			return_feedback=$(echo -e "!d[number] (dice)\n!fortune (fortune cookie)\n!owoifer (on reply)\n!sed [regexp] (on reply)\n!forward [usertag] (in private, on reply)\n!tag [[@username] (new tag text)] (in private)\n!ping\n\nadministrative commands:\n\n!bin [system command]\n!setadmin @username\n!deladmin @username\n!bang (on reply to mute)\n\ninline mode:\n\nd[number] (dice)\nbin [system command]\ntag [[@username] (new tag text)]\nsearch [text to search on google]\ngel [gelbooru tag]\nxbgif [xbooru gif tag]")
 		;;
 		"!d$normaldice"|"/d$normaldice")
 			number=$(( ( RANDOM % $normaldice )  + 1 ))
@@ -298,7 +298,7 @@ function get_feedback_reply() {
 	esac
     case $results in
         "help")
-            return_query=$(inline_help)
+            	return_query=$(inline_help)
         ;;
 		"d$inlinedice")
 		if [ -n "$inlinedice" ]
@@ -308,8 +308,8 @@ function get_feedback_reply() {
 		fi
 		;;
         "bin "*)
-            admin=$(cat neekshelladmins | grep "$inline_user")
-            if [ -n "$admin" ]
+	admin=$(cat neekshelladmins | grep -v "#" | grep -w $username_id)
+            if [ "x$admin" != "x" ]
                 then
                 input=$(echo $results | sed "s/bin //g")
                 command=$(eval $input 2>&1 )
@@ -318,12 +318,12 @@ function get_feedback_reply() {
                 return_query=$(inline_denied)
             fi
         ;;
-		"tag "*)
-			usertag=$(echo $results | sed -Ee 's/(.* )(\[.*\]) ((.*))/\2/' -e 's/[[:punct:]]//g')
-			usertext=$(echo $results | sed -Ee 's/(.* )(\[.*\]) ((.*))/\3/' -e 's/[[:punct:]]//g')
-			userid=$(cat ./neekshell_db/users/$(echo $usertag | sed 's/@//') | sed 's/\s.*$//')
-			return_query=$(inline_tag)
-		;;
+	"tag "*)
+		usertag=$(echo $results | sed -Ee 's/(.* )(\[.*\]) ((.*))/\2/' -e 's/[[:punct:]]//g')
+		usertext=$(echo $results | sed -Ee 's/(.* )(\[.*\]) ((.*))/\3/' -Ee 's/[[:punct:]](.*)[[:punct:]]/\\1/')
+		userid=$(cat ./neekshell_db/users/$(echo $usertag | sed 's/@//') | sed 's/\s.*$//')
+		return_query=$(inline_tag)
+	;;
         'search '*)
             offset=$(($(echo $update | jq -r ".inline_query.offset")+1))
             search=$(echo $results | sed 's/search //g')
@@ -364,31 +364,6 @@ function get_feedback_reply() {
             return_query=$(inline_booru)
             rm tempxb
         ;;
-        'tbib '*)
-            el=0
-            rig=1
-            offset=$(($(echo $update | jq -r ".inline_query.offset")+1))
-            tags=$(echo $results | sed 's/tbib //g')
-            wget --user-agent 'Mozilla/5.0' -qO - "https://tbib.org/index.php?page=dapi&s=post&pid=$offset&tags=$tags&q=index&limit=20" > temptbib
-            thumblist=$(cat temptbib | sed -n 's/.*preview_url="\([^"]*\)".*/\1/p' | grep -E 'jpg|jpeg|png')
-            piclist=$(cat temptbib | sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' | grep -E 'jpg|jpeg|png')
-            filelist=$(cat temptbib | sed -n 's/.*file_url="\([^"]*\)".*/\1/p' | grep -E 'jpg|jpeg|png')
-            picnumber=$(cat temptbib | sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' | grep -E -c 'jpg|jpeg|png')
-            return_query=$(inline_booru)
-            rm temptbib
-        ;;
-        'booru')
-            el=0
-            rig=1
-            offset=$(($(echo $update | jq -r ".inline_query.offset")+1))
-            wget --user-agent 'Mozilla/5.0' -qO - "https://tbib.org/index.php?page=dapi&s=post&pid=$offset&q=index&limit=20" > tempbooru
-            thumblist=$(cat tempbooru | sed -n 's/.*preview_url="\([^"]*\)".*/\1/p' | grep -E 'jpg|jpeg|png')
-            piclist=$(cat tempbooru | sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' | grep -E 'jpg|jpeg|png')
-            filelist=$(cat tempbooru | sed -n 's/.*file_url="\([^"]*\)".*/\1/p' | grep -E 'jpg|jpeg|png')
-            picnumber=$(cat tempbooru | sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' | grep -E -c 'jpg|jpeg|png')
-            return_query=$(inline_booru)
-            rm tempbooru
-        ;;
         'xbgif '*)
             el=0
             rig=1
@@ -400,21 +375,6 @@ function get_feedback_reply() {
             gifnumber=$(cat tempxbgif | sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' | grep -E -c 'gif')
             return_query=$(inline_boorugif)
             rm tempxbgif
-        ;;
-        'owoifer '*)
-            offset=$(($(echo $update | jq -r ".inline_query.offset")+1))
-            cringe=(" 🥵 " " 🙈 " " 🤣 " " 😘 " " 🥺 " " 💁‍♀️ " " OwO " " 😳 " " 🤠 " " 🤪 " " 😜 " " 🤬 " " 🤧 " " 🦹‍♂ ")
-            normaltext=$(echo $results | sed -e 's/owoifer //g')
-            numberspace=$(echo $normaltext | sed 's/ / \n/g' | grep -c " ")
-            x=0
-            while [ $x -le "3" ]; do
-                spacerandom[$x]=$(( ( RANDOM % $numberspace )  + 1 ))
-                cringerandom[$x]=${cringe[$(( ( RANDOM % 14 )  + 0 ))]}
-                x=$(( $x + 1 ))
-            done
-            emoji=$(echo $normaltext | sed -e "s/ /${cringerandom[0]}/${spacerandom[0]}" -e "s/ /${cringerandom[1]}/${spacerandom[1]}" -e "s/ /${cringerandom[2]}/${spacerandom[2]}")
-            owo=$(echo $emoji | sed -e 's/[lr]/w/g' -e 's/[LR]/W/g')
-            return_query=$(inline_owo)
         ;;
     esac
 }
