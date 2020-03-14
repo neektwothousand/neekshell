@@ -146,15 +146,52 @@ function get_feedback_reply() {
 			return_feedback=$(echo -e "source: https://github.com/neektwothousand/neekshell-telegrambot")
 		;;
 		'!help'|'/help')
-			return_feedback=$(echo -e "!d[number] (dice)\n!bin [system command]\n!fortune (fortune cookie)\n!owoifer (on reply)\n!sed [regexp] (on reply)\n!forward [usertag] (in private, on reply)\n!ping\n!bang (on reply to mute)")
+			return_feedback=$(echo -e "!d[number] (dice)\n!bin [system command]\n!setadmin @username\n!deladmin @username\n!fortune (fortune cookie)\n!owoifer (on reply)\n!sed [regexp] (on reply)\n!forward [usertag] (in private, on reply)\n!ping\n!bang (on reply to mute)")
 		;;
 		"!d$normaldice"|"/d$normaldice")
 			number=$(( ( RANDOM % $normaldice )  + 1 ))
 			return_feedback=$(echo $number)
 		;;
+		"!setadmin "*|"/setadmin "*)
+			admin=$(cat neekshelladmins | grep -v "#" | grep -w $username_id)
+			if [ "x$admin" != "x"  ]; then
+				username=$(echo $first_normal | sed -e 's/[/!]setadmin @//')
+				setadmin_id=$(cat ./neekshell_db/users/$username | sed 's/\s.*$//')
+				admin_check=$(cat neekshelladmins | grep -v "#" | grep -w $setadmin_id)
+				if [ -z $setadmin_id ]; then
+					return_feedback=$(echo "user not found")
+				elif [ "x$admin_check" != "x" ]; then
+					return_feedback=$(echo "$username already admin")
+				else
+					echo -e "# $username\n$setadmin_id" >> neekshelladmins
+					return_feedback=$(echo "admin $username set!")
+				fi
+			else
+				return_feedback="<code>Access denied</code>"
+			fi
+		;;
+		"!deladmin "*|"/deladmin "*)
+			admin=$(cat neekshelladmins | grep -v "#" | grep -w $username_id)
+			if [ "x$admin" != "x"  ]; then
+				username=$(echo $first_normal | sed -e 's/[/!]deladmin @//')
+				deladmin_id=$(cat ./neekshell_db/users/$username | sed 's/\s.*$//')
+				admin_check=$(cat neekshelladmins | grep -v "#" | grep -w $deladmin_id)
+				if [ -z $deladmin_id ]; then
+					return_feedback=$(echo "user not found")
+				elif [ "x$admin_check" != "x" ]; then
+					sed -i "/$username/d" neekshelladmins
+					sed -i "/$deladmin_id/d" neekshelladmins
+					return_feedback=$(echo "$username is no longer admin")
+				else
+					echo "$username is not admin"
+				fi
+			else
+				return_feedback="<code>Access denied</code>"
+			fi
+		;;
 		"!bin "*|"/bin "*)
-			admin=$(cat ./neekshelladmins | grep "$normal_user")
-			if [ -n "$admin" ]
+			admin=$(cat neekshelladmins | grep -v "#" | grep -w $username_id)
+			if [ "x$admin" != "x" ]
 				then
 				return_feedback="<code>$(eval $(echo "timeout 2s $text" | sed -e 's/[/!]bin//') 2>&1 )</code>"
 				else
@@ -232,8 +269,8 @@ function get_feedback_reply() {
 		"!forward "*|"/forward "*)
 		if [ $type = "private" ]; then
 			username=$(echo $first_normal | sed -e 's/[/!]forward @//')
-			username_id=$(cat ./neekshell_db/users/$username | sed 's/\s.*$//')
-			forward=$(wget -q -O/dev/null --post-data "chat_id=$username_id&from_chat_id=$chat_id&message_id=$message_id" "${TELEAPI}/forwardMessage" )
+			forward_id=$(cat ./neekshell_db/users/$username | sed 's/\s.*$//')
+			forward=$(wget -q -O/dev/null --post-data "chat_id=$forward_id&from_chat_id=$chat_id&message_id=$message_id" "${TELEAPI}/forwardMessage" )
 			return_feedback="Inviato"
 		else
 			exit 1
