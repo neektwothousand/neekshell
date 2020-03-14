@@ -6,3 +6,32 @@ This bot needs a web server to set a webhook pointing on neekshell-webhook.php, 
 Utilities used:
   - GNU Wget, sed, and various coreutils
   - jq (https://stedolan.github.io/jq/)
+
+# commands
+
+!d[number] (dice)<br />
+!fortune (fortune cookie)<br />
+!owoifer (on reply)<br />
+!sed [regexp] (on reply)<br />
+!forward [usertag] (in private, on reply)<br />
+!tag [[@username] (new tag text)] (in private)<br />
+!ping
+
+administrative commands:
+
+!bin [system command]<br />
+!setadmin @username<br />
+!deladmin @username<br />
+!bang (on reply to mute)
+
+inline mode:
+
+d[number] (dice)<br />
+bin [system command]<br />
+tag [[@username] (new tag text)]<br />
+search [text to search on google]<br />
+gel [gelbooru tag]<br />
+xbgif [xbooru gif tag]
+
+# enable administrative commands
+To use administrative commands you need a text file named `neekshelladmins` inside `neekshellbot` folder with a list of admin IDs, like: [neekshelladmins.example](https://github.com/neektwothousand/neekshell-telegrambot/blob/master/neekshellbot/neekshelladmins.example)
