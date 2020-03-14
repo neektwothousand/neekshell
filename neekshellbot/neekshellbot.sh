@@ -193,7 +193,8 @@ function get_feedback_reply() {
 			admin=$(cat neekshelladmins | grep -v "#" | grep -w $username_id)
 			if [ "x$admin" != "x" ]
 				then
-				return_feedback="<code>$(eval $(echo "timeout 2s $text" | sed -e 's/[/!]bin//') 2>&1 )</code>"
+				command=$(echo $update | jq -r ".message.text" | sed -e 's/[/!]bin//')
+				return_feedback="<code>$(eval $(echo "timeout 2s $command" ) 2>&1 )</code>"
 				else
 				return_feedback="<code>Access denied</code>"
 			fi
