@@ -146,7 +146,7 @@ function get_feedback_reply() {
 			return_feedback=$(echo -e "source: https://github.com/neektwothousand/neekshell-telegrambot")
 		;;
 		'!help'|'/help')
-			return_feedback=$(echo -e "!d[number] (dice)\n!fortune (fortune cookie)\n!owoifer (on reply)\n!sed [regexp] (on reply)\n!forward [usertag] (in private, on reply)\n!tag [[@username] (new tag text)] (in private)\n!ping\n\nadministrative commands:\n\n!bin [system command]\n!setadmin @username\n!deladmin @username\n!bang (on reply to mute)\n\ninline mode:\n\nd[number] (dice)\nbin [system command]\ntag [[@username] (new tag text)]\nsearch [text to search on google]\ngel [gelbooru tag]\nxbgif [xbooru gif tag]")
+			return_feedback=$(echo -e "!d[number] (dice)\n!fortune (fortune cookie)\n!owoifer (on reply)\n!sed [regexp] (on reply)\n!forward [usertag] (in private, on reply)\n!tag [[@username] (new tag text)] (in private)\n!ping\n\nadministrative commands:\n\n!bin [system command]\n!setadmin @username\n!deladmin @username\n!bang (on reply to mute)\n\ninline mode:\n\nd[number] (dice)\n[system command] bin\ntag [[@username] (new tag text)]\nsearch [text to search on google]\ngel [gelbooru tag]\nxbgif [xbooru gif tag]")
 		;;
 		"!d$normaldice"|"/d$normaldice")
 			number=$(( ( RANDOM % $normaldice )  + 1 ))
@@ -308,11 +308,11 @@ function get_feedback_reply() {
 			return_query=$(inline_dice)
 		fi
 		;;
-        "bin "*)
+        *" bin")
 		admin=$(cat neekshelladmins | grep -v "#" | grep -w $inline_user_id)
 		    if [ "x$admin" != "x" ]
 			then
-                	command="echo \$($(echo $update | jq -r ".inline_query.query" | sed -e 's/bin //'))"
+                	command="echo \$($(echo $update | jq -r ".inline_query.query" | sed -e 's/ bin//'))"
                 	command_result=$(eval $(echo "timeout 2s $(echo $command)") 2>&1 )
 			return_query=$(inline_command)
 			else
