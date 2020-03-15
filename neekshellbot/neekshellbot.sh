@@ -260,7 +260,7 @@ function get_feedback_reply() {
 		"!tag "*|"/tag "*)
 		if [ $type = "private" ]; then
 			usertag=$(echo $first_normal | sed -Ee 's/(.* )(\[.*\]) ((.*))/\2/' -e 's/[[:punct:]]//g')
-			usertext=$(echo $first_normal | sed -Ee 's/(.* )(\[.*\]) ((.*))/\3/' -e 's/[[:punct:]]//g')
+			usertext=$(echo $first_normal | sed -Ee 's/(.* )(\[.*\]) ((.*))/\3/' -Ee 's/[[:punct:]](.*)[[:punct:]]/\1/')
 			userid=$(cat ./neekshell_db/users/$(echo $usertag) | sed 's/\s.*$//')
 			return_feedback=$(echo -e "<a href=\"tg://user?id=$userid\">$usertext</a>")
 		else
@@ -321,7 +321,7 @@ function get_feedback_reply() {
         ;;
 	"tag "*)
 		usertag=$(echo $results | sed -Ee 's/(.* )(\[.*\]) ((.*))/\2/' -e 's/[[:punct:]]//g')
-		usertext=$(echo $results | sed -Ee 's/(.* )(\[.*\]) ((.*))/\3/' -Ee 's/[[:punct:]](.*)[[:punct:]]/\\1/')
+		usertext=$(echo $results | sed -Ee 's/(.* )(\[.*\]) ((.*))/\3/' -Ee 's/[[:punct:]](.*)[[:punct:]]/\1/')
 		userid=$(cat ./neekshell_db/users/$(echo $usertag | sed 's/@//') | sed 's/\s.*$//')
 		return_query=$(inline_tag)
 	;;
