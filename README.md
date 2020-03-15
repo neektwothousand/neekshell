@@ -27,7 +27,7 @@ administrative commands:
 inline mode:
 
 d[number] (dice)<br />
-bin [system command]<br />
+[system command] bin<br />
 tag [[@username] (new tag text)]<br />
 search [text to search on google]<br />
 gel [gelbooru tag]<br />
