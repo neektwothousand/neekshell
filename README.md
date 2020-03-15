@@ -6,6 +6,7 @@ This bot needs a web server to set a webhook pointing on neekshell-webhook.php, 
 Utilities used:
   - GNU Wget, sed, and various coreutils
   - jq (https://stedolan.github.io/jq/)
+  - googler (https://github.com/jarun/googler)
 
 # commands
 
