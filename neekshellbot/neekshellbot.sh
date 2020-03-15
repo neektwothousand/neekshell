@@ -33,9 +33,9 @@ function inline_command() {
     [{
         "type":"article",
         "id":"$RANDOM",
-        "title":"$command",
+        "title":"$command_result",
         "input_message_content": {
-            "message_text":"<code>$command</code>",
+            "message_text":"<code>$command_result</code>",
             "parse_mode":"html"
         }
     }]
@@ -193,7 +193,7 @@ function get_feedback_reply() {
 			admin=$(cat neekshelladmins | grep -v "#" | grep -w $username_id)
 			if [ "x$admin" != "x" ]
 				then
-				command=$(echo $update | jq -r ".message.text" | sed -e 's/[/!]bin//')
+				command="echo \$($(echo $update | jq -r ".message.text" | sed -e 's/[/!]bin//'))"
 				return_feedback="<code>$(eval $(echo "timeout 2s $command" ) 2>&1 )</code>"
 				else
 				return_feedback="<code>Access denied</code>"
@@ -309,15 +309,15 @@ function get_feedback_reply() {
 		fi
 		;;
         "bin "*)
-	admin=$(cat neekshelladmins | grep -v "#" | grep -w $username_id)
-            if [ "x$admin" != "x" ]
-                then
-                input=$(echo $results | sed "s/bin //g")
-                command=$(eval $input 2>&1 )
-                return_query=$(inline_command)
-                else
-                return_query=$(inline_denied)
-            fi
+		admin=$(cat neekshelladmins | grep -v "#" | grep -w $inline_user_id)
+		    if [ "x$admin" != "x" ]
+			then
+                	command="echo \$($(echo $update | jq -r ".inline_query.query" | sed -e 's/bin //'))"
+                	command_result=$(eval $(echo "timeout 2s $(echo $command)") 2>&1 )
+			return_query=$(inline_command)
+			else
+			return_query=$(inline_denied)
+		    fi
         ;;
 	"tag "*)
 		usertag=$(echo $results | sed -Ee 's/(.* )(\[.*\]) ((.*))/\2/' -e 's/[[:punct:]]//g')
@@ -390,6 +390,7 @@ function process_reply() {
     username_id=$(echo $update | jq -r ".message.from.id")
     chat_id=$(echo $update | jq -r ".message.chat.id")
     inline_user=$(echo $update | jq -r ".inline_query.from.username")
+    inline_user_id=$(echo $update | jq -r ".inline_query.from.id")
     inline_id=$(echo $update | jq -r ".inline_query.id")
     type=$(echo $update | jq -r ".message.chat.type")
 	text=$(echo $update | jq -r ".message.text" | sed 's/"/\\&/g')
