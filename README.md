@@ -1,7 +1,7 @@
 # neekshell-telegrambot
 I'm a newbie to shell scripting and I made this bot for fun, feel free to criticize
 
-This bot needs a web server to set a webhook pointing on neekshell-webhook.php, to execute the script on request. Example with current code: [@neekshellbot](https://t.me/neekshellbot)
+This bot needs a web server to set a webhook pointing on neekshell-webhook.php, to execute the script on request.<br />Example with current code: [@neekshellbot](https://t.me/neekshellbot)
 
 Utilities used:
   - GNU Wget, sed, and various coreutils
