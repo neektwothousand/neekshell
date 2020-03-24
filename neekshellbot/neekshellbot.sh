@@ -210,7 +210,7 @@ function get_feedback_reply() {
 				tempspace=$(sed -e "s/\s/\n/g" <<< $resultspace)
 				x=0
 				rig=1
-				while [ $x -le "2" ]; do
+				while [ $x -lt "3" ]; do
 					spacerandom[$x]=$(sed -n "${rig}p" <<< $tempspace)
 					cringerandom[$x]=${owoarray[$(( ( RANDOM % ${#owoarray[@]} )  + 0 ))]}
 					rig=$(( $rig + 1 ))
