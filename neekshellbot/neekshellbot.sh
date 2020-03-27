@@ -1,5 +1,5 @@
 #!/bin/bash
-TOKEN="bot token here"
+TOKEN=$(cat ./token)
 TELEAPI="https://api.telegram.org/bot${TOKEN}"
 start=`date +%s%2N`
 exec 1>>neekshellbot.log 2>&1
@@ -270,7 +270,7 @@ function get_feedback_reply() {
 		fi
 		;;
 		*)
-		if [ $type = "private" ]; then
+		if [ "$type" = "private" ]; then
 			number=$(( ( RANDOM % 500 )  + 1 ))
 			if		[ $number = 69 ]; then
 				return_feedback="Nice."
@@ -282,7 +282,7 @@ function get_feedback_reply() {
 				return_feedback="Alright"
 			fi
 		else
-			exit 1
+			true
 		fi
 		;;
 	esac
@@ -362,6 +362,7 @@ function get_feedback_reply() {
 }
 
 function process_reply() {
+	sed -e ':a;N;$!ba;s/\n/ /g' -e 's/[\]/\\&/g' -i tempinput
     message_id=$(jq -r ".message.reply_to_message.message_id" tempinput)
     [ "$message_id" = "null" ] && message_id=$(jq -r ".message.message_id" tempinput)
     normal_user=$(jq -r ".message.from.username" tempinput)
@@ -374,10 +375,8 @@ function process_reply() {
 	text=$(jq -r ".message.text" tempinput | sed 's/"/\\&/g')
 	results=$(jq -r ".inline_query.query" tempinput | sed 's/"/\\&/g')
 	# database id
-	if [ -n $normal_user ]; then
-		if [ ! -d ./neekshell_db/users/ ]; then
-			mkdir -p ./neekshell_db/users/
-		fi
+	if [ "$normal_user" != "null" ] && [ "$normal_user" != "" ]; then
+		[ ! -d ./neekshell_db/users/ ] && mkdir -p ./neekshell_db/users/
 		file_user=./neekshell_db/users/${normal_user}
 		if [ ! -f $file_user ]; then
 			touch $file_user
@@ -388,21 +387,17 @@ function process_reply() {
 		touch ./botinfo
 		wget -q -O ./botinfo "${TELEAPI}/getMe"
 	fi
-		get_feedback_reply
-    if      [ "$first_normal" != "null" ] && [ -n "$first_normal" ]; then
-            result=$(wget -q -O/dev/null --post-data "chat_id=$chat_id&reply_to_message_id=$message_id&parse_mode=html&text=$return_feedback" "${TELEAPI}/sendMessage")
-    elif    [ "$results" != "null" ] && [ -n "$results" ]; then
-			result=$(wget -q -O/dev/null --post-data "inline_query_id=$inline_id&results=$return_query&next_offset=$offset&cache_time=100&is_personal=true" "${TELEAPI}/answerInlineQuery")
-    fi
-    if      [ "$first_normal" != "null" ] && [ -n "$first_normal" ] && [ "$type" = "private" ]; then
-                echo -e "\n--\nnormal=${text}\nfrom ${normal_user} at $(date "+%Y-%m-%d %H:%M")\n--"
-    elif    [ "$results" != "null" ] && [ -n "$results" ]; then
-                echo -e "\n--\ninline=${results}\nfrom ${inline_user} at $(date "+%Y-%m-%d %H:%M")\n--"
-    fi
-    ## activate to log debug
-    #echo -e ": forward=${forward}"
-    #echo -e ": inline_query=${return_query}"
-    #echo -e ": inline_message=${results}"
+	get_feedback_reply
+	if [ "$first_normal" != "null" ] && [ -n "$first_normal" ]; then
+			send=$(wget -q -O/dev/null --post-data "chat_id=$chat_id&reply_to_message_id=$message_id&parse_mode=html&text=$return_feedback" "${TELEAPI}/sendMessage")
+	elif [ "$results" != "null" ] && [ -n "$results" ]; then
+			send=$(wget -q -O/dev/null --post-data "inline_query_id=$inline_id&results=$return_query&next_offset=$offset&cache_time=100&is_personal=true" "${TELEAPI}/answerInlineQuery" "${TELEAPI}/answerInlineQuery")
+	fi
+	if	[ "$first_normal" != "null" ] && [ -n "$first_normal" ] && [ "$type" = "private" ]; then
+			echo "--" ; echo "normal=${text}" ; echo "from ${normal_user} at $(date "+%Y-%m-%d %H:%M")" ; echo "--"
+	elif [ "$results" != "null" ] && [ -n "$results" ]; then
+			echo "--" ; echo "inline=${results}" ; echo "from ${inline_user} at $(date "+%Y-%m-%d %H:%M")" ; echo "--"
+	fi
 }
 
 process_reply
