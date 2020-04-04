@@ -4,7 +4,9 @@ I'm a newbie to shell scripting and I made this bot for fun, feel free to critic
 This bot needs a web server to set a webhook pointing on neekshell-webhook.php, to execute the script on request.<br />Example with current code: [@neekshellbot](https://t.me/neekshellbot)
 
 Utilities used:
-  - GNU Wget, sed, and various coreutils
+  - GNU sed, and various coreutils
+  - cURL
+  - fortune-mod (https://github.com/shlomif/fortune-mod)
   - jq (https://stedolan.github.io/jq/)
   - googler (https://github.com/jarun/googler)
 
