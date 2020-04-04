@@ -13,6 +13,7 @@ Utilities used:
 !d[number] (dice)<br />
 !fortune (fortune cookie)<br />
 !owoifer (on reply)<br />
+!hf (random hentai-foundry pic)<br />
 !sed [regexp] (on reply)<br />
 !forward [usertag] (in private, on reply)<br />
 !tag [[@username] (new tag text)] (in private)<br />
