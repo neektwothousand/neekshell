@@ -154,13 +154,14 @@ function get_feedback_reply() {
 			counth=$(echo $hflist | grep -c "\n")
 			randh=$(echo $hflist | sed -n "$(echo $(( ( RANDOM % $counth ) + 1 )))p")
 			getrandh=$(curl --cookie hfcookie -s https://www.hentai-foundry.com$randh | sed -n 's/.*src="\([^"]*\)".*/\1/p' | grep "pictures.hentai")
-			curl -s "${TELEAPI}/sendPhoto" --data-urlencode "chat_id=$chat_id" --data-urlencode "reply_to_message_id=$message_id" --data-urlencode "photo=https:$getrandh"
+			curl -s "${TELEAPI}/sendPhoto" --data-urlencode "chat_id=$chat_id" --data-urlencode "reply_to_message_id=$message_id" --data-urlencode "photo=https:$getrandh" > /dev/null
+			exit 1
 		;;
 		"!setadmin "*|"/setadmin "*)
 			admin=$(grep -v "#" neekshelladmins | grep -w $username_id)
 			if [ "$admin" != ""  ]; then
 				username=$(sed -e 's/[/!]setadmin @//' <<< $first_normal)
-				setadmin_id=$(sed 's/\s.*$//' neekshell_db/users/$username)
+				setadmin_id=$(sed 's/\s.*$//' $(find neekshell_db/users/ -iname "$username"))
 				admin_check=$(grep -v "#" neekshelladmins | grep -w $setadmin_id)
 				if [ -z $setadmin_id ]; then
 					return_feedback=$(echo "user not found")
@@ -178,7 +179,7 @@ function get_feedback_reply() {
 			admin=$(grep -v "#" neekshelladmins | grep -w $username_id)
 			if [ "$admin" != ""  ]; then
 				username=$(sed -e 's/[/!]deladmin @//' <<< $first_normal)
-				deladmin_id=$(sed 's/\s.*$//' neekshell_db/users/$username)
+				deladmin_id=$(sed 's/\s.*$//' $(find neekshell_db/users/ -iname "$username"))
 				admin_check=$(grep -v "#" neekshelladmins | grep -w $deladmin_id)
 				if [ -z $deladmin_id ]; then
 					return_feedback=$(echo "user not found")
@@ -241,13 +242,13 @@ function get_feedback_reply() {
 			admin=$(grep -v "#" neekshelladmins | grep -w $username_id)
 			if [ "$admin" != "" ]
 				then
-					usertag=$(jq -r ".message.reply_to_message.from.username" tempinput)
-					userid=$(sed 's/\s.*$//' neekshell_db/users/$usertag)
-					ban=$(wget -q -O/dev/null --post-data "chat_id=$chat_id&user_id=$userid&can_send_messages=false&until_date=32477736097" "${TELEAPI}/restrictChatMember" & wget --post-data "chat_id=$chat_id&reply_to_message_id=$message_id&parse_mode=html&text=$(echo -e "<b>boom</b>\nutente @$usertag (<a href=\"tg://user?id=$userid\">$userid</a>) terminato")" "${TELEAPI}/sendMessage")
-				exit 1
+					username=$(jq -r ".message.reply_to_message.from.username" tempinput)
+					userid=$(sed 's/\s.*$//' $(find neekshell_db/users/ -iname "$username"))
+					curl -s "${TELEAPI}/restrictChatMember" --data-urlencode "chat_id=$chat_id" --data-urlencode "user_id=$userid" --data-urlencode "can_send_messages=false" --data-urlencode "until_date=32477736097" > /dev/null & curl -s "${TELEAPI}/sendMessage" --data-urlencode "chat_id=$chat_id" --data-urlencode "reply_to_message_id=$message_id" --data-urlencode "parse_mode=html" --data-urlencode "text=$(echo -e "<b>boom</b>\nutente @$usertag (<a href=\"tg://user?id=$userid\">$userid</a>) terminato")" 
+					exit 1
 				else
-					return_denied=$(wget -q -O/dev/null --post-data "chat_id=$chat_id&parse_mode=html&text=<code>Access denied</code>" "${TELEAPI}/sendMessage")
-				exit 1
+					curl -s "${TELEAPI}/sendMessage" --data-urlencode "chat_id=$chat_id" --data-urlencode "parse_mode=html" --data-urlencode "text=<code>Access denied</code>" > /dev/null
+					exit 1
 			fi
 		else
 			exit 1
@@ -255,9 +256,9 @@ function get_feedback_reply() {
 		;;
 		"!tag "*|"/tag "*)
 		if [ $type = "private" ]; then
-			usertag=$(sed -Ee 's/(.* )(\[.*\]) ((.*))/\2/' -e 's/[[:punct:]]//g' <<< $first_normal)
+			username=$(sed -Ee 's/(.* )(\[.*\]) ((.*))/\2/' -e 's/[[:punct:]]//g' <<< $first_normal)
 			usertext=$(sed -Ee 's/(.* )(\[.*\]) ((.*))/\3/' -Ee 's/[[:punct:]](.*)[[:punct:]]/\1/' <<< $first_normal)
-			userid=$(sed 's/\s.*$//' neekshell_db/users/$usertag)
+			userid=$(sed 's/\s.*$//' $(find neekshell_db/users/ -iname "$username"))
 			return_feedback=$(echo -e "<a href=\"tg://user?id=$userid\">$usertext</a>")
 		else
 			exit 1
@@ -266,9 +267,9 @@ function get_feedback_reply() {
 		"!forward "*|"/forward "*)
 		if [ $type = "private" ]; then
 			username=$(echo $first_normal | sed -e 's/[/!]forward @//')
-			forward_id=$(sed 's/\s.*$//' neekshell_db/users/$username)
-			forward=$(wget -q -O/dev/null --post-data "chat_id=$forward_id&from_chat_id=$chat_id&message_id=$message_id" "${TELEAPI}/forwardMessage" )
-			return_feedback="Inviato"
+			[ ! -e "$(find neekshell_db/users/ -iname "$username")" ] && curl -s "${TELEAPI}/sendMessage" --data-urlencode "chat_id=$chat_id" --data-urlencode "reply_to_message_id=$message_id" --data-urlencode "parse_mode=html" --data-urlencode "text=User not found" > /dev/null && exit 1
+			forward_id=$(sed 's/\s.*$//' $(find neekshell_db/users/ -iname "$username"))
+			curl -s "${TELEAPI}/forwardMessage" --data-urlencode "chat_id=$forward_id" --data-urlencode "from_chat_id=$chat_id" --data-urlencode "message_id=$message_id" > /dev/null & curl -s "${TELEAPI}/sendMessage" --data-urlencode "chat_id=$chat_id" --data-urlencode "reply_to_message_id=$message_id" --data-urlencode "parse_mode=html" --data-urlencode "text=Sent" > /dev/null
 		else
 			exit 1
 		fi
@@ -313,9 +314,9 @@ function get_feedback_reply() {
             fi
         ;;
 		"tag "*)
-			usertag=$(sed -Ee 's/(.* )(\[.*\]) ((.*))/\2/' -e 's/[[:punct:]]//g' <<< $results)
+			username=$(sed -Ee 's/(.* )(\[.*\]) ((.*))/\2/' -e 's/[[:punct:]]//g' <<< $results)
 			usertext=$(sed -Ee 's/(.* )(\[.*\]) ((.*))/\3/' -Ee 's/[[:punct:]](.*)[[:punct:]]/\1/' <<< $results)
-			userid=$(sed 's/\s.*$//' neekshell_db/users/$(sed 's/@//' <<< $usertag))
+			userid=$(sed 's/\s.*$//' $(find neekshell_db/users/ -iname "$username"))
 			return_query=$(inline_tag)
 		;;
         'search '*)
@@ -372,30 +373,33 @@ function get_feedback_reply() {
 }
 
 function process_reply() {
-	#sed -e ':a;N;$!ba;s/\n/ /g' -e 's/[\]/\\&/g' -i tempinput
-	message_id=$(jq -r ".message.reply_to_message.message_id" tempinput)
-		[ "$message_id" = "null" ] && message_id=$(jq -r ".message.message_id" tempinput)
-	normal_user=$(jq -r ".message.from.username" tempinput)
-	username_id=$(jq -r ".message.from.id" tempinput)
-	chat_id=$(jq -r ".message.chat.id" tempinput)
-	inline_user=$(jq -r ".inline_query.from.username" tempinput)
-	inline_user_id=$(jq -r ".inline_query.from.id" tempinput)
-	inline_id=$(jq -r ".inline_query.id" tempinput)
-	type=$(jq -r ".message.chat.type" tempinput)
-	text=$(jq -r ".message.text" tempinput | sed 's/"/\\&/g')
-	results=$(jq -r ".inline_query.query" tempinput | sed 's/"/\\&/g')
+	message=$(jq -r ".message" tempinput)
+	message_id=$(jq -r ".reply_to_message.message_id" <<< $message)
+	[ "$message_id" = "null" ] && message_id=$(jq -r ".message_id" <<< $message)
+	normal_user=$(jq -r ".from.username" <<< $message)
+	username_id=$(jq -r ".from.id" <<< $message)
+	chat_id=$(jq -r ".chat.id" <<< $message)
+	type=$(jq -r ".chat.type" <<< $message)
+	text=$(jq -r ".text" <<< $message | sed 's/"/\\&/g')
+
+	inline=$(jq -r ".inline_query" tempinput)
+	inline_user=$(jq -r ".from.username" <<< $inline)
+	inline_user_id=$(jq -r ".from.id" <<< $inline)
+	inline_id=$(jq -r ".id" <<< $inline)
+	results=$(jq -r ".query" <<< $inline | sed 's/"/\\&/g')
+	
 	# database id
 	if [ "$normal_user" != "null" ] && [ "$normal_user" != "" ]; then
-		[ ! -d ./neekshell_db/users/ ] && mkdir -p ./neekshell_db/users/
-		file_user=./neekshell_db/users/${normal_user}
-		[ ! -f $file_user ] && touch $file_user ; echo "$username_id $normal_user" > $file_user
+		[ ! -d neekshell_db/users/ ] && mkdir -p neekshell_db/users/
+		file_user=neekshell_db/users/${normal_user}
+		[ ! -f "$file_user" ] && touch $file_user && echo "$username_id $normal_user" > $file_user
 	fi
-	[ ! -f ./botinfo ] && touch ./botinfo ; wget -q -O ./botinfo "${TELEAPI}/getMe"
+	[ ! -f ./botinfo ] && touch ./botinfo && wget -q -O ./botinfo "${TELEAPI}/getMe"
 	get_feedback_reply
 	if [ "$first_normal" != "null" ] && [ -n "$first_normal" ] && [ "$return_feedback" != "" ]; then
-		curl -s "${TELEAPI}/sendMessage" --data-urlencode "chat_id=$chat_id" --data-urlencode "reply_to_message_id=$message_id" --data-urlencode "parse_mode=html" --data-urlencode "text=$return_feedback"
+		curl -s "${TELEAPI}/sendMessage" --data-urlencode "chat_id=$chat_id" --data-urlencode "reply_to_message_id=$message_id" --data-urlencode "parse_mode=html" --data-urlencode "text=$return_feedback" > /dev/null
 	elif [ "$results" != "null" ] && [ -n "$results" ]; then
-		curl -s "${TELEAPI}/answerInlineQuery" --data-urlencode "inline_query_id=$inline_id" --data-urlencode "results=$return_query" --data-urlencode "next_offset=$offset" --data-urlencode "cache_time=100" --data-urlencode "is_personal=true" 
+		curl -s "${TELEAPI}/answerInlineQuery" --data-urlencode "inline_query_id=$inline_id" --data-urlencode "results=$return_query" --data-urlencode "next_offset=$offset" --data-urlencode "cache_time=100" --data-urlencode "is_personal=true" > /dev/null
 	fi
 	if	[ "$first_normal" != "null" ] && [ -n "$first_normal" ] && [ "$type" = "private" ]; then
 		echo "--" ; echo "normal=${text}" ; echo "from ${normal_user} at $(date "+%Y-%m-%d %H:%M")" ; echo "--"
