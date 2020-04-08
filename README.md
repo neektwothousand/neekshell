@@ -34,7 +34,12 @@ d[number] (dice)<br />
 [system command] bin (administrative)<br />
 tag [[@username] (new tag text)]<br />
 search [text to search on google]<br />
-gel [gelbooru tag]<br />
+gbooru [gelbooru pic tag]<br />
+rbooru [realbooru pic tag]<br />
+xbooru [xbooru pic tag]<br />
+gboorugif [gelbooru gif tag]<br />
+rboorugif [realbooru gif tag]<br />
+xboorugif [xbooru gif tag]<br />
 xbgif [xbooru gif tag]
 
 # enable administrative commands
