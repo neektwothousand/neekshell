@@ -80,7 +80,7 @@ function get_feedback_reply() {
 			return_feedback=$(echo -e "source: https://github.com/neektwothousand/neekshell-telegrambot")
 		;;
 		'!help'|'/help')
-			return_feedback=$(echo -e "!d[number] (dice)\n!fortune (fortune cookie)\n!owoifer (on reply)\n!hf (random hentai-foundry pic)\n!sed [regexp] (on reply)\n!forward [usertag] (in private, on reply)\n!tag [[@username] (new tag text)] (in private)\n!ping\n\nadministrative commands:\n\n!bin [system command]\n!setadmin @username\n!deladmin @username\n!bang (on reply to mute)\n\ninline mode:\n\nd[number] (dice)\n[system command] bin\ntag [[@username] (new tag text)]\nsearch [text to search on google]\ngel [gelbooru tag]\nxbgif [xbooru gif tag]")
+			return_feedback=$(echo -e "!d[number] (dice)\n!fortune (fortune cookie)\n!owoifer (on reply)\n!hf (random hentai-foundry pic)\n!sed [regexp] (on reply)\n!forward [usertag] (in private, on reply)\n!tag [[@username] (new tag text)] (in private)\n!ping\n\nadministrative commands:\n\n!bin [system command]\n!setadmin @username\n!deladmin @username\n!nomedia (disable media messages)\n!bang (on reply to mute)\n\ninline mode:\n\nd[number] (dice)\n[system command] bin\ntag [[@username] (new tag text)]\nsearch [text to search on google]\ngbooru [gelbooru pic tag]\nrbooru [realbooru pic tag]\nxbooru [xbooru pic tag]\ngboorugif [gelbooru gif tag]\nrboorugif [realbooru gif tag]\nxboorugif [xbooru gif tag]")
 		;;
 		"!d$normaldice"|"/d$normaldice")
 			return_feedback=$(echo $(( ( RANDOM % $normaldice )  + 1 )))
@@ -188,8 +188,32 @@ function get_feedback_reply() {
 				then
 					username=$(jq -r ".message.reply_to_message.from.username" tempinput)
 					userid=$(sed 's/\s.*$//' $(find neekshell_db/users/ -iname "$username"))
-					curl -s "${TELEAPI}/restrictChatMember" --data-urlencode "chat_id=$chat_id" --data-urlencode "user_id=$userid" --data-urlencode "can_send_messages=false" --data-urlencode "until_date=32477736097" > /dev/null & curl -s "${TELEAPI}/sendMessage" --data-urlencode "chat_id=$chat_id" --data-urlencode "reply_to_message_id=$message_id" --data-urlencode "parse_mode=html" --data-urlencode "text=$(echo -e "<b>boom</b>\nutente @$usertag (<a href=\"tg://user?id=$userid\">$userid</a>) terminato" > /dev/null)" 
+					curl -s "${TELEAPI}/restrictChatMember" --data-urlencode "chat_id=$chat_id" --data-urlencode "user_id=$userid" --data-urlencode "can_send_messages=false" --data-urlencode "until_date=32477736097" > /dev/null & curl -s "${TELEAPI}/sendMessage" --data-urlencode "chat_id=$chat_id" --data-urlencode "reply_to_message_id=$message_id" --data-urlencode "parse_mode=html" --data-urlencode "text=$(echo -e "<b>boom</b>\nutente @$usertag (<a href=\"tg://user?id=$userid\">$userid</a>) terminato")" > /dev/null 
 					exit 1
+				else
+					curl -s "${TELEAPI}/sendMessage" --data-urlencode "chat_id=$chat_id" --data-urlencode "parse_mode=html" --data-urlencode "text=<code>Access denied</code>" > /dev/null
+					exit 1
+			fi
+		else
+			exit 1
+		fi
+		;;
+		"!nomedia"|"/nomedia")
+		if [ $type != "private" ]; then
+			admin=$(grep -v "#" neekshelladmins | grep -w $username_id)
+			if [ "$admin" != "" ]
+				then
+					if [ "$(curl -s "${TELEAPI}/getChat" --data-urlencode "chat_id=$chat_id" | jq -r ".result.permissions.can_send_media_messages")" = "true" ]; then
+					perms=$(jq -n --arg ci "$chat_id" '{chat_id: $ci, permissions: {can_send_messages: true, can_send_media_messages: false, can_send_other_messages: false, can_send_polls: false, can_add_web_page_previews: false}}')
+					curl -s "${TELEAPI}/setChatPermissions" -d "$perms" -H 'Content-Type: application/json' > /dev/null & \
+					curl -s "${TELEAPI}/sendMessage" --data-urlencode "chat_id=$chat_id" --data-urlencode "reply_to_message_id=$message_id" --data-urlencode "parse_mode=html" --data-urlencode "text=no-media mode activated, send again to deactivate" > /dev/null 
+					exit 1
+					else
+					perms=$(jq -n --arg ci "$chat_id" '{chat_id: $ci, permissions: {can_send_messages: true, can_send_media_messages: true, can_send_other_messages: true, can_send_polls: true, can_add_web_page_previews: true}}')
+					curl -s "${TELEAPI}/setChatPermissions" -d "$perms" -H 'Content-Type: application/json' > /dev/null & \
+					curl -s "${TELEAPI}/sendMessage" --data-urlencode "chat_id=$chat_id" --data-urlencode "reply_to_message_id=$message_id" --data-urlencode "parse_mode=html" --data-urlencode "text=no-media mode deactivated" > /dev/null 
+					exit 1
+					fi
 				else
 					curl -s "${TELEAPI}/sendMessage" --data-urlencode "chat_id=$chat_id" --data-urlencode "parse_mode=html" --data-urlencode "text=<code>Access denied</code>" > /dev/null
 					exit 1
