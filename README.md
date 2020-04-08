@@ -26,6 +26,7 @@ administrative commands:
 !bin [system command]<br />
 !setadmin @username<br />
 !deladmin @username<br />
+!nomedia (disable media messages)<br />
 !bang (on reply to mute)
 
 inline mode:
@@ -39,8 +40,7 @@ rbooru [realbooru pic tag]<br />
 xbooru [xbooru pic tag]<br />
 gboorugif [gelbooru gif tag]<br />
 rboorugif [realbooru gif tag]<br />
-xboorugif [xbooru gif tag]<br />
-xbgif [xbooru gif tag]
+xboorugif [xbooru gif tag]
 
 # enable administrative commands
 To use administrative commands you need a text file named `neekshelladmins` inside `neekshellbot` folder with a list of admin IDs, like: [neekshelladmins.example](https://github.com/neektwothousand/neekshell-telegrambot/blob/master/neekshellbot/neekshelladmins.example)
