@@ -1,6 +1,10 @@
 <?php
 $input = file_get_contents("php://input");
 $input = escapeshellarg($input);
-shell_exec ("echo $input > ./neekshellbot/tempinput");
-shell_exec ("cd ./neekshellbot/ && timeout 5s ./neekshellbot.sh");
+$input = str_replace('\\\\', '\\\\\\', $input);
+$input = str_replace('"', '\"', $input );
+$input = str_replace('$', '\$', $input );
+$input = str_replace('\\\\"', '\\\\\\"', $input);
+$command = "sudo su neekshellbot -c \"cd ./neekshellbot/ && timeout 10s ./neekshellbot.sh $input\"";
+shell_exec ($command);
 ?>
