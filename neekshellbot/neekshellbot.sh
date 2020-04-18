@@ -400,7 +400,7 @@ function process_reply() {
 	
 	text=$(jq -r ".text" <<< $message) type=$(jq -r ".chat.type" <<< $message)
 	pf=$(sed -En 's/([/!]).*/\1/p' <<< $text)
-	[ "$pf" != "" ] && [ "$type" != "private" ] && exit 1
+	[ "$pf" = "" ] && [ "$type" != "private" ] && exit 1
 	
 	message_id=$(jq -r ".reply_to_message.message_id" <<< $message) chat_id=$(jq -r ".chat.id" <<< $message)
 	[ "$message_id" = "null" ] && message_id=$(jq -r ".message_id" <<< $message)
