@@ -71,7 +71,7 @@ function inline_google() {
     [ $(echo ${obj[@]} | sed -E 's/(.*)},/\1}/') ]
 EOF
 }
-function get_feedback_reply() {
+function get_normal_reply() {
 	case $first_normal in
 		"${pf}start")
 			return_feedback=$(echo -e "source: https://github.com/neektwothousand/neekshell-telegrambot")
@@ -86,7 +86,7 @@ function get_feedback_reply() {
 			return
 		;;
 		"${pf}hf")
-			randweb=$(( ( RANDOM % 3 ) ))
+			randweb=$(( ( RANDOM % 4 ) ))
 			case $randweb in
 			0)
 				hflist=$(curl -s https://www.hentai-foundry.com/pictures/random/?enterAgree=1 -c hfcookie/c | grep -io '<div class="thumbTitle"><a href=['"'"'"][^"'"'"']*['"'"'"]' | sed -e 's/^<div class="thumbTitle"><a href=["'"'"']//i' -e 's/["'"'"']$//i')
@@ -108,6 +108,13 @@ function get_feedback_reply() {
 				getrandh=$(grep 'content="https://img.rule34.xxx' <<< $randh | sed -En 's/.*content="(.*)"\s.*/\1/p')
 				postid=$(grep 'action="index.php?' <<< $randh | sed -En 's/.*(id=.*)&.*/\1/p')
 				curl -s "${TELEAPI}/sendPhoto" --data-urlencode "chat_id=$chat_id" --data-urlencode "reply_to_message_id=$message_id" --data-urlencode "caption=https://rule34.xxx/index.php?page=post&s=view&$postid" --data-urlencode "photo=$getrandh" > /dev/null
+				exit 1
+			;;
+			3)
+                randh=$(wget -q -O- 'https://safebooru.org/index.php?page=post&s=random')
+				getrandh=$(grep 'content="https://safebooru.org' <<< $randh | sed -En 's/.*content="(.*)"\s.*/\1/p')
+				postid=$(grep 'action="index.php?' <<< $randh | sed -En 's/.*(id=.*)&.*/\1/p')
+				curl -s "${TELEAPI}/sendPhoto" --data-urlencode "chat_id=$chat_id" --data-urlencode "reply_to_message_id=$message_id" --data-urlencode "caption=https://safebooru.org/index.php?page=post&s=view&$postid" --data-urlencode "photo=$getrandh" > /dev/null
 				exit 1
 			;;
 			esac
@@ -290,7 +297,8 @@ function get_feedback_reply() {
 		return
 		;;
 	esac
-	if [ "$results" != "null" ]; then
+}
+function get_inline_reply() {
 	inlinedice=$(echo $results | tr -d '[:alpha:]')
 	[ "$(grep -w "gbooru\|gboorugif" <<< $results)" != "" ] && booru="gelbooru.com" && ilb="g"
 	[ "$(grep -w "xbooru\|xboorugif" <<< $results)" != "" ] && booru="xbooru.com" && ilb="x"
@@ -384,7 +392,6 @@ function get_feedback_reply() {
 	    return
         ;;
     esac
-    fi
 }
 function process_reply() {
 	message=$(jq -r ".message" <<< $input)
@@ -400,8 +407,8 @@ function process_reply() {
 	
 	text=$(jq -r ".text" <<< $message) type=$(jq -r ".chat.type" <<< $message)
 	pf=$(sed -En 's/([/!]).*/\1/p' <<< $text)
-	[ "$pf" = "" ] && [ "$type" != "private" ] && exit 1
-	
+	[ "$pf" = "" ] && [ "$type" != "$(grep -w 'private\|null' <<< $type)" ] && exit 1
+
 	message_id=$(jq -r ".reply_to_message.message_id" <<< $message) chat_id=$(jq -r ".chat.id" <<< $message)
 	[ "$message_id" = "null" ] && message_id=$(jq -r ".message_id" <<< $message)
 
@@ -412,14 +419,14 @@ function process_reply() {
 	normaldice=$(echo $first_normal | tr -d '/![:alpha:]')
 	trad=$(sed -En 's/([/!]w)(.*)\s.*/\2/p' <<< $first_normal | grep "enit\|iten")
 	
-	get_feedback_reply
+	[ "$text" != "null" ] && get_normal_reply || get_inline_reply
 	
-	if [ "$first_normal" != "null" ] && [ -n "$first_normal" ] && [ "$return_feedback" != "" ]; then
+	if [ "$text" != "null" ] && [ "$return_feedback" != "" ]; then
 		curl -s "${TELEAPI}/sendMessage" --data-urlencode "chat_id=$chat_id" --data-urlencode "reply_to_message_id=$message_id" --data-urlencode "parse_mode=html" --data-urlencode "text=$return_feedback" > /dev/null
-	elif [ "$results" != "null" ] && [ -n "$results" ]; then
+	elif [ "$results" != "null" ]; then
 		curl -s "${TELEAPI}/answerInlineQuery" --data-urlencode "inline_query_id=$inline_id" --data-urlencode "results=$return_query" --data-urlencode "next_offset=$offset" --data-urlencode "cache_time=100" --data-urlencode "is_personal=true" > /dev/null
 	fi
-	if	[ "$first_normal" != "null" ] && [ -n "$first_normal" ] && [ "$type" = "private" ]; then
+	if	[ "$text" != "null" ] && [ -n "$text" ] && [ "$type" = "private" ]; then
 		echo "--" ; echo "normal=${text}" ; echo "from ${normal_user} at $(date "+%Y-%m-%d %H:%M")" ; echo "--"
 	elif [ "$results" != "null" ] && [ -n "$results" ]; then
 		echo "--" ; echo "inline=${results}" ; echo "from ${inline_user} at $(date "+%Y-%m-%d %H:%M")" ; echo "--"
