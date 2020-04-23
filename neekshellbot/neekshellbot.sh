@@ -178,7 +178,7 @@ function get_normal_reply() {
 			return
 		;;
 		"${pf}fortune")
-			return_feedback="$(/usr/bin/fortune fortunes paradoxum goedel linuxcookie)"
+			return_feedback="$(/usr/bin/fortune fortunes paradoxum goedel linuxcookie | tr '\n' ' ' | awk '{$2=$2};1')"
 			return
 		;;
 		"${pf}owoifer"|"${pf}cringe")
@@ -426,7 +426,7 @@ function process_reply() {
 	elif [ "$results" != "null" ]; then
 		curl -s "${TELEAPI}/answerInlineQuery" --data-urlencode "inline_query_id=$inline_id" --data-urlencode "results=$return_query" --data-urlencode "next_offset=$offset" --data-urlencode "cache_time=100" --data-urlencode "is_personal=true" > /dev/null
 	fi
-	if	[ "$text" != "null" ] && [ -n "$text" ] && [ "$type" = "private" ]; then
+	if	[ "$text" != "null" ] && [ "$type" = "private" ]; then
 		echo "--" ; echo "normal=${text}" ; echo "from ${normal_user} at $(date "+%Y-%m-%d %H:%M")" ; echo "--"
 	elif [ "$results" != "null" ] && [ -n "$results" ]; then
 		echo "--" ; echo "inline=${results}" ; echo "from ${inline_user} at $(date "+%Y-%m-%d %H:%M")" ; echo "--"
