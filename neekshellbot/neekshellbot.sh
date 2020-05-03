@@ -16,45 +16,40 @@ function inline_article() {
 EOF
 }
 function inline_booru() {
-    while [ $rig -le $picnumber ]; do
+    for rig in $(seq $picnumber); do
         pic=$(echo $piclist | tr " " "\n" | sed -n "${rig}p")
         thumb=$(echo $thumblist | tr " " "\n" | sed -n "${rig}p")
         file=$(echo $filelist | tr " " "\n" | sed -n "${rig}p")
-        obj[$el]="{ 
+        obj[$rig]="{ 
         \"type\":\"photo\", 
         \"id\":\"$RANDOM\", 
         \"photo_url\":\"${pic}\", 
         \"thumb_url\":\"${thumb}\",
         \"caption\":\"tag: ${tags}\\nsource: ${file}\"
         },"
-        rig=$(( $rig + 1 ))
-        el=$(( $el + 1 ))
     done
     cat <<EOF
     [ $(echo ${obj[@]} | sed -E 's/(.*)},/\1}/') ]
 EOF
 }
 function inline_boorugif() {
-    while [ $rig -le $gifnumber ]; do
+    for rig in $(seq $gifnumber); do
         gif=$(echo $giflist | tr " " "\n" | sed -n "${rig}p")
         file=$(echo $filelist | tr " " "\n" | sed -n "${rig}p")
-        obj[$el]="{ 
+        obj[$rig]="{ 
         \"type\":\"gif\", 
         \"id\":\"$RANDOM\", 
         \"gif_url\":\"${gif}\", 
         \"thumb_url\":\"${gif}\",
         \"caption\":\"tag: ${tags}\\nsource: ${file}\"
         },"
-        rig=$(( $rig + 1 ))
-        el=$(( $el + 1 ))
     done
     cat <<EOF
     [ $(echo ${obj[@]} | sed -E 's/(.*)},/\1}/') ]
 EOF
 }
 function inline_google() {
-	x=0
-    while [ $x -le "$(bc <<< "$resnumber - 1")" ]; do
+    for x in $(seq $((resnumber-1))); do
         title=$(echo $googler_results | jq -r ".[$x].title")
         url=$(echo $googler_results | jq -r ".[$x].url")
         description=$(echo $googler_results | jq -r ".[$x].abstract")
@@ -65,7 +60,6 @@ function inline_google() {
         \"input_message_content\":{\"message_text\":\"${title}\\n${url}\"},
         \"description\":\"${description}\"
         },"
-        x=$(( $x + 1 ))
     done
     cat <<EOF
     [ $(echo ${obj[@]} | sed -E 's/(.*)},/\1}/') ]
@@ -78,7 +72,7 @@ function get_normal_reply() {
 			return
 		;;
 		"${pf}help")
-			return_feedback=$(echo -e "!d[number] (dice)\n!fortune (fortune cookie)\n!owoifer (on reply)\n!hf (random hentai pic)\n!sed [regexp] (on reply)\n!forward [usertag] (in private, on reply)\n!tag [[@username] (new tag text)] (in private)\n!ping\n\nadministrative commands:\n\n!bin [system command]\n!setadmin @username\n!deladmin @username\n!nomedia (disable media messages)\n!bang (on reply to mute)\n\ninline mode:\n\nd[number] (dice)\n[system command] bin\ntag [[@username] (new tag text)]\nsearch [text to search on google]\ngbooru [gelbooru pic tag]\nrbooru [realbooru pic tag]\nxbooru [xbooru pic tag]\ngboorugif [gelbooru gif tag]\nrboorugif [realbooru gif tag]\nxboorugif [xbooru gif tag]")
+			return_feedback=$(echo -e "!d[number] (dice)\n!fortune (fortune cookie)\n!owoifer (on reply)\n!hf (random hentai pic)\n!sed [regexp] (on reply)\n!forward [usertag] (in private, on reply)\n!tag [[@username] (new tag text)] (in private)\n!ping\n\nadministrative commands:\n\n!bin [system command]\n!setadmin @username\n!deladmin @username\n!nomedia (disable media messages)\n!bang (on reply to mute)\n!exit (leave chat)\n\ninline mode:\n\nd[number] (dice)\n[system command] bin\ntag [[@username] (new tag text)]\nsearch [text to search on google]\n[g/x/r34/real/]booru [booru pic tag]\n[g/x/r34/real/]bgif [booru gif tag]")
 			return
 		;;
 		"${pf}d$normaldice")
@@ -121,9 +115,9 @@ function get_normal_reply() {
 			return
 		;;
 		"${pf}w$trad "*)
-			search=$(sed -e "s/[/!]w$trad //" <<< $first_normal)
+			search=$(sed -e "s/[/!]w$trad //" -e 's/\s/%20/g' <<< $first_normal)
 			wordreference=$(curl -A 'neekshellbot/1.0' -s "https://www.wordreference.com/$trad/$search" | sed -En "s/.*\s>(.*\s)<em.*/\1/p" | sed -e "s/<a.*//g" -e "s/<span.*'\(.*\)'.*/\1/g" | head | awk '!x[$0]++')
-			[ "$wordreference" != "" ] && return_feedback=$(echo -e "translations:\n$wordreference") || return_feedback="$search not found"
+			[ "$wordreference" != "" ] && return_feedback=$(echo -e "translations:\n$wordreference") || return_feedback="$(echo "$search" | sed 's/%20/ /g') not found"
 			return
 		;;
 		"${pf}setadmin "*)
@@ -170,8 +164,7 @@ function get_normal_reply() {
 			if [ "$admin" != "" ]
 				then
 				command=$(sed 's/[/!]bin //' <<< $first_normal)
-				ecommand="echo \$($command)"
-				return_feedback="$(echo "$~> $command" ; eval $(echo "timeout 2s $(echo $command)") 2>&1 )"
+				return_feedback="$(eval "$command" 2>&1)"
 				else
 				return_feedback="<code>Access denied</code>"
 			fi
@@ -189,15 +182,11 @@ function get_normal_reply() {
 				number=$(bc <<< "$numberspace / 3")
 				resultspace=$(echo "$number" ; bc <<< "$number + $number" ; bc <<< "$number*3")
 				tempspace=$(sed -e "s/\s/\n/g" <<< $resultspace)
-				x=0
-				rig=1
-				while [ $x -lt "3" ]; do
-					spacerandom[$x]=$(sed -n "${rig}p" <<< $tempspace)
-					cringerandom[$x]=${owoarray[$(( ( RANDOM % ${#owoarray[@]} )  + 0 ))]}
-					rig=$(( $rig + 1 ))
-					x=$(( $x + 1 ))
+				for rig in 1 2 3; do
+					spacerandom[$rig]=$(sed -n "${rig}p" <<< $tempspace)
+					cringerandom[$rig]=${owoarray[$(( ( RANDOM % ${#owoarray[@]} )  + 0 ))]}
 				done
-				emoji=$(sed -e "s/ /${cringerandom[0]}/${spacerandom[0]}" -e "s/ /${cringerandom[1]}/${spacerandom[1]}" -e "s/ /${cringerandom[2]}/${spacerandom[2]}" <<< $reply)
+				emoji=$(sed -e "s/ /${cringerandom[1]}/${spacerandom[1]}" -e "s/ /${cringerandom[2]}/${spacerandom[2]}" -e "s/ /${cringerandom[3]}/${spacerandom[3]}" <<< $reply)
 				return_feedback=$(sed -e 's/[lr]/w/g' -e 's/[LR]/W/g' <<< $emoji)
 			else
 				exit 1
@@ -221,7 +210,7 @@ function get_normal_reply() {
 				then
 					username=$(jq -r ".reply_to_message.from.username" <<< $message)
 					userid=$(jq -r ".reply_to_message.from.id" <<< $message)
-					curl -s "${TELEAPI}/restrictChatMember" --data-urlencode "chat_id=$chat_id" --data-urlencode "user_id=$userid" --data-urlencode "can_send_messages=false" --data-urlencode "until_date=32477736097" > /dev/null & curl -s "${TELEAPI}/sendMessage" --data-urlencode "chat_id=$chat_id" --data-urlencode "reply_to_message_id=$message_id" --data-urlencode "parse_mode=html" --data-urlencode "text=$( [ "$username" != "null" ] && echo -e "<b>boom</b>\nutente @$username (<a href=\"tg://user?id=$userid\">$userid</a>) terminato" || echo -e "<b>boom</b>\nutente <a href=\"tg://user?id=$userid\">$userid</a> terminato")" > /dev/null 
+					curl -s "${TELEAPI}/restrictChatMember" --data-urlencode "chat_id=$chat_id" --data-urlencode "user_id=$userid" --data-urlencode "can_send_messages=false" --data-urlencode "until_date=32477736097" > /dev/null & curl -s "${TELEAPI}/sendSticker" --data-urlencode "chat_id=$chat_id" --data-urlencode "reply_to_message_id=$message_id" --data-urlencode "caption=prova" --data-urlencode "sticker=https://archneek.zapto.org/webpics/vicious_dies2.webp" & curl -s "${TELEAPI}/sendMessage" --data-urlencode "chat_id=$chat_id" --data-urlencode "reply_to_message_id=$message_id" --data-urlencode "parse_mode=html" --data-urlencode "text=$( [ "$username" != "null" ] && echo "@$username (<a href=\"tg://user?id=$userid\">$userid</a>) terminato" || echo "<a href=\"tg://user?id=$userid\">$userid</a> terminato")" > /dev/null 
 					exit 1
 				else
 					curl -s "${TELEAPI}/sendMessage" --data-urlencode "chat_id=$chat_id" --data-urlencode "parse_mode=html" --data-urlencode "text=<code>Access denied</code>" > /dev/null
@@ -257,16 +246,23 @@ function get_normal_reply() {
 			fi
 			return
 		;;
+		"${pf}exit")
+			admin=$(grep -v "#" neekshelladmins | grep -w $username_id)
+			if [ "$admin" != "" ]; then
+				curl -s "$TELEAPI/leaveChat" --data-urlencode "chat_id=$chat_id" > /dev/null
+				exit 1
+			else
+				curl -s "${TELEAPI}/sendMessage" --data-urlencode "chat_id=$chat_id" --data-urlencode "parse_mode=html" --data-urlencode "text=<code>Access denied</code>" > /dev/null
+				exit 1
+			fi
+		;;
 		"${pf}tag "*)
-		if [ $type = "private" ]; then
-			username=$(sed -Ee 's/(.* )(\[.*\]) ((.*))/\2/' -e 's/[[:punct:]]//g' <<< $first_normal)
-			usertext=$(sed -Ee 's/(.* )(\[.*\]) ((.*))/\3/' -Ee 's/[[:punct:]](.*)[[:punct:]]/\1/' <<< $first_normal)
+			username=$(sed -E 's/.* (\[.*\]) .*/\1/' <<< $first_normal | tr -d '[@]')
+			usertext=$(sed -E 's/^.*\s.*\s(\(.*)/\1/' <<< $first_normal | tr -d '()')
 			userid=$(sed -n 2p $(find neekshell_db/users/ -iname "$username") | sed "s/id: //")
-			return_feedback=$(echo -e "<a href=\"tg://user?id=$userid\">$usertext</a>")
-		else
-			exit 1
-		fi
-		return
+			[ "$userid" != "" ] && [ "$usertext" != "" ] && return_feedback=$(echo -e "<a href=\"tg://user?id=$userid\">$usertext</a>")
+			[ "$userid" = "" ] && return_feedback="$username not found"
+			return
 		;;
 		"${pf}forward "*)
 		if [ $type = "private" ]; then
@@ -300,9 +296,10 @@ function get_normal_reply() {
 }
 function get_inline_reply() {
 	inlinedice=$(echo $results | tr -d '[:alpha:]')
-	[ "$(grep -w "gbooru\|gboorugif" <<< $results)" != "" ] && booru="gelbooru.com" && ilb="g"
-	[ "$(grep -w "xbooru\|xboorugif" <<< $results)" != "" ] && booru="xbooru.com" && ilb="x"
-	[ "$(grep -w "rbooru\|rboorugif" <<< $results)" != "" ] && booru="realbooru.com" && ilb="r"
+	[ "$(grep -w "gb\|gbgif" <<< $results)" != "" ] && booru="gelbooru.com" && ilb="g"
+	[ "$(grep -w "xb\|xbgif" <<< $results)" != "" ] && booru="xbooru.com" && ilb="x"
+	[ "$(grep -w "realb\|realbgif" <<< $results)" != "" ] && booru="realbooru.com" && ilb="real"
+	[ "$(grep -w "r34b\|r34bgif" <<< $results)" != "" ] && booru="rule34.xxx" && ilb="r34"
     case $results in
         "help")
 			title="Ok"
@@ -355,24 +352,20 @@ function get_inline_reply() {
 			fi
 			return
         ;;
-        "${ilb}booru "*)
-            el=0
-            rig=1
-            offset=$(($(jq -r ".offset" <<< $inline)+1))
-            tags=$(sed "s/${ilb}booru //" <<< $results)
-			getbooru=$(curl -A 'Mozilla/5.0' -s "https://$booru/index.php?page=dapi&s=post&pid=$offset&tags=$tags&q=index&limit=20")
-            thumblist=$(sed -n 's/.*preview_url="\([^"]*\)".*/\1/p' <<< $getbooru | grep -E 'jpg|jpeg|png')
-            piclist=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< $getbooru | grep -E 'jpg|jpeg|png')
-            filelist=$(sed -n 's/.*file_url="\([^"]*\)".*/\1/p' <<< $getbooru | grep -E 'jpg|jpeg|png')
-            picnumber=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< $getbooru | grep -E -c 'jpg|jpeg|png')
-            return_query=$(inline_booru)
-	    return
+        "${ilb}b "*)
+			offset=$(($(jq -r ".offset" <<< $inline)+1))
+			tags=$(sed "s/${ilb}b //" <<< $results)
+			getbooru=$(curl -A 'Mozilla/5.0' -s "https://$booru/index.php?page=dapi&s=post&pid=$offset&tags=$tags&q=index&limit=5")
+			thumblist=$(sed -n 's/.*preview_url="\([^"]*\)".*/\1/p' <<< $getbooru | grep -E 'jpg|jpeg|png')
+			piclist=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< $getbooru | grep -E 'jpg|jpeg|png')
+			filelist=$(sed -n 's/.*file_url="\([^"]*\)".*/\1/p' <<< $getbooru | grep -E 'jpg|jpeg|png')
+			picnumber=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< $getbooru | grep -E -c 'jpg|jpeg|png')
+			return_query=$(inline_booru)
+			return
 		;;
-        "${ilb}boorugif "*)
-            el=0
-            rig=1
+        "${ilb}bgif "*)
             offset=$(($(jq -r ".offset" <<< $inline)+1))
-            tags=$(sed "s/${ilb}boorugif //" <<< $results)
+            tags=$(sed "s/${ilb}bgif //" <<< $results)
             if [ "$ilb" != "g" ]; then
 				getbooru=$(curl -A 'Mozilla/5.0' -s "https://$booru/index.php?page=dapi&s=post&pid=$offset&tags=gif+$tags&q=index&limit=20")
 			else
@@ -425,7 +418,7 @@ function process_reply() {
 
 	first_normal=$(echo $text | sed "s/@$(jq -r ".result.username" botinfo)//")
 	normaldice=$(echo $first_normal | tr -d '/![:alpha:]')
-	trad=$(sed -En 's/([/!]w)(.*)\s.*/\2/p' <<< $first_normal | grep "enit\|iten")
+	trad=$(sed -e 's/[!/]w//' -e 's/\s.*//' <<< $first_normal | grep "enit\|iten")
 	
 	[ "$text" != "null" ] && get_normal_reply || get_inline_reply
 	
