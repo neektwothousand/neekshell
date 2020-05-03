@@ -35,12 +35,8 @@ d[number] (dice)<br />
 [system command] bin (administrative)<br />
 tag [[@username] (new tag text)]<br />
 search [text to search on google]<br />
-gbooru [gelbooru pic tag]<br />
-rbooru [realbooru pic tag]<br />
-xbooru [xbooru pic tag]<br />
-gboorugif [gelbooru gif tag]<br />
-rboorugif [realbooru gif tag]<br />
-xboorugif [xbooru gif tag]
+[g/x/r34/real]b [booru pic tag]<br />
+[g/x/r34/real]bgif [booru gif tag]
 
 # enable administrative commands
 To use administrative commands you need a text file named `neekshelladmins` inside `neekshellbot` folder with a list of admin IDs, like: [neekshelladmins.example](https://github.com/neektwothousand/neekshell-telegrambot/blob/master/neekshellbot/neekshelladmins.example)
