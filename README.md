@@ -27,7 +27,8 @@ administrative commands:
 !setadmin @username<br />
 !deladmin @username<br />
 !nomedia (disable media messages)<br />
-!bang (on reply to mute)
+!bang (on reply to mute)<br >
+!exit (leave chat)
 
 inline mode:
 
