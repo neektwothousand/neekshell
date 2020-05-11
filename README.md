@@ -28,6 +28,7 @@ administrative commands:
 !deladmin @username<br />
 !nomedia (disable media messages)<br />
 !bang (on reply to mute)<br >
+!broadcast [message or reply] (broadcast to all groups)<br >
 !exit (leave chat)
 
 inline mode:
