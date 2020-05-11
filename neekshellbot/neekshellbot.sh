@@ -65,18 +65,52 @@ function inline_google() {
     [ $(echo ${obj[@]} | sed -E 's/(.*)},/\1}/') ]
 EOF
 }
+function normal_reply() {
+	curl -s "${TELEAPI}/sendMessage" \
+		--data-urlencode "chat_id=$chat_id" \
+		--data-urlencode "reply_to_message_id=$message_id" \
+		--data-urlencode "parse_mode=html" \
+		--data-urlencode "text=$return_feedback" > /dev/null
+}
+function forward_reply() {
+	curl -s "${TELEAPI}/forwardMessage" \
+	--data-urlencode "chat_id=$forward_id" \
+	--data-urlencode "from_chat_id=$chat_id" \
+	--data-urlencode "message_id=$message_id" > /dev/null
+}
+function inline_reply() {
+	curl -s "${TELEAPI}/answerInlineQuery" \
+		--data-urlencode "inline_query_id=$inline_id" \
+		--data-urlencode "results=$return_query" \
+		--data-urlencode "next_offset=$offset" \
+		--data-urlencode "cache_time=100" \
+		--data-urlencode "is_personal=true" > /dev/null
+}
 function get_normal_reply() {
 	case $first_normal in
 		"${pf}start")
 			return_feedback=$(echo -e "source: https://github.com/neektwothousand/neekshell-telegrambot")
 			return
 		;;
+		"+")
+			curl -s "${TELEAPI}/sendVoice" --data-urlencode "chat_id=$chat_id" --data-urlencode "reply_to_message_id=$message_id" --data-urlencode "voice=https://archneek.zapto.org/webaudio/respect.ogg" > /dev/null
+			exit
+		;;
 		"${pf}help")
-			return_feedback=$(echo -e "!d[number] (dice)\n!fortune (fortune cookie)\n!owoifer (on reply)\n!hf (random hentai pic)\n!sed [regexp] (on reply)\n!forward [usertag] (in private, on reply)\n!tag [[@username] (new tag text)] (in private)\n!ping\n\nadministrative commands:\n\n!bin [system command]\n!setadmin @username\n!deladmin @username\n!nomedia (disable media messages)\n!bang (on reply to mute)\n!exit (leave chat)\n\ninline mode:\n\nd[number] (dice)\n[system command] bin\ntag [[@username] (new tag text)]\nsearch [text to search on google]\n[g/x/r34/real/]booru [booru pic tag]\n[g/x/r34/real/]bgif [booru gif tag]")
+			return_feedback=$(echo -e "!d[number] (dice)\n!fortune (fortune cookie)\n!owoifer (on reply)\n!hf (random hentai pic)\n!sed [regexp] (on reply)\n!forward [usertag] (in private, on reply)\n!tag [[@username] (new tag text)] (in private)\n!ping\n\nadministrative commands:\n\n!bin [system command]\n!setadmin @username\n!deladmin @username\n!nomedia (disable media messages)\n!bang (on reply to mute)\n!broadcast [message or reply] (broadcast to all groups)\n!exit (leave chat)\n\ninline mode:\n\nd[number] (dice)\n[system command] bin\ntag [[@username] (new tag text)]\nsearch [text to search on google]\n[g/x/r34/real/]booru [booru pic tag]\n[g/x/r34/real/]bgif [booru gif tag]")
 			return
 		;;
 		"${pf}d$normaldice")
-			return_feedback=$(echo $(( ( RANDOM % $normaldice )  + 1 )))
+			chars=$(( $(wc -m <<< $normaldice) - 1 ))
+			return_feedback="<code>$(echo $(( ($(cat /dev/urandom | tr -dc '[:digit:]' | head -c $chars) % $normaldice) + 1 )) )</code>"
+			return
+		;;
+		"${pf}d$normaldice*$mul")
+			for x in $(seq $mul); do
+				chars=$(( $(wc -m <<< $normaldice) - 1 ))
+				result[$x]=$(echo $(( ($(cat /dev/urandom | tr -dc '[:digit:]' | head -c $chars) % $normaldice) + 1 )) )
+			done
+			return_feedback="<code>${result[@]}</code>"
 			return
 		;;
 		"${pf}hf")
@@ -161,11 +195,39 @@ function get_normal_reply() {
 		;;
 		"${pf}bin "*)
 			admin=$(grep -v "#" neekshelladmins | grep -w $username_id)
-			if [ "$admin" != "" ]
-				then
+			if [ "$admin" != "" ]; then
 				command=$(sed 's/[/!]bin //' <<< $first_normal)
-				return_feedback="$(eval "$command" 2>&1)"
+				return_feedback="<code>$(eval "$command" 2>&1)</code>"
+			else
+				return_feedback="<code>Access denied</code>"
+			fi
+			return
+		;;
+		"${pf}broadcast "*|"${pf}broadcast")
+			admin=$(grep -v "#" neekshelladmins | grep -w $username_id)
+			if [ "$admin" != "" ]; then
+				listchats=$(grep -rnw neekshell_db/chats/ -e 'supergroup' | cut -d ':' -f 1)
+				numchats=$(wc -l <<< "$listchats")
+				return_feedback=$(sed "s/[!/]broadcast//" <<< $first_normal)
+				if [ "$return_feedback" != "" ]; then
+					for x in $(seq $numchats); do
+						brid[$x]=$(sed -n 2p "$(sed -n ${x}p <<< "$listchats")" | sed 's/id: //')
+						chat_id=${brid[$x]}
+						normal_reply
+						sleep 2
+					done
+				elif [ "$message_id" != "null" ]; then
+					for x in $(seq $numchats); do
+						forward_id=$(sed -n 2p "$(sed -n ${x}p <<< "$listchats")" | sed 's/id: //')
+						forward_reply
+						sleep 2
+					done
 				else
+					return_feedback="Write something after broadcast command or reply to forward"
+					normal_reply
+				fi
+				exit
+			else
 				return_feedback="<code>Access denied</code>"
 			fi
 			return
@@ -408,16 +470,16 @@ function process_reply() {
 	[ ! -e ./botinfo ] && touch ./botinfo && wget -q -O ./botinfo "${TELEAPI}/getMe"
 	text=$(jq -r ".text" <<< $message)
 	pf=$(sed -En 's/.*(^[/!]).*/\1/p' <<< $text)
-	[ "$pf" = "" ] && [ "$type" != "$(grep -w 'private\|null' <<< $type)" ] && exit 1
+	#[ "$pf" = "" ] && [ "$type" != "$(grep -w 'private\|null' <<< $type)" ] && exit 1
 
 	message_id=$(jq -r ".reply_to_message.message_id" <<< $message)
-	[ "$message_id" = "null" ] && message_id=$(jq -r ".message_id" <<< $message)
+	#[ "$message_id" = "null" ] && message_id=$(jq -r ".message_id" <<< $message)
 
 	inline=$(jq -r ".inline_query" <<< $input)
 	inline_user=$(jq -r ".from.username" <<< $inline) inline_user_id=$(jq -r ".from.id" <<< $inline) inline_id=$(jq -r ".id" <<< $inline) results=$(jq -r ".query" <<< $inline)
 
 	first_normal=$(echo $text | sed "s/@$(jq -r ".result.username" botinfo)//")
-	normaldice=$(echo $first_normal | tr -d '/![:alpha:]')
+	normaldice=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/\*.*//g') mul=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/.*\*//g')
 	trad=$(sed -e 's/[!/]w//' -e 's/\s.*//' <<< $first_normal | grep "enit\|iten")
 	
 	[ "$text" != "null" ] && get_normal_reply || get_inline_reply
