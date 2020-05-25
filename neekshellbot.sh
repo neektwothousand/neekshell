@@ -20,10 +20,10 @@ function inline_booru() {
         pic=$(echo $piclist | tr " " "\n" | sed -n "${rig}p")
         thumb=$(echo $thumblist | tr " " "\n" | sed -n "${rig}p")
         file=$(echo $filelist | tr " " "\n" | sed -n "${rig}p")
-        obj[$rig]="{ 
-        \"type\":\"photo\", 
-        \"id\":\"$RANDOM\", 
-        \"photo_url\":\"${pic}\", 
+        obj[$rig]="{
+        \"type\":\"photo\",
+        \"id\":\"$RANDOM\",
+        \"photo_url\":\"${pic}\",
         \"thumb_url\":\"${thumb}\",
         \"caption\":\"tag: ${tags}\\nsource: ${file}\"
         },"
@@ -36,10 +36,10 @@ function inline_boorugif() {
     for rig in $(seq $gifnumber); do
         gif=$(echo $giflist | tr " " "\n" | sed -n "${rig}p")
         file=$(echo $filelist | tr " " "\n" | sed -n "${rig}p")
-        obj[$rig]="{ 
-        \"type\":\"gif\", 
-        \"id\":\"$RANDOM\", 
-        \"gif_url\":\"${gif}\", 
+        obj[$rig]="{
+        \"type\":\"gif\",
+        \"id\":\"$RANDOM\",
+        \"gif_url\":\"${gif}\",
         \"thumb_url\":\"${gif}\",
         \"caption\":\"tag: ${tags}\\nsource: ${file}\"
         },"
@@ -53,10 +53,10 @@ function inline_google() {
         title=$(echo $googler_results | jq -r ".[$x].title")
         url=$(echo $googler_results | jq -r ".[$x].url")
         description=$(echo $googler_results | jq -r ".[$x].abstract")
-        obj[$x]="{ 
-        \"type\":\"article\", 
+        obj[$x]="{
+        \"type\":\"article\",
         \"id\":\"$RANDOM\",
-        \"title\":\"${title}\", 
+        \"title\":\"${title}\",
         \"input_message_content\":{\"message_text\":\"${title}\\n${url}\"},
         \"description\":\"${description}\"
         },"
@@ -68,7 +68,6 @@ EOF
 function normal_reply() {
 	curl -s "${TELEAPI}/sendMessage" \
 		--data-urlencode "chat_id=$chat_id" \
-		--data-urlencode "reply_to_message_id=$message_id" \
 		--data-urlencode "parse_mode=html" \
 		--data-urlencode "text=$return_feedback" > /dev/null
 }
@@ -97,7 +96,15 @@ function get_normal_reply() {
 			exit
 		;;
 		"${pf}help")
-			return_feedback=$(echo -e "!d[number] (dice)\n!fortune (fortune cookie)\n!owoifer (on reply)\n!hf (random hentai pic)\n!sed [regexp] (on reply)\n!forward [usertag] (in private, on reply)\n!tag [[@username] (new tag text)] (in private)\n!ping\n\nadministrative commands:\n\n!bin [system command]\n!setadmin @username\n!deladmin @username\n!nomedia (disable media messages)\n!bang (on reply to mute)\n!broadcast [message or reply] (broadcast to all groups)\n!exit (leave chat)\n\ninline mode:\n\nd[number] (dice)\n[system command] bin\ntag [[@username] (new tag text)]\nsearch [text to search on google]\n[g/x/r34/real/]booru [booru pic tag]\n[g/x/r34/real/]bgif [booru gif tag]")
+			return_feedback=$(sed -n '/normal/,/endnormal/ p' commands | sed -e '1d' -e '$d' ; echo -e "\nfor administrative commands use /admin, for inline use /inline")
+			return
+		;;
+		"${pf}admin")
+			return_feedback=$(sed -n '/admin/,/endadmin/ p' commands | sed -e '1d' -e '$d')
+			return
+		;;
+		"${pf}inline")
+			return_feedback=$(sed -n '/inline/,/endinline/ p' commands | sed -e '1d' -e '$d')
 			return
 		;;
 		"${pf}d$normaldice")
@@ -117,7 +124,7 @@ function get_normal_reply() {
 			randweb=$(( ( RANDOM % 4 ) ))
 			case $randweb in
 			0)
-				hflist=$(curl -s https://www.hentai-foundry.com/pictures/random/?enterAgree=1 -c hfcookie/c | grep -io '<div class="thumbTitle"><a href=['"'"'"][^"'"'"']*['"'"'"]' | sed -e 's/^<div class="thumbTitle"><a href=["'"'"']//i' -e 's/["'"'"']$//i')
+				hflist=$(curl -s "https://www.hentai-foundry.com/pictures/random/?enterAgree=1" -c hfcookie/c | grep -io '<div class="thumbTitle"><a href=['"'"'"][^"'"'"']*['"'"'"]' | sed -e 's/^<div class="thumbTitle"><a href=["'"'"']//i' -e 's/["'"'"']$//i')
 				counth=$(echo $hflist | grep -c "\n")
 				randh=$(sed -n "$(( ( RANDOM % $counth ) + 1 ))p" <<< $hflist)
 				getrandh=$(curl --cookie hfcookie/c -s https://www.hentai-foundry.com$randh | sed -n 's/.*src="\([^"]*\)".*/\1/p' | grep "pictures.hentai" | sed "s/^/https:/")
@@ -125,7 +132,7 @@ function get_normal_reply() {
 				exit 1
 			;;
 			1)
-				randh=$(curl -A 'neekshellbot/1.0 (by neek)' -s https://e621.net/posts/random.json)
+				randh=$(curl -A 'neekshellbot/1.0 (by neek)' -s "https://e621.net/posts/random.json")
 				getrandh=$(jq -r ".post.file.url" <<< $randh)
 				postid=$(jq -r ".post.id" <<< $randh)
 				curl -s "${TELEAPI}/sendPhoto" --data-urlencode "chat_id=$chat_id" --data-urlencode "reply_to_message_id=$message_id" --data-urlencode "caption=https://e621.net/posts/$postid" --data-urlencode "photo=$getrandh" > /dev/null
@@ -196,12 +203,17 @@ function get_normal_reply() {
 		"${pf}bin "*)
 			admin=$(grep -v "#" neekshelladmins | grep -w $username_id)
 			if [ "$admin" != "" ]; then
-				command=$(sed 's/[/!]bin //' <<< $first_normal)
-				return_feedback="<code>$(eval "$command" 2>&1)</code>"
+				command=$(sed 's/[/!]bin //' <<< "$first_normal")
+				return_feedback=$(eval "$command" 2>&1)
+				return_feedback="<code>$(sed 's/[<]/\&lt;/g' <<< $return_feedback)</code>"
 			else
 				return_feedback="<code>Access denied</code>"
 			fi
 			return
+		;;
+		"${pf}cpustat")
+			cpustat=$(grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage "%"}')
+			return_feedback=$cpustat
 		;;
 		"${pf}broadcast "*|"${pf}broadcast")
 			admin=$(grep -v "#" neekshelladmins | grep -w $username_id)
@@ -458,7 +470,6 @@ function process_reply() {
 		file_user=neekshell_db/users/$username_tag
 		[ ! -e "$file_user" ] && echo -e "tag: $username_tag\nid: $username_id" > $file_user
 	fi
-	
 	# chat database
 	chat_title=$(jq -r ".chat.title" <<< $message) chat_id=$(jq -r ".chat.id" <<< $message) type=$(jq -r ".chat.type" <<< $message)
 	if [ "$chat_title" != "null" ]; then
@@ -470,10 +481,10 @@ function process_reply() {
 	[ ! -e ./botinfo ] && touch ./botinfo && wget -q -O ./botinfo "${TELEAPI}/getMe"
 	text=$(jq -r ".text" <<< $message)
 	pf=$(sed -En 's/.*(^[/!]).*/\1/p' <<< $text)
-	#[ "$pf" = "" ] && [ "$type" != "$(grep -w 'private\|null' <<< $type)" ] && exit 1
+#	[ "$pf" = "" ] && [ "$type" != "$(grep -w 'private\|null' <<< $type)" ] && exit 1
 
 	message_id=$(jq -r ".reply_to_message.message_id" <<< $message)
-	#[ "$message_id" = "null" ] && message_id=$(jq -r ".message_id" <<< $message)
+	[ "$message_id" = "null" ] && message_id=$(jq -r ".message_id" <<< $message)
 
 	inline=$(jq -r ".inline_query" <<< $input)
 	inline_user=$(jq -r ".from.username" <<< $inline) inline_user_id=$(jq -r ".from.id" <<< $inline) inline_id=$(jq -r ".id" <<< $inline) results=$(jq -r ".query" <<< $inline)
