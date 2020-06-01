@@ -212,7 +212,7 @@ function get_normal_reply() {
 			return
 		;;
 		"${pf}cpustat")
-			cpustat=$(grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage "%"}')
+			cpustat=$(grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage }' | sed -E 's/(.*)\..*/\1%/')
 			return_feedback=$cpustat
 		;;
 		"${pf}broadcast "*|"${pf}broadcast")
@@ -229,11 +229,21 @@ function get_normal_reply() {
 						sleep 2
 					done
 				elif [ "$message_id" != "null" ]; then
-					for x in $(seq $numchats); do
-						forward_id=$(sed -n 2p "$(sed -n ${x}p <<< "$listchats")" | sed 's/id: //')
-						forward_reply
-						sleep 2
-					done
+					return_feedback=$(jq -r ".reply_to_message.text" <<< $message)
+					if [ "$return_feedback" = "" ]; then
+						for x in $(seq $numchats); do
+							forward_id=$(sed -n 2p "$(sed -n ${x}p <<< "$listchats")" | sed 's/id: //')
+							forward_reply
+							sleep 2
+						done
+					else
+						for x in $(seq $numchats); do
+							brid[$x]=$(sed -n 2p "$(sed -n ${x}p <<< "$listchats")" | sed 's/id: //')
+							chat_id=${brid[$x]}
+							normal_reply
+							sleep 2
+						done
+					fi
 				else
 					return_feedback="Write something after broadcast command or reply to forward"
 					normal_reply
@@ -480,8 +490,7 @@ function process_reply() {
 	
 	[ ! -e ./botinfo ] && touch ./botinfo && wget -q -O ./botinfo "${TELEAPI}/getMe"
 	text=$(jq -r ".text" <<< $message)
-	pf=$(sed -En 's/.*(^[/!]).*/\1/p' <<< $text)
-#	[ "$pf" = "" ] && [ "$type" != "$(grep -w 'private\|null' <<< $type)" ] && exit 1
+	pf=${text/[^\/\!]*/}
 
 	message_id=$(jq -r ".reply_to_message.message_id" <<< $message)
 	[ "$message_id" = "null" ] && message_id=$(jq -r ".message_id" <<< $message)
@@ -489,8 +498,8 @@ function process_reply() {
 	inline=$(jq -r ".inline_query" <<< $input)
 	inline_user=$(jq -r ".from.username" <<< $inline) inline_user_id=$(jq -r ".from.id" <<< $inline) inline_id=$(jq -r ".id" <<< $inline) results=$(jq -r ".query" <<< $inline)
 
-	first_normal=$(echo $text | sed "s/@$(jq -r ".result.username" botinfo)//")
-	normaldice=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/\*.*//g') mul=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/.*\*//g')
+	first_normal=${text/@$(jq -r ".result.username" botinfo)/}
+	[ "${first_normal/*[^0-9]/}" != "" ] && normaldice=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/\*.*//g') mul=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/.*\*//g')
 	trad=$(sed -e 's/[!/]w//' -e 's/\s.*//' <<< $first_normal | grep "enit\|iten")
 	
 	[ "$text" != "null" ] && get_normal_reply || get_inline_reply
