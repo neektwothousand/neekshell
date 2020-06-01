@@ -212,7 +212,7 @@ function get_normal_reply() {
 			return
 		;;
 		"${pf}cpustat")
-			cpustat=$(grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage }' | sed -E 's/(.*)\..*/\1%/')
+			cpustat=$(awk -v a="$(awk '/cpu /{print $2+$4,$2+$4+$5}' /proc/stat; sleep 1)" '/cpu /{split(a,b," "); print 100*($2+$4-b[1])/($2+$4+$5-b[2])}' /proc/stat | sed -E 's/(.*)\..*/\1%/')
 			return_feedback=$cpustat
 		;;
 		"${pf}broadcast "*|"${pf}broadcast")
@@ -505,9 +505,18 @@ function process_reply() {
 	[ "$text" != "null" ] && get_normal_reply || get_inline_reply
 	
 	if [ "$text" != "null" ] && [ "$return_feedback" != "" ]; then
-		curl -s "${TELEAPI}/sendMessage" --data-urlencode "chat_id=$chat_id" --data-urlencode "reply_to_message_id=$message_id" --data-urlencode "parse_mode=html" --data-urlencode "text=$return_feedback" > /dev/null
+		curl -s "${TELEAPI}/sendMessage" \
+			--data-urlencode "chat_id=$chat_id" \
+			--data-urlencode "reply_to_message_id=$message_id" \
+			--data-urlencode "parse_mode=html" \
+			--data-urlencode "text=$return_feedback" > /dev/null
 	elif [ "$results" != "null" ]; then
-		curl -s "${TELEAPI}/answerInlineQuery" --data-urlencode "inline_query_id=$inline_id" --data-urlencode "results=$return_query" --data-urlencode "next_offset=$offset" --data-urlencode "cache_time=100" --data-urlencode "is_personal=true" > /dev/null
+		curl -s "${TELEAPI}/answerInlineQuery" \
+		--data-urlencode "inline_query_id=$inline_id" \
+		--data-urlencode "results=$return_query" \
+		--data-urlencode "next_offset=$offset" \
+		--data-urlencode "cache_time=100" \
+		--data-urlencode "is_personal=true" > /dev/null
 	fi
 	if	[ "$text" != "null" ] && [ "$type" = "private" ]; then
 		echo "--" ; echo "normal=${text}" ; echo "from ${username_tag} at $(date "+%Y-%m-%d %H:%M")" ; echo "--"
