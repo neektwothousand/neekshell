@@ -1,0 +1,30 @@
+normal
+!d[number] (dice)
+!fortune (fortune cookie)
+!owoifer (on reply)
+!hf (random hentai pic)
+!sed [regexp] (on reply)
+!forward [usertag] (in private, on reply)
+!tag [[@username] (new tag text)] (in private)
+!cpustat (displays % of current cpu usage)
+!ping
+endnormal
+
+admin
+!bin [system command]
+!setadmin @username
+!deladmin @username
+!nomedia (disable media messages)
+!bang (on reply to mute)
+!broadcast [message or reply] (broadcast to all groups)
+!exit (leave chat)
+endadmin
+
+inline
+d[number] (dice)
+[system command] bin
+tag [[@username] (new tag text)]
+search [text to search on google]
+[g/x/r34/real/]b [booru pic tag]
+[g/x/r34/real/]bgif [booru gif tag]
+endinline
