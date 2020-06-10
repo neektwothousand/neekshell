@@ -15,6 +15,17 @@ function inline_article() {
     }]
 EOF
 }
+function inline_keyboard_buttons() {
+	cat <<EOF
+	{
+		"inline_keyboard": [
+				[{
+						"text":"$button_text","callback_data":"$button_text"
+				}]
+		]
+	}
+EOF
+}
 function inline_booru() {
     for rig in $(seq $picnumber); do
         pic=$(echo $piclist | tr " " "\n" | sed -n "${rig}p")
@@ -85,6 +96,11 @@ function inline_reply() {
 		--data-urlencode "cache_time=100" \
 		--data-urlencode "is_personal=true" > /dev/null
 }
+function button_reply() {
+	curl -s "${TELEAPI}/answerCallbackQuery" \
+		--data-urlencode "callback_query_id=$callback_id" \
+		--data-urlencode "text=$return_feedback" > /dev/null
+}
 function get_normal_reply() {
 	if [ "${pf}" = "" ]; then
 		case $first_normal in	
@@ -125,6 +141,15 @@ function get_normal_reply() {
 			;;
 			"${pf}inline")
 				return_feedback=$(sed -n '/inline/,/endinline/ p' commands | sed -e '1d' -e '$d')
+				return
+			;;
+			"${pf}button "*)
+				button_text=$(sed -e 's/[/!]button //' <<< $first_normal)
+				curl -s "${TELEAPI}/sendMessage" \
+					--data-urlencode "chat_id=$chat_id" \
+					--data-urlencode "parse_mode=html" \
+					--data-urlencode "text=$button_text" \
+					--data-urlencode "reply_markup=$(inline_keyboard_buttons)" > /dev/null
 				return
 			;;
 			"${pf}d$normaldice")
@@ -375,7 +400,7 @@ function get_normal_reply() {
 		esac
 	fi
 }
-function get_inline_reply(){
+function get_inline_reply() {
 	inlinedice=$(echo $results | tr -d '[:alpha:]')
 	[ "$(grep -w "gb\|gbgif" <<< $results)" != "" ] && booru="gelbooru.com" && ilb="g"
 	[ "$(grep -w "xb\|xbgif" <<< $results)" != "" ] && booru="xbooru.com" && ilb="x"
@@ -467,6 +492,14 @@ function get_inline_reply(){
         ;;
     esac
 }
+function get_button_reply() {
+	case $callback_data in
+		*)
+			return_feedback="$callback_data"
+			button_reply
+			return
+	esac
+}
 function process_reply() {
 	message=$(jq -r ".message" <<< $input)
 	
@@ -495,11 +528,16 @@ function process_reply() {
 	inline=$(jq -r ".inline_query" <<< $input)
 	inline_user=$(jq -r ".from.username" <<< $inline) inline_user_id=$(jq -r ".from.id" <<< $inline) inline_id=$(jq -r ".id" <<< $inline) results=$(jq -r ".query" <<< $inline)
 
+	callback=$(jq -r ".callback_query" <<< $input)
+	callback_user=$(jq -r ".from.username" <<< $callback) callback_user_id=$(jq -r ".from.id" <<< $callback) callback_id=$(jq -r ".id" <<< $callback) callback_data=$(jq -r ".data" <<< $callback)
+	
 	first_normal=${text/@$(jq -r ".result.username" botinfo)/}
 	[ "${first_normal/*[^0-9]/}" != "" ] && normaldice=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/\*.*//g') mul=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/.*\*//g')
 	trad=$(sed -e 's/[!/]w//' -e 's/\s.*//' <<< $first_normal | grep "enit\|iten")
 	
-	[ "$text" != "null" ] && get_normal_reply || get_inline_reply
+	[ "$text" != "null" ] && get_normal_reply
+	[ "$results" != "null" ] && get_inline_reply
+	[ "$callback_data" != "null" ] && get_button_reply
 	
 	if [ "$text" != "null" ] && [ "$return_feedback" != "" ]; then
 		curl -s "${TELEAPI}/sendMessage" \
