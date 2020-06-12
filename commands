@@ -24,7 +24,7 @@ inline
 d[number] (dice)
 [system command] bin
 tag [[@username] (new tag text)]
-search [text to search on google]
+search [text to search on searx]
 [g/x/r34/real/]b [booru pic tag]
 [g/x/r34/real/]bgif [booru gif tag]
 endinline

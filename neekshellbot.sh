@@ -59,16 +59,16 @@ function inline_boorugif() {
     [ $(echo ${obj[@]} | sed -E 's/(.*)},/\1}/') ]
 EOF
 }
-function inline_google() {
-    for x in $(seq $((resnumber-1))); do
-        title=$(echo $googler_results | jq -r ".[$x].title")
-        url=$(echo $googler_results | jq -r ".[$x].url")
-        description=$(echo $googler_results | jq -r ".[$x].abstract")
+function inline_searx() {
+    for x in $(seq 0 $(($(jq -r '.results | length' <<< $searx_results)-1))); do
+        title=$(jq -r ".results[$x].title" <<< $searx_results | sed 's/"/\\"/g')
+        url=$(jq -r ".results[$x].url" <<< $searx_results | sed 's/"/\\"/g')
+        description=$(jq -r ".results[$x].content" <<< $searx_results | sed 's/"/\\"/g')
         obj[$x]="{
         \"type\":\"article\",
         \"id\":\"$RANDOM\",
         \"title\":\"${title}\",
-        \"input_message_content\":{\"message_text\":\"${title}\\n${url}\"},
+        \"input_message_content\":{\"message_text\":\"${title}\"},
         \"description\":\"${description}\"
         },"
     done
@@ -446,16 +446,19 @@ function get_inline_reply() {
 		;;
         'search '*)
 			offset=$(($(jq -r ".offset" <<< $inline)+1))
-			search=$(sed 's/search //' <<< $results)
-			googler_results=$(PYTHONIOENCODING="utf-8" /usr/local/bin/googler --unfilter --json -n 5 -s "$offset" "$search")
-			resnumber=$(jq -r ". | length" <<< $googler_results)
-			if [ "$offset" != 1 ]; then
-				nextpage=$(($offset+$resnumber))
-				googler_results=$(PYTHONIOENCODING="utf-8" /usr/local/bin/googler --unfilter --json -n 5 -s "$nextpage" "$search")
-				return_query=$(inline_google)
-			else
-				return_query=$(inline_google)
-			fi
+			search=$(sed 's/search //' <<< $results | sed 's/\s/%20/g')
+			searx_results=$(curl -s "https://archneek.zapto.org/searx/?q=$search&pageno=$offset&categories=general&format=json")
+			return_query=$(inline_searx)
+
+			#googler_results=$(PYTHONIOENCODING="utf-8" /usr/local/bin/googler --unfilter --json -n 5 -s "$offset" "$search")
+			#resnumber=$(jq -r ". | length" <<< $googler_results)
+			#if [ "$offset" != 1 ]; then
+			#	nextpage=$(($offset+$resnumber))
+			#	googler_results=$(PYTHONIOENCODING="utf-8" /usr/local/bin/googler --unfilter --json -n 5 -s "$nextpage" "$search")
+			#	return_query=$(inline_google)
+			#else
+			#	return_query=$(inline_google)
+			#fi
 			return
         ;;
         "${ilb}b "*)
@@ -497,6 +500,8 @@ function get_button_reply() {
 		*)
 			return_feedback="$callback_data"
 			button_reply
+			chat_id=$callback_user_id
+			normal_reply
 			return
 	esac
 }
@@ -547,11 +552,11 @@ function process_reply() {
 			--data-urlencode "text=$return_feedback" > /dev/null
 	elif [ "$results" != "null" ]; then
 		curl -s "${TELEAPI}/answerInlineQuery" \
-		--data-urlencode "inline_query_id=$inline_id" \
-		--data-urlencode "results=$return_query" \
-		--data-urlencode "next_offset=$offset" \
-		--data-urlencode "cache_time=100" \
-		--data-urlencode "is_personal=true" > /dev/null
+			--data-urlencode "inline_query_id=$inline_id" \
+			--data-urlencode "results=$return_query" \
+			--data-urlencode "next_offset=$offset" \
+			--data-urlencode "cache_time=100" \
+			--data-urlencode "is_personal=true" #> /dev/null
 	fi
 	if	[ "$text" != "null" ] && [ "$type" = "private" ]; then
 		echo "--" ; echo "normal=${text}" ; echo "from ${username_tag} at $(date "+%Y-%m-%d %H:%M")" ; echo "--"

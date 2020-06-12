@@ -8,7 +8,7 @@ Utilities used:
   - cURL
   - fortune-mod (https://github.com/shlomif/fortune-mod)
   - jq (https://stedolan.github.io/jq/)
-  - googler (https://github.com/jarun/googler)
+  - searx (https://github.com/asciimoo/searx)
 
 # commands
 
@@ -37,7 +37,7 @@ inline mode:
 d[number] (dice)<br />
 [system command] bin (administrative)<br />
 tag [[@username] (new tag text)]<br />
-search [text to search on google]<br />
+search [text to search on searx]<br />
 [g/x/r34/real]b [booru pic tag]<br />
 [g/x/r34/real]bgif [booru gif tag]
 
