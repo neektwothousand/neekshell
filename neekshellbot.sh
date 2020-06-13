@@ -152,6 +152,53 @@ function get_normal_reply() {
 					--data-urlencode "reply_markup=$(inline_keyboard_buttons)" > /dev/null
 				return
 			;;
+			"${pf}jpg")
+				photo_id=$(jq -r ".reply_to_message.photo[0].file_id" <<< $message)
+				animation_id=$(jq -r ".reply_to_message.animation.file_id" <<< $message)
+				video_id=$(jq -r ".reply_to_message.video.file_id" <<< $message)
+				sticker_id=$(jq -r ".reply_to_message.sticker.file_id" <<< $message)
+				request_id=$(jq -r ".message_id" <<< $message)
+				if [ "$photo_id" != "null" ]; then
+					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$photo_id" | jq -r ".result.file_path")
+					wget -O pic-$request_id.jpg "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					magick pic-$request_id.jpg -quality 1 pic-low-$request_id.jpg
+					curl -s "${TELEAPI}/sendPhoto" \
+						-F "chat_id=$chat_id" \
+						-F "reply_to_message_id=$message_id" \
+						-F "photo=@pic-low-$request_id.jpg" > /dev/null
+					rm pic-$request_id.jpg pic-low-$request_id.jpg
+				elif [ "$animation_id" != "null" ]; then
+					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$animation_id" | jq -r ".result.file_path")
+					wget -O animation-$request_id.mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					ffmpeg -i animation-$request_id.mp4 -crf 48 -an animation-low-$request_id.mp4
+					curl -s "${TELEAPI}/sendAnimation" \
+						-F "chat_id=$chat_id" \
+						-F "reply_to_message_id=$message_id" \
+						-F "animation=@animation-low-$request_id.mp4" > /dev/null
+					rm animation-$request_id.mp4 animation-low-$request_id.mp4
+				elif [ "$video_id" != "null" ]; then
+					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$video_id" | jq -r ".result.file_path")
+					wget -O video-$request_id.mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					ffmpeg -i video-$request_id.mp4 -crf 48 video-low-$request_id.mp4
+					curl -s "${TELEAPI}/sendVideo" \
+						-F "chat_id=$chat_id" \
+						-F "reply_to_message_id=$message_id" \
+						-F "video=@video-low-$request_id.mp4" > /dev/null
+					rm video-$request_id.mp4 video-low-$request_id.mp4
+				elif [ "$sticker_id" != "null" ]; then
+					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$sticker_id" | jq -r ".result.file_path")
+					wget -O sticker-$request_id.webp "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					convert sticker-$request_id.webp sticker-$request_id.jpg
+					magick sticker-$request_id.jpg -quality 1 sticker-low-$request_id.jpg
+					convert sticker-low-$request_id.jpg sticker-low-$request_id.webp
+					curl -s "${TELEAPI}/sendSticker" \
+						-F "chat_id=$chat_id" \
+						-F "reply_to_message_id=$message_id" \
+						-F "sticker=@sticker-low-$request_id.webp" > /dev/null
+					rm sticker-$request_id.webp sticker-$request_id.jpg sticker-low-$request_id.jpg sticker-low-$request_id.webp
+				fi
+				return
+			;;
 			"${pf}d$normaldice")
 				chars=$(( $(wc -m <<< $normaldice) - 1 ))
 				return_feedback="<code>$(echo $(( ($(cat /dev/urandom | tr -dc '[:digit:]' | head -c $chars) % $normaldice) + 1 )) )</code>"
@@ -449,16 +496,6 @@ function get_inline_reply() {
 			search=$(sed 's/search //' <<< $results | sed 's/\s/%20/g')
 			searx_results=$(curl -s "https://archneek.zapto.org/searx/?q=$search&pageno=$offset&categories=general&format=json")
 			return_query=$(inline_searx)
-
-			#googler_results=$(PYTHONIOENCODING="utf-8" /usr/local/bin/googler --unfilter --json -n 5 -s "$offset" "$search")
-			#resnumber=$(jq -r ". | length" <<< $googler_results)
-			#if [ "$offset" != 1 ]; then
-			#	nextpage=$(($offset+$resnumber))
-			#	googler_results=$(PYTHONIOENCODING="utf-8" /usr/local/bin/googler --unfilter --json -n 5 -s "$nextpage" "$search")
-			#	return_query=$(inline_google)
-			#else
-			#	return_query=$(inline_google)
-			#fi
 			return
         ;;
         "${ilb}b "*)

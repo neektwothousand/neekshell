@@ -2,6 +2,7 @@ normal
 !d[number] (dice)
 !fortune (fortune cookie)
 !owoifer (on reply)
+!jpg (on reply, compress media)
 !hf (random hentai pic)
 !sed [regexp] (on reply)
 !forward [usertag] (in private, on reply)
