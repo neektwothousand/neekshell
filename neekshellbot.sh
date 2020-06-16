@@ -101,6 +101,22 @@ function button_reply() {
 		--data-urlencode "callback_query_id=$callback_id" \
 		--data-urlencode "text=$return_feedback" > /dev/null
 }
+function send_processing() {
+	processing_id=$(curl -s "${TELEAPI}/sendMessage" \
+		--data-urlencode "chat_id=$chat_id" \
+		--data-urlencode "text=processing..." | jq -r .result.message_id)
+}
+function edit_message() {
+	edited_id=$(curl -s "${TELEAPI}/editMessageText" \
+		--data-urlencode "chat_id=$chat_id" \
+		--data-urlencode "message_id=$to_edit_id" \
+		--data-urlencode "text=$edit_text" | jq -r .result.message_id)
+}
+function delete_message() {
+	curl -s "${TELEAPI}/deleteMessage" \
+		--data-urlencode "chat_id=$chat_id" \
+		--data-urlencode "message_id=$to_delete_id"
+}
 function get_normal_reply() {
 	if [ "${pf}" = "" ]; then
 		case $first_normal in	
@@ -157,6 +173,8 @@ function get_normal_reply() {
 				animation_id=$(jq -r ".reply_to_message.animation.file_id" <<< $message)
 				video_id=$(jq -r ".reply_to_message.video.file_id" <<< $message)
 				sticker_id=$(jq -r ".reply_to_message.sticker.file_id" <<< $message)
+				audio_id=$(jq -r ".reply_to_message.audio.file_id" <<< $message)
+				voice_id=$(jq -r ".reply_to_message.voice.file_id" <<< $message)
 				request_id=$(jq -r ".message_id" <<< $message)
 				if [ "$photo_id" != "null" ]; then
 					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$photo_id" | jq -r ".result.file_path")
@@ -170,20 +188,26 @@ function get_normal_reply() {
 				elif [ "$animation_id" != "null" ]; then
 					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$animation_id" | jq -r ".result.file_path")
 					wget -O animation-$request_id.mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					send_processing
 					ffmpeg -i animation-$request_id.mp4 -crf 48 -an animation-low-$request_id.mp4
+					to_edit_id=$processing_id edit_text="sending..." ; edit_message
 					curl -s "${TELEAPI}/sendAnimation" \
 						-F "chat_id=$chat_id" \
 						-F "reply_to_message_id=$message_id" \
 						-F "animation=@animation-low-$request_id.mp4" > /dev/null
+					to_delete_id=$edited_id ; delete_message
 					rm animation-$request_id.mp4 animation-low-$request_id.mp4
 				elif [ "$video_id" != "null" ]; then
 					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$video_id" | jq -r ".result.file_path")
 					wget -O video-$request_id.mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					send_processing
 					ffmpeg -i video-$request_id.mp4 -crf 48 video-low-$request_id.mp4
+					to_edit_id=$processing_id edit_text="sending..." ; edit_message
 					curl -s "${TELEAPI}/sendVideo" \
 						-F "chat_id=$chat_id" \
 						-F "reply_to_message_id=$message_id" \
 						-F "video=@video-low-$request_id.mp4" > /dev/null
+					to_delete_id=$edited_id ; delete_message
 					rm video-$request_id.mp4 video-low-$request_id.mp4
 				elif [ "$sticker_id" != "null" ]; then
 					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$sticker_id" | jq -r ".result.file_path")
@@ -196,8 +220,60 @@ function get_normal_reply() {
 						-F "reply_to_message_id=$message_id" \
 						-F "sticker=@sticker-low-$request_id.webp" > /dev/null
 					rm sticker-$request_id.webp sticker-$request_id.jpg sticker-low-$request_id.jpg sticker-low-$request_id.webp
+				elif [ "$audio_id" != "null" ]; then
+					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$audio_id" | jq -r ".result.file_path")
+					wget -O audio-$request_id.mp3 "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					send_processing
+					ffmpeg -i audio-$request_id.mp3 -vn -acodec libmp3lame -b:a 6k audio-low-$request_id.mp3
+					to_edit_id=$processing_id edit_text="sending..." ; edit_message
+					curl -s "${TELEAPI}/sendAudio" \
+						-F "chat_id=$chat_id" \
+						-F "reply_to_message_id=$message_id" \
+						-F "audio=@audio-low-$request_id.mp3" > /dev/null
+					to_delete_id=$edited_id ; delete_message
+					rm audio-$request_id.mp3 audio-low-$request_id.mp3
+				elif [ "$voice_id" != "null" ]; then
+					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$voice_id" | jq -r ".result.file_path")
+					wget -O voice-$request_id.ogg "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					send_processing
+					ffmpeg -i voice-$request_id.ogg -vn -acodec opus -b:a 6k -strict -2 voice-low-$request_id.ogg
+					to_edit_id=$processing_id edit_text="sending..." ; edit_message
+					curl -s "${TELEAPI}/sendVoice" \
+						-F "chat_id=$chat_id" \
+						-F "reply_to_message_id=$message_id" \
+						-F "voice=@voice-low-$request_id.ogg" > /dev/null
+					to_delete_id=$edited_id ; delete_message
+					rm voice-$request_id.ogg voice-low-$request_id.ogg
 				fi
 				return
+			;;
+			"${pf}wide")
+				video_id=$(jq -r ".reply_to_message.video.file_id" <<< $message)
+				request_id=$(jq -r ".message_id" <<< $message)
+				if [ `jq -r ".reply_to_message.video.duration" <<< $message` -gt 60 ]; then
+					message_id=$(jq -r ".message_id" <<< $message)
+					return_feedback="max video duration: 1 minute"
+					return
+				fi
+				if [ "$video_id" != "null" ]; then
+					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$video_id" | jq -r ".result.file_path")
+					wget -O notwide-$request_id.mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					duration=$(ffprobe notwide-$request_id.mp4 2>&1 | grep Duration | sed 's/:/,/' | cut -d , -f 2 | sed 's/\..*//')
+					if [ `cut -d : -f 1 <<< "$duration"` != "00" ]; then
+						duration=$(cut -d : -f 1,2,3 <<< "$duration")
+					elif [ `cut -d : -f 2 <<< "$duration"` != "00" ]; then
+						duration=$(cut -d : -f 2,3 <<< "$duration")
+					elif [ `cut -d : -f 3 <<< "$duration"` != "00" ]; then
+						duration=$(cut -d : -f 3 <<< "$duration")
+					fi
+					ffmpeg -i notwide-$request_id.mp4 -aspect 4:1 -c:v copy -an wide-$request_id.mp4
+					ffmpeg -ss 00 -t $duration -i wide-$request_id.mp4 -ss 00 -t $duration -i ../webaudio/fantasia.aac -c:v copy -c:a aac wide-fantasia-$request_id.mp4
+					curl -s "${TELEAPI}/sendVideo" \
+						-F "chat_id=$chat_id" \
+						-F "reply_to_message_id=$message_id" \
+						-F "video=@wide-fantasia-$request_id.mp4" > /dev/null
+					rm notwide-$request_id.mp4 wide-$request_id.mp4 wide-fantasia-$request_id.mp4
+				fi
 			;;
 			"${pf}d$normaldice")
 				chars=$(( $(wc -m <<< $normaldice) - 1 ))

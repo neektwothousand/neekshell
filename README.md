@@ -16,6 +16,7 @@ Utilities used:
 !fortune (fortune cookie)<br />
 !owoifer (on reply)<br />
 !jpg (on reply, compress media)<br />
+!wide (on reply)<br>
 !hf (random hentai)<br />
 !sed [regexp] (on reply)<br />
 !forward [usertag] (in private, on reply)<br />
