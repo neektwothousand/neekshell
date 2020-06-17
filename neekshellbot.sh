@@ -247,6 +247,36 @@ function get_normal_reply() {
 				fi
 				return
 			;;
+			"${pf}nfry")
+				video_id=$(jq -r ".reply_to_message.video.file_id" <<< $message)
+				animation_id=$(jq -r ".reply_to_message.animation.file_id" <<< $message)
+				request_id=$(jq -r ".message_id" <<< $message)
+				if [ "$video_id" != "null" ]; then
+					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$video_id" | jq -r ".result.file_path")
+					wget -O video-$request_id.mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					send_processing
+					ffmpeg -i video-$request_id.mp4 -vf elbg=l=8,eq=saturation=3.0,noise=alls=20:allf=t+u video-fry-$request_id.mp4
+					to_edit_id=$processing_id edit_text="sending..." ; edit_message
+					curl -s "${TELEAPI}/sendVideo" \
+						-F "chat_id=$chat_id" \
+						-F "reply_to_message_id=$message_id" \
+						-F "video=@video-fry-$request_id.mp4" > /dev/null
+					to_delete_id=$edited_id ; delete_message
+					rm video-$request_id.mp4 video-fry-$request_id.mp4
+				elif [ "$animation_id" != "null" ]; then
+					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$animation_id" | jq -r ".result.file_path")
+					wget -O animation-$request_id.mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					send_processing
+					ffmpeg -i animation-$request_id.mp4 -vf elbg=l=8,eq=saturation=3.0,noise=alls=20:allf=t+u -an animation-fry-$request_id.mp4
+					to_edit_id=$processing_id edit_text="sending..." ; edit_message
+					curl -s "${TELEAPI}/sendAnimation" \
+						-F "chat_id=$chat_id" \
+						-F "reply_to_message_id=$message_id" \
+						-F "animation=@animation-fry-$request_id.mp4" > /dev/null
+					to_delete_id=$edited_id ; delete_message
+					rm animation-$request_id.mp4 animation-fry-$request_id.mp4
+				fi
+			;;
 			"${pf}wide")
 				video_id=$(jq -r ".reply_to_message.video.file_id" <<< $message)
 				request_id=$(jq -r ".message_id" <<< $message)

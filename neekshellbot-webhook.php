@@ -6,5 +6,5 @@ $input = str_replace('"', '\"', $input );
 $input = str_replace('$', '\$', $input );
 $input = str_replace('\\\\"', '\\\\\\"', $input);
 $command = "sudo su neekshellbot -c \"timeout 240s ./neekshellbot.sh $input\"";
-shell_exec ($command);
+shell_exec ($command.' >/dev/null 2>/dev/null &');
 ?>
