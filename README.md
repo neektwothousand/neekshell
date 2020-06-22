@@ -7,7 +7,7 @@ Utilities used:
   - GNU sed, and various coreutils
   - cURL
   - fortune-mod (https://github.com/shlomif/fortune-mod)
-  - jq (https://stedolan.github.io/jq/)
+  - jshon (http://kmkeen.com/jshon/index.html)
   - searx (https://github.com/asciimoo/searx)
 
 # commands
@@ -31,6 +31,7 @@ administrative commands:
 !setadmin @username<br />
 !deladmin @username<br />
 !nomedia (disable media messages)<br />
+!silence (disable messages)<br />
 !bang (on reply to mute)<br >
 !broadcast [message or reply] (broadcast to all groups)<br >
 !exit (leave chat)

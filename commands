@@ -18,6 +18,7 @@ admin
 !setadmin @username
 !deladmin @username
 !nomedia (disable media messages)
+!silence (disable messages)
 !bang (on reply to mute)
 !broadcast [message or reply] (broadcast to all groups)
 !exit (leave chat)
