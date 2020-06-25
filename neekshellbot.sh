@@ -790,21 +790,37 @@ function get_normal_reply() {
 						send_message
 					;;
 					"join")
-						text_id="Select chat to join:"
-						num_bot_chat=$(ls -1 neekshell_db/bot_chats/ | wc -l)
-						list_bot_chat=$(ls -1 neekshell_db/bot_chats/)
-						markup_id=$(inline_keyboard_buttons)
+						if [ "$(grep -r "$username_id" neekshell_db/bot_chats/)" != "" ]; then
+							text_id="Select chat to join:"
+							num_bot_chat=$(ls -1 neekshell_db/bot_chats/ | wc -l)
+							list_bot_chat=$(ls -1 neekshell_db/bot_chats/)
+							markup_id=$(inline_keyboard_buttons)
+						else
+							text_id="you're already in an existing chat"
+						fi
 						send_message
 					;;
 					"leave")
-						text_id="Select chat to leave:"
-						num_bot_chat=$(ls -1 neekshell_db/bot_chats/ | wc -l)
-						list_bot_chat=$(ls -1 neekshell_db/bot_chats/)
-						markup_id=$(inline_keyboard_buttons)
+						if [ "$(grep -r "$username_id" neekshell_db/bot_chats/)" != "" ]; then
+							text_id="Select chat to leave:"
+							num_bot_chat=$(ls -1 neekshell_db/bot_chats/ | wc -l)
+							list_bot_chat=$(ls -1 neekshell_db/bot_chats/)
+							markup_id=$(inline_keyboard_buttons)
+						else
+							text_id="you are not in an any chat yet"
+						fi
 						send_message
 					;;
 					"users")
-						text_id="number of active users: $(grep -r "$username_id" neekshell_db/bot_chats/ | sed 's/.*:\s//' | tr ' ' '\n' | sed '/^$/d' | wc -l)"
+						if [ "$(grep -r "$username_id" neekshell_db/bot_chats/)" != "" ]; then
+							text_id="number of active users: $(grep -r "$username_id" neekshell_db/bot_chats/ | sed 's/.*:\s//' | tr ' ' '\n' | sed '/^$/d' | wc -l)"
+						else
+							text_id="you are not in an any chat yet"
+						fi
+						send_message
+					;;
+					*)
+						text_id=$(sed -n '/chat/,/endchat/ p' commands | sed -e '1d' -e '$d')
 						send_message
 					;;
 				esac
