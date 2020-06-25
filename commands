@@ -33,10 +33,10 @@ search [text to search on searx]
 [g/x/r34/real/]bgif [booru gif tag]
 endinline
 
-chat
+botchat
 !chat create (creates a chat with your ID)
 !chat delete (deletes your chat)
 !chat join (lists existing chats to join)
 !chat leave (lists existing chats to leave)
 !chat users (prints number of active users)
-endchat
+endbotchat

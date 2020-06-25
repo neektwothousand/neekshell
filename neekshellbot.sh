@@ -759,7 +759,7 @@ function get_normal_reply() {
 			fi
 			return
 			;;
-			"${pf}chat "*)
+			"${pf}chat "*|"${pf}chat")
 			if [ $type = "private" ]; then
 				action=$(echo $first_normal | sed -e 's/[/!]chat //')
 				reply_id=$message_id
@@ -820,7 +820,7 @@ function get_normal_reply() {
 						send_message
 					;;
 					*)
-						text_id=$(sed -n '/chat/,/endchat/ p' commands | sed -e '1d' -e '$d')
+						text_id=$(sed -n '/botchat/,/endbotchat/ p' commands | sed -e '1d' -e '$d')
 						send_message
 					;;
 				esac
