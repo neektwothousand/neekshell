@@ -259,7 +259,7 @@ function get_normal_reply() {
 				return
 			;;
 			"${pf}help")
-				text_id=$(sed -n '/normal/,/endnormal/ p' commands | sed -e '1d' -e '$d' ; echo -e "\nfor administrative commands use /admin, for inline use /inline")
+				text_id=$(sed -n '/normal/,/endnormal/ p' commands | sed -e '1d' -e '$d' ; echo -e "\nfor administrative commands use /admin, for inline use /inline and for bot chats use /chat (in private only)")
 				reply_id=$message_id
 				send_message
 				return
