@@ -790,7 +790,7 @@ function get_normal_reply() {
 						send_message
 					;;
 					"join")
-						if [ "$(grep -r "$username_id" neekshell_db/bot_chats/)" != "" ]; then
+						if [ "$(grep -r "$username_id" neekshell_db/bot_chats/)" = "" ]; then
 							text_id="Select chat to join:"
 							num_bot_chat=$(ls -1 neekshell_db/bot_chats/ | wc -l)
 							list_bot_chat=$(ls -1 neekshell_db/bot_chats/)
