@@ -45,5 +45,13 @@ search [text to search on searx]<br />
 [g/x/r34/real]b [booru pic tag]<br />
 [g/x/r34/real]bgif [booru gif tag]
 
+chat mode (in private):
+
+!chat create (creates a chat with your ID)<br />
+!chat delete (deletes your chat)<br />
+!chat join (lists existing chats to join)<br />
+!chat leave (lists existing chats to leave)<br />
+!chat users (prints number of active users)
+
 # enable administrative commands
 To use administrative commands you need a text file named `neekshelladmins` inside `neekshellbot` folder with a list of admin IDs, like: [neekshelladmins.example](https://github.com/neektwothousand/neekshell-telegrambot/blob/master/neekshellbot/neekshelladmins.example)

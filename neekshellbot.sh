@@ -3,7 +3,7 @@ set -a
 TOKEN=$(cat ./token)
 TELEAPI="https://api.telegram.org/bot${TOKEN}"
 exec 1>>neekshellbot.log
-#exec 2>>neekshellbot-errors.log
+exec 2>>neekshellbot-errors.log
 function inline_article() {
     cat <<EOF
     [{
@@ -18,12 +18,14 @@ function inline_article() {
 EOF
 }
 function inline_keyboard_buttons() {
+	for j in $(seq $num_bot_chat); do
+		button_text[$j]=$(sed -n ${j}p <<< $list_bot_chat)
+		obj[$j]="[{\"text\":\"${button_text[$j]}\",\"callback_data\":\"${button_text[$j]}\"}],"
+	done
 	cat <<EOF
 	{
 		"inline_keyboard": [
-				[{
-						"text":"$button_text","callback_data":"$button_text"
-				}]
+				$(sed -E 's/(.*)],/\1]/' <<< ${obj[@]})
 		]
 	}
 EOF
@@ -144,9 +146,9 @@ function send_inline() {
 }
 function forward_message() {
 	curl -s "${TELEAPI}/forwardMessage" \
-	--data-urlencode "chat_id=$to_chat_id" \
-	--data-urlencode "from_chat_id=$chat_id" \
-	--data-urlencode "message_id=$forward_id" > /dev/null
+		--data-urlencode "chat_id=$to_chat_id" \
+		--data-urlencode "from_chat_id=$chat_id" \
+		--data-urlencode "message_id=$forward_id" > /dev/null
 }
 function inline_reply() {
 	curl -s "${TELEAPI}/answerInlineQuery" \
@@ -159,7 +161,7 @@ function inline_reply() {
 function button_reply() {
 	curl -s "${TELEAPI}/answerCallbackQuery" \
 		--data-urlencode "callback_query_id=$callback_id" \
-		--data-urlencode "text=$return_feedback" > /dev/null
+		--data-urlencode "text=$button_text_reply" > /dev/null
 }
 function send_processing() {
 	processing_id=$(curl -s "${TELEAPI}/sendMessage" \
@@ -186,7 +188,53 @@ function get_normal_reply() {
 				send_voice
 			;;
 			*)
-			if [ "$type" = "private" ]; then
+			if [ "$(grep -r "$username_id" neekshell_db/bot_chats/)" != "" ] && [ "$type" = "private" ]; then
+				text_id=$first_normal
+				bc_users=$(grep -r "$username_id" neekshell_db/bot_chats/ | sed 's/.*:\s//' | tr ' ' '\n')
+				bc_users_num=$(wc -l <<< $bc_users)
+				if [ "$text" != "" ]; then
+					for c in $(seq $bc_users_num); do
+						chat_id=$(sed -n ${c}p <<< $bc_users | grep -v $username_id)
+						send_message
+					done
+				elif [ "$photo_r" != "" ]; then
+					for c in $(seq $bc_users_num); do
+						chat_id=$(sed -n ${c}p <<< $bc_users | grep -v $username_id)
+						photo_id=$photo_r
+						send_photo
+					done
+				elif [ "$animation_r" != "" ]; then
+					for c in $(seq $bc_users_num); do
+						chat_id=$(sed -n ${c}p <<< $bc_users | grep -v $username_id)
+						animation_id=$animation_r
+						send_animation
+					done
+				elif [ "$video_r" != "" ]; then
+					for c in $(seq $bc_users_num); do
+						chat_id=$(sed -n ${c}p <<< $bc_users | grep -v $username_id)
+						video_id=$video_r
+						send_video
+					done
+				elif [ "$sticker_r" != "" ]; then
+					for c in $(seq $bc_users_num); do
+						chat_id=$(sed -n ${c}p <<< $bc_users | grep -v $username_id)
+						sticker_id=$sticker_r
+						send_sticker
+					done
+				elif [ "$audio_r" != "" ]; then
+					for c in $(seq $bc_users_num); do
+						chat_id=$(sed -n ${c}p <<< $bc_users | grep -v $username_id)
+						audio_id=$audio_r
+						send_audio
+					done
+				elif [ "$voice_r" != "" ]; then
+					for c in $(seq $bc_users_num); do
+						chat_id=$(sed -n ${c}p <<< $bc_users | grep -v $username_id)
+						voice_id=$voice_r
+						send_voice
+					done
+				fi
+			elif [ "$type" = "private" ]; then
 				number=$(( ( RANDOM % 500 )  + 1 ))
 				if		[ $number = 69 ]; then
 					text_id="Nice."
@@ -679,11 +727,10 @@ function get_normal_reply() {
 					text_id="goodbye"
 					send_message
 					curl -s "$TELEAPI/leaveChat" --data-urlencode "chat_id=$chat_id" > /dev/null
-					exit
 				else
 					text_id="<code>Access denied</code>"
+					send_message
 				fi
-				send_message
 			;;
 			"${pf}tag "*)
 				username=$(sed -E 's/.* (\[.*\]) .*/\1/' <<< $first_normal | tr -d '[@]')
@@ -712,6 +759,58 @@ function get_normal_reply() {
 			fi
 			return
 			;;
+			"${pf}chat "*)
+			if [ $type = "private" ]; then
+				action=$(echo $first_normal | sed -e 's/[/!]chat //')
+				reply_id=$message_id
+				case $action in
+					"create")
+						request_id=$(jshon -e message_id -u <<< $message)
+						bot_chat_id=$username_id
+						[ ! -d neekshell_db/bot_chats/ ] && mkdir -p neekshell_db/bot_chats/
+						if [ "$(dir neekshell_db/bot_chats/ | grep -o $bot_chat_id)" = "" ]; then
+							file_bot_chat="neekshell_db/bot_chats/$bot_chat_id"
+							[ ! -e "$file_bot_chat" ] && echo "users: " > "$file_bot_chat"
+							text_id="your chat id: \"$bot_chat_id\""
+						else
+							text_id="you've already an existing chat"
+						fi
+						send_message
+					;;
+					"delete")
+						bot_chat_id=$username_id
+						[ ! -d neekshell_db/bot_chats/ ] && text_id="no existing chats" && send_message && return
+						if [ "$(dir neekshell_db/bot_chats/ | grep -o $bot_chat_id)" != "" ]; then
+							file_bot_chat="neekshell_db/bot_chats/$bot_chat_id"
+							rm "$file_bot_chat"
+							text_id="\"$bot_chat_id\" deleted"
+						else
+							text_id="you have not created any chat yet"
+						fi
+						send_message
+					;;
+					"join")
+						text_id="Select chat to join:"
+						num_bot_chat=$(ls -1 neekshell_db/bot_chats/ | wc -l)
+						list_bot_chat=$(ls -1 neekshell_db/bot_chats/)
+						markup_id=$(inline_keyboard_buttons)
+						send_message
+					;;
+					"leave")
+						text_id="Select chat to leave:"
+						num_bot_chat=$(ls -1 neekshell_db/bot_chats/ | wc -l)
+						list_bot_chat=$(ls -1 neekshell_db/bot_chats/)
+						markup_id=$(inline_keyboard_buttons)
+						send_message
+					;;
+					"users")
+						text_id="number of active users: $(grep -r "$username_id" neekshell_db/bot_chats/ | sed 's/.*:\s//' | tr ' ' '\n' | sed '/^$/d' | wc -l)"
+						send_message
+					;;
+				esac
+			fi
+			return
+			;;
 		esac
 	fi
 }
@@ -721,38 +820,38 @@ function get_inline_reply() {
 	[ "$(grep -w "xb\|xbgif" <<< $results)" != "" ] && booru="xbooru.com" && ilb="x"
 	[ "$(grep -w "realb\|realbgif" <<< $results)" != "" ] && booru="realbooru.com" && ilb="real"
 	[ "$(grep -w "r34b\|r34bgif" <<< $results)" != "" ] && booru="rule34.xxx" && ilb="r34"
-    case $results in
-        "help")
+	case $results in
+		"help")
 			title="Ok"
 			message_text="Ok"
 			description=",\"description\":\"Alright\""
-            return_query=$(inline_article)
-            send_inline
-	    return
-        ;;
-		"d$inlinedice")
-		if [ "$inlinedice" != "" ]
-			then
-			title="Result of d$inlinedice"
-			number=$(( ( RANDOM % $inlinedice )  + 1 ))
-			message_text=$(echo -e "Result of d$inlinedice\n: $number")
 			return_query=$(inline_article)
 			send_inline
-		fi
-		return
+			return
 		;;
-        *" bin")
+		"d$inlinedice")
+			if [ "$inlinedice" != "" ]
+				then
+				title="Result of d$inlinedice"
+				number=$(( ( RANDOM % $inlinedice )  + 1 ))
+				message_text=$(echo -e "Result of d$inlinedice\n: $number")
+				return_query=$(inline_article)
+				send_inline
+			fi
+			return
+		;;
+		*" bin")
 			admin=$(grep -v "#" neekshelladmins | grep -w $inline_user_id)
-            if [ "$admin" != "" ]; then
+			if [ "$admin" != "" ]; then
 				command=$(sed 's/ bin//' <<< $results)
 				ecommand="echo \$($command)"
-                title="$(echo "$~> "$command"" ; eval $(echo "timeout 5s $(echo $command)") 2>&1 )"
-                message_text="<code>$title</code>"
-                return_query=$(inline_article)
-                send_inline
-            fi
-	    return
-        ;;
+				title="$(echo "$~> "$command"" ; eval $(echo "timeout 5s $(echo $command)") 2>&1 )"
+				message_text="<code>$title</code>"
+				return_query=$(inline_article)
+				send_inline
+			fi
+			return
+		;;
 		"tag "*)
 			username=$(sed -Ee 's/(.* )(\[.*\]) ((.*))/\2/' -e 's/[[:punct:]]//g' <<< $results)
 			title=$(sed -Ee 's/(.* )(\[.*\]) ((.*))/\3/' -Ee 's/[[:punct:]](.*)[[:punct:]]/\1/' <<< $results)
@@ -763,15 +862,15 @@ function get_inline_reply() {
 			send_inline
 			return
 		;;
-        'search '*)
+		'search '*)
 			offset=$(($(jshon -e offset -u <<< $inline)+1))
 			search=$(sed 's/search //' <<< $results | sed 's/\s/%20/g')
 			searx_results=$(curl -s "https://archneek.zapto.org/searx/?q=$search&pageno=$offset&categories=general&format=json")
 			return_query=$(inline_searx)
 			send_inline
 			return
-        ;;
-        "${ilb}b "*)
+		;;
+		"${ilb}b "*)
 			offset=$(($(jshon -e offset -u <<< $inline)+1))
 			tags=$(sed "s/${ilb}b //" <<< $results)
 			getbooru=$(curl -A 'Mozilla/5.0' -s "https://$booru/index.php?page=dapi&s=post&pid=$offset&tags=$tags&q=index&limit=5")
@@ -783,45 +882,69 @@ function get_inline_reply() {
 			send_inline
 			return
 		;;
-        "${ilb}bgif "*)
-            offset=$(($(jshon -e offset -u <<< $inline)+1))
-            tags=$(sed "s/${ilb}bgif //" <<< $results)
-            if [ "$ilb" != "g" ]; then
+		"${ilb}bgif "*)
+			offset=$(($(jshon -e offset -u <<< $inline)+1))
+			tags=$(sed "s/${ilb}bgif //" <<< $results)
+			if [ "$ilb" != "g" ]; then
 				getbooru=$(curl -A 'Mozilla/5.0' -s "https://$booru/index.php?page=dapi&s=post&pid=$offset&tags=gif+$tags&q=index&limit=20")
 			else
 				getbooru=$(curl -A 'Mozilla/5.0' -s "https://$booru/index.php?page=dapi&s=post&pid=$offset&tags=animated+$tags&q=index&limit=20")
 			fi
-            giflist=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< $getbooru | grep -E 'gif')
-            filelist=$(sed -n 's/.*file_url="\([^"]*\)".*/\1/p' <<< $getbooru | grep -E 'gif')
-            gifnumber=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< $getbooru | grep -E -c 'gif')
-            return_query=$(inline_boorugif)
-            send_inline
-	    return
-        ;;
-        *)
+			giflist=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< $getbooru | grep -E 'gif')
+			filelist=$(sed -n 's/.*file_url="\([^"]*\)".*/\1/p' <<< $getbooru | grep -E 'gif')
+			gifnumber=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< $getbooru | grep -E -c 'gif')
+			return_query=$(inline_boorugif)
+			send_inline
+			return
+		;;
+		*)
 			title="Ok"
 			message_text="Ok"
 			description=",\"description\":\"Alright\""
-            return_query=$(inline_article)
-            send_inline
-	    return
-        ;;
-    esac
+			return_query=$(inline_article)
+			send_inline
+			return
+		;;
+	esac
 }
 function get_button_reply() {
-	case $callback_data in
+	case $callback_message_text in
+		"Select chat to join:")
+			chat_id=$callback_user_id
+			if [ "$(grep -r "$callback_user_id" neekshell_db/bot_chats/)" = "" ]; then
+				sed -i "s/\(users: \)/\1$callback_user_id /" neekshell_db/bot_chats/$callback_data
+				button_text_reply="joined"
+				text_id="joined $callback_data"
+			else
+				button_text_reply="you're already in an existing chat"
+				text_id="you're already in an existing chat"
+			fi
+			button_reply
+			send_message
+			return
+		;;
+		"Select chat to leave:")
+			sed -i "s/$callback_user_id //" neekshell_db/bot_chats/$callback_data
+			button_text_reply="bye"
+			button_reply
+			chat_id=$callback_user_id
+			text_id="$callback_data is no more"
+			send_message
+			return
+		;;
 		*)
-			return_feedback="$callback_data"
+			text_id="$callback_data"
 			button_reply
 			chat_id=$callback_user_id
 			send_message
 			return
+		;;
 	esac
 }
 function process_reply() {
 	message=$(jshon -e message <<< $input)
-	
-    # user database
+
+	# user database
 	username_tag=$(jshon -e from -e username -u <<< $message) username_id=$(jshon -e from -e id -u <<< $message)
 	if [ "$username_tag" != "" ]; then
 		[ ! -d neekshell_db/users/ ] && mkdir -p neekshell_db/users/
@@ -835,9 +958,15 @@ function process_reply() {
 		file_chat="neekshell_db/chats/$chat_title"
 		[ ! -e "$file_chat" ] && echo "title: $chat_title" > "$file_chat" && echo -e "id: $chat_id\ntype: $type" >> "$file_chat"
 	fi
-	
-	#[ ! -e ./botinfo ] && touch ./botinfo && wget -q -O ./botinfo "${TELEAPI}/getMe"
+
+	[ ! -e ./botinfo ] && touch ./botinfo && wget -q -O ./botinfo "${TELEAPI}/getMe"
 	text=$(jshon -e text -u <<< $message)
+	photo_r=$(jshon -e photo -e 0 -e file_id -u <<< $message)
+	animation_r=$(jshon -e animation -e file_id -u <<< $message)
+	video_r=$(jshon -e video -e file_id -u <<< $message)
+	sticker_r=$(jshon -e sticker -e file_id -u <<< $message)
+	audio_r=$(jshon -e audio -e file_id -u <<< $message)
+	voice_r=$(jshon -e voice -e file_id -u <<< $message)
 	pf=${text/[^\/\!]*/}
 
 	reply_to_id=$(jshon -e reply_to_message -e message_id -u <<< $message)
@@ -847,13 +976,13 @@ function process_reply() {
 	inline_user=$(jshon -e from -e username -u <<< $inline) inline_user_id=$(jshon -e from -e id -u <<< $inline) inline_id=$(jshon -e id -u <<< $inline) results=$(jshon -e query -u <<< $inline)
 
 	callback=$(jshon -e callback_query <<< $input)
-	callback_user=$(jshon -e from -e username -u <<< $callback) callback_user_id=$(jshon -e from -e id -u <<< $callback) callback_id=$(jshon -e id -u <<< $callback) callback_data=$(jshon -e data -u <<< $callback)
+	callback_user=$(jshon -e from -e username -u <<< $callback) callback_user_id=$(jshon -e from -e id -u <<< $callback) callback_id=$(jshon -e id -u <<< $callback) callback_data=$(jshon -e data -u <<< $callback) callback_message_text=$(jshon -e message -e text -u <<< $callback)
 	
-	first_normal=${text/@$(cat botinfo | jshon -e result -e username -u)/}
+	first_normal="$(printf $photo_r $animation_r $video_r $sticker_r $audio_r $voice_r "${text/@$(cat botinfo | jshon -e result -e username -u)/}")"
 	[ "${first_normal/*[^0-9]/}" != "" ] && normaldice=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/\*.*//g') mul=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/.*\*//g')
 	trad=$(sed -e 's/[!/]w//' -e 's/\s.*//' <<< $first_normal | grep "enit\|iten")
 
-	[ "$text" != "" ] && get_normal_reply
+	[ "$first_normal" != "" ] && get_normal_reply
 	[ "$results" != "" ] && get_inline_reply
 	[ "$callback_data" != "" ] && get_button_reply
 
