@@ -51,7 +51,8 @@ chat mode (in private):
 !chat delete (deletes your chat)<br />
 !chat join (lists existing chats to join)<br />
 !chat leave (lists existing chats to leave)<br />
-!chat users (prints number of active users)
+!chat users (prints number of active users)<br />
+!chat list (prints a complete list with chat ids and active users for each chat)
 
 # enable administrative commands
 To use administrative commands you need a text file named `neekshelladmins` inside `neekshellbot` folder with a list of admin IDs, like: [neekshelladmins.example](https://github.com/neektwothousand/neekshell-telegrambot/blob/master/neekshellbot/neekshelladmins.example)

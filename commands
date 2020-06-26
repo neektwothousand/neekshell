@@ -39,4 +39,5 @@ botchat
 !chat join (lists existing chats to join)
 !chat leave (lists existing chats to leave)
 !chat users (prints number of active users)
+!chat list (prints a complete list with chat ids and active users for each chat)
 endbotchat
