@@ -81,12 +81,12 @@ function inline_searx() {
 EOF
 }
 function send_message() {
-	curl -s "${TELEAPI}/sendMessage" \
+	send_message_id=$(curl -s "${TELEAPI}/sendMessage" \
 		--data-urlencode "chat_id=$chat_id" \
 		--data-urlencode "parse_mode=html" \
 		--data-urlencode "reply_to_message_id=$reply_id" \
 		--data-urlencode "reply_markup=$markup_id" \
-		--data-urlencode "text=$text_id" > /dev/null
+		--data-urlencode "text=$text_id")
 }
 function send_photo() {
 	curl -s "${TELEAPI}/sendPhoto" \
@@ -189,48 +189,45 @@ function get_normal_reply() {
 			;;
 			*)
 			if [ "$(grep -r "$username_id" neekshell_db/bot_chats/)" != "" ] && [ "$type" = "private" ]; then
-				text_id=$first_normal
-				bc_users=$(grep -r "$username_id" neekshell_db/bot_chats/ | sed 's/.*:\s//' | tr ' ' '\n')
+				text_id=$first_normal photo_id=$first_normal animation_id=$first_normal video_id=$first_normal sticker_id=$first_normal audio_id=$first_normal voice_id=$first_normal
+				bc_users=$(grep -r "$username_id" neekshell_db/bot_chats/ | sed 's/.*:\s//' | tr ' ' '\n' | grep -v $username_id)
 				bc_users_num=$(wc -l <<< $bc_users)
 				if [ "$text" != "" ]; then
 					for c in $(seq $bc_users_num); do
-						chat_id=$(sed -n ${c}p <<< $bc_users | grep -v $username_id)
+						chat_id=$(sed -n ${c}p <<< $bc_users)
 						send_message
+						if [ "$(jshon -e description -u <<< "$send_message_id")" = "Forbidden: bot was blocked by the user" ]; then
+							sed -i "s/$chat_id //" $(grep -r "$username_id" neekshell_db/bot_chats/ | cut -d : -f 1)
+						fi
 					done
 				elif [ "$photo_r" != "" ]; then
 					for c in $(seq $bc_users_num); do
-						chat_id=$(sed -n ${c}p <<< $bc_users | grep -v $username_id)
-						photo_id=$photo_r
+						chat_id=$(sed -n ${c}p <<< $bc_users)
 						send_photo
 					done
 				elif [ "$animation_r" != "" ]; then
 					for c in $(seq $bc_users_num); do
-						chat_id=$(sed -n ${c}p <<< $bc_users | grep -v $username_id)
-						animation_id=$animation_r
+						chat_id=$(sed -n ${c}p <<< $bc_users)
 						send_animation
 					done
 				elif [ "$video_r" != "" ]; then
 					for c in $(seq $bc_users_num); do
-						chat_id=$(sed -n ${c}p <<< $bc_users | grep -v $username_id)
-						video_id=$video_r
+						chat_id=$(sed -n ${c}p <<< $bc_users)
 						send_video
 					done
 				elif [ "$sticker_r" != "" ]; then
 					for c in $(seq $bc_users_num); do
-						chat_id=$(sed -n ${c}p <<< $bc_users | grep -v $username_id)
-						sticker_id=$sticker_r
+						chat_id=$(sed -n ${c}p <<< $bc_users)
 						send_sticker
 					done
 				elif [ "$audio_r" != "" ]; then
 					for c in $(seq $bc_users_num); do
-						chat_id=$(sed -n ${c}p <<< $bc_users | grep -v $username_id)
-						audio_id=$audio_r
+						chat_id=$(sed -n ${c}p <<< $bc_users)
 						send_audio
 					done
 				elif [ "$voice_r" != "" ]; then
 					for c in $(seq $bc_users_num); do
-						chat_id=$(sed -n ${c}p <<< $bc_users | grep -v $username_id)
-						voice_id=$voice_r
+						chat_id=$(sed -n ${c}p <<< $bc_users)
 						send_voice
 					done
 				fi
@@ -817,6 +814,10 @@ function get_normal_reply() {
 						else
 							text_id="you are not in an any chat yet"
 						fi
+						send_message
+					;;
+					"list")
+						text_id="$(for c in $(seq $(ls -1 neekshell_db/bot_chats/ | wc -l)); do echo "chat: $(/bin/ls -1 neekshell_db/bot_chats/ | sed -n ${c}p) users: $(grep -r "$(/bin/ls -1 neekshell_db/bot_chats/ | sed -n ${c}p)" neekshell_db/bot_chats/ | sed 's/.*:\s//' | tr ' ' '\n' | sed '/^$/d' | wc -l)" ; done)"
 						send_message
 					;;
 					*)
