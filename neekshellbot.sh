@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/bin/bash -x
 set -a
 TOKEN=$(cat ./token)
 TELEAPI="https://api.telegram.org/bot${TOKEN}"
-exec 1>>neekshellbot.log
-exec 2>>neekshellbot-errors.log
+#exec 1>>neekshellbot.log
+#exec 2>>neekshellbot-errors.log
 function inline_article() {
     cat <<EOF
     [{
@@ -817,7 +817,7 @@ function get_normal_reply() {
 						send_message
 					;;
 					"list")
-						text_id="$(for c in $(seq $(ls -1 neekshell_db/bot_chats/ | wc -l)); do echo "chat: $(/bin/ls -1 neekshell_db/bot_chats/ | sed -n ${c}p) users: $(grep -r "$(/bin/ls -1 neekshell_db/bot_chats/ | sed -n ${c}p)" neekshell_db/bot_chats/ | sed 's/.*:\s//' | tr ' ' '\n' | sed '/^$/d' | wc -l)" ; done)"
+						text_id="$(for c in $(seq $(ls -1 neekshell_db/bot_chats/ | wc -l)); do echo "chat: $(/bin/ls -1 neekshell_db/bot_chats/ | sed -n ${c}p) users: $(grep -r "users: " neekshell_db/bot_chats/ | sed 's/.*:\s//' | tr ' ' '\n' | sed '/^$/d' | wc -l)" ; done)"
 						send_message
 					;;
 					*)
@@ -861,8 +861,7 @@ function get_inline_reply() {
 			admin=$(grep -v "#" neekshelladmins | grep -w $inline_user_id)
 			if [ "$admin" != "" ]; then
 				command=$(sed 's/ bin//' <<< $results)
-				ecommand="echo \$($command)"
-				title="$(echo "$~> "$command"" ; eval $(echo "timeout 5s $(echo $command)") 2>&1 )"
+				title="$(echo "$~> "$command"" ; bash -c "$command" 2>&1 )"
 				message_text="<code>$title</code>"
 				return_query=$(inline_article)
 				send_inline
