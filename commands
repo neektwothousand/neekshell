@@ -10,6 +10,7 @@ normal
 !forward [usertag] (in private, on reply)
 !tag [[@username] (new tag text)] (in private)
 !cpustat (displays % of current cpu usage)
+!neofetch (displays general system info)
 !ping
 endnormal
 

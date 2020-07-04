@@ -23,6 +23,7 @@ Utilities used:
 !forward [usertag] (in private, on reply)<br />
 !tag [[@username] (new tag text)] (in private)<br />
 !cpustat (displays % of current cpu usage)<br />
+!neofetch (displays general system info)<br />
 !ping
 
 administrative commands:

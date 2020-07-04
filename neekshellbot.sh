@@ -828,6 +828,19 @@ function get_normal_reply() {
 			fi
 			return
 			;;
+			"${pf}neofetch")
+				text_id=$(neofetch --stdout)
+				text_id="<code>$(	echo '              ' $(sed -n 1p <<< $text_id)
+									echo '  .-----.     ' $(sed -n 2p <<< $text_id)
+									echo '.`    _  `.   ' $(sed -n 3p <<< $text_id)
+									echo '`.   (_)   `. ' $(sed -n 4p <<< $text_id)
+									echo '  `.        / ' $(sed -n 5p <<< $text_id)
+									echo ' .`       .`  ' $(sed -n 6p <<< $text_id)
+									echo '/       .`    ' $(sed -n 8p <<< $text_id)
+									echo '\____.-`      ' $(sed -n 11p <<< $text_id)
+									echo '              ' $(sed -n 12p <<< $text_id))</code>"
+				send_message
+			;;
 		esac
 	fi
 }
