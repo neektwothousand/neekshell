@@ -258,7 +258,7 @@ function get_normal_reply() {
 	else
 		case $first_normal in
 			"${pf}start")
-				text_id=$(echo -e "github source: https://gitlab.com/craftmallus/neekshell-telegrambot\nrunning script: https://archneek.zapto.org/public-neekshell (symlinked)\nuse /neekshellzip to receive a zip file from source")
+				text_id=$(echo -e "gitlab source: https://gitlab.com/craftmallus/neekshell-telegrambot\nrunning script: https://archneek.zapto.org/public-neekshell (symlinked)\nuse /neekshellzip to receive a zip file from source")
 				reply_id=$message_id
 				send_message
 				return
