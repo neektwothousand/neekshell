@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 set -a
 TOKEN=$(cat ./token)
 TELEAPI="https://api.telegram.org/bot${TOKEN}"
@@ -250,7 +250,7 @@ function get_normal_reply() {
 	else
 		case $first_normal in
 			"${pf}start")
-				text_id=$(echo -e "source: https://gitlab.com/craftmallus/neekshell-telegrambot")
+				text_id=$(echo -e "github source: https://gitlab.com/craftmallus/neekshell-telegrambot\nrunning script: https://archneek.zapto.org/public-neekshell (symlinked)")
 				reply_id=$message_id
 				send_message
 				return
