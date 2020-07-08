@@ -136,6 +136,14 @@ function send_sticker() {
 		-F "caption=$caption" \
 		-F "sticker=$sticker_id" > /dev/null
 }
+function send_document() {
+	curl -s "${TELEAPI}/sendDocument" \
+		-F "chat_id=$chat_id" \
+		-F "parse_mode=html" \
+		-F "reply_to_message_id=$reply_id" \
+		-F "caption=$caption" \
+		-F "document=$document_id" > /dev/null
+}
 function send_inline() {
 	curl -s "${TELEAPI}/answerInlineQuery" \
 		--data-urlencode "inline_query_id=$inline_id" \
@@ -250,9 +258,16 @@ function get_normal_reply() {
 	else
 		case $first_normal in
 			"${pf}start")
-				text_id=$(echo -e "github source: https://gitlab.com/craftmallus/neekshell-telegrambot\nrunning script: https://archneek.zapto.org/public-neekshell (symlinked)")
+				text_id=$(echo -e "github source: https://gitlab.com/craftmallus/neekshell-telegrambot\nrunning script: https://archneek.zapto.org/public-neekshell (symlinked)\nuse /neekshellzip to receive a zip file from source")
 				reply_id=$message_id
 				send_message
+				return
+			;;
+			"${pf}neekshellzip")
+				zip neekshell.zip neekshellbot.sh commands README.md LICENSE neekshelladmins.example neekshellbot-webhook.php
+				document_id="@neekshell.zip" reply_id=$message_id
+				send_document
+				rm neekshell.zip
 				return
 			;;
 			"${pf}help")
