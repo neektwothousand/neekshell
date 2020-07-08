@@ -1022,7 +1022,7 @@ function process_reply() {
 	callback=$(jshon -e callback_query <<< $input)
 	callback_user=$(jshon -e from -e username -u <<< $callback) callback_user_id=$(jshon -e from -e id -u <<< $callback) callback_id=$(jshon -e id -u <<< $callback) callback_data=$(jshon -e data -u <<< $callback) callback_message_text=$(jshon -e message -e text -u <<< $callback)
 	
-	first_normal="$(printf $photo_r $animation_r $video_r $sticker_r $audio_r $voice_r "${text/@$(cat botinfo | jshon -e result -e username -u)/}")"
+	first_normal=$(echo $photo_r $animation_r $video_r $sticker_r $audio_r $voice_r ${text/@$(cat botinfo | jshon -e result -e username -u)/})
 	[ "${first_normal/*[^0-9]/}" != "" ] && normaldice=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/\*.*//g') mul=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/.*\*//g')
 	trad=$(sed -e 's/[!/]w//' -e 's/\s.*//' <<< $first_normal | grep "enit\|iten")
 
