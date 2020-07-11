@@ -307,7 +307,7 @@ function get_normal_reply() {
 				if [ "$photo_id" != "" ]; then
 					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$photo_id" | jshon -e result -e file_path -u)
 					wget -O pic-$request_id.jpg "https://api.telegram.org/file/bot$TOKEN/$file_path"
-					magick pic-$request_id.jpg -quality 1 pic-low-$request_id.jpg
+					magick pic-$request_id.jpg -quality 15 pic-low-$request_id.jpg
 					
 					photo_id="@pic-low-$request_id.jpg"
 					send_photo
