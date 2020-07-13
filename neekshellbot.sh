@@ -264,10 +264,10 @@ function get_normal_reply() {
 				return
 			;;
 			"${pf}neekshellzip")
-				zip neekshell.zip neekshellbot.sh commands README.md LICENSE neekshelladmins.example neekshellbot-webhook.php
-				document_id="@neekshell.zip" reply_id=$message_id
+				zip neekshell-$message_id.zip neekshellbot.sh commands README.md LICENSE neekshelladmins.example neekshellbot-webhook.php
+				document_id="@neekshell-$message_id.zip" reply_id=$message_id
 				send_document
-				rm neekshell.zip
+				rm neekshell-$message_id.zip
 				return
 			;;
 			"${pf}help")
