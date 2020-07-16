@@ -82,11 +82,11 @@ EOF
 }
 function send_message() {
 	send_message_id=$(curl -s "${TELEAPI}/sendMessage" \
-		--data-urlencode "chat_id=$chat_id" \
-		--data-urlencode "parse_mode=html" \
-		--data-urlencode "reply_to_message_id=$reply_id" \
-		--data-urlencode "reply_markup=$markup_id" \
-		--data-urlencode "text=$text_id")
+		--form-string "chat_id=$chat_id" \
+		--form-string "parse_mode=html" \
+		--form-string "reply_to_message_id=$reply_id" \
+		--form-string "reply_markup=$markup_id" \
+		--form-string "text=$text_id")
 }
 function send_photo() {
 	curl -s "${TELEAPI}/sendPhoto" \
@@ -146,46 +146,46 @@ function send_document() {
 }
 function send_inline() {
 	curl -s "${TELEAPI}/answerInlineQuery" \
-		--data-urlencode "inline_query_id=$inline_id" \
-		--data-urlencode "results=$return_query" \
-		--data-urlencode "next_offset=$offset" \
-		--data-urlencode "cache_time=100" \
-		--data-urlencode "is_personal=true" > /dev/null
+		--form-string "inline_query_id=$inline_id" \
+		--form-string "results=$return_query" \
+		--form-string "next_offset=$offset" \
+		--form-string "cache_time=100" \
+		--form-string "is_personal=true" > /dev/null
 }
 function forward_message() {
 	curl -s "${TELEAPI}/forwardMessage" \
-		--data-urlencode "chat_id=$to_chat_id" \
-		--data-urlencode "from_chat_id=$chat_id" \
-		--data-urlencode "message_id=$forward_id" > /dev/null
+		--form-string "chat_id=$to_chat_id" \
+		--form-string "from_chat_id=$chat_id" \
+		--form-string "message_id=$forward_id" > /dev/null
 }
 function inline_reply() {
 	curl -s "${TELEAPI}/answerInlineQuery" \
-		--data-urlencode "inline_query_id=$inline_id" \
-		--data-urlencode "results=$return_query" \
-		--data-urlencode "next_offset=$offset" \
-		--data-urlencode "cache_time=100" \
-		--data-urlencode "is_personal=true" > /dev/null
+		--form-string "inline_query_id=$inline_id" \
+		--form-string "results=$return_query" \
+		--form-string "next_offset=$offset" \
+		--form-string "cache_time=100" \
+		--form-string "is_personal=true" > /dev/null
 }
 function button_reply() {
 	curl -s "${TELEAPI}/answerCallbackQuery" \
-		--data-urlencode "callback_query_id=$callback_id" \
-		--data-urlencode "text=$button_text_reply" > /dev/null
+		--form-string "callback_query_id=$callback_id" \
+		--form-string "text=$button_text_reply" > /dev/null
 }
 function send_processing() {
 	processing_id=$(curl -s "${TELEAPI}/sendMessage" \
-		--data-urlencode "chat_id=$chat_id" \
-		--data-urlencode "text=processing..." | jshon -e result -e message_id -u)
+		--form-string "chat_id=$chat_id" \
+		--form-string "text=processing..." | jshon -e result -e message_id -u)
 }
 function edit_message() {
 	edited_id=$(curl -s "${TELEAPI}/editMessageText" \
-		--data-urlencode "chat_id=$chat_id" \
-		--data-urlencode "message_id=$to_edit_id" \
-		--data-urlencode "text=$edit_text" | jshon -e result -e message_id -u)
+		--form-string "chat_id=$chat_id" \
+		--form-string "message_id=$to_edit_id" \
+		--form-string "text=$edit_text" | jshon -e result -e message_id -u)
 }
 function delete_message() {
 	curl -s "${TELEAPI}/deleteMessage" \
-		--data-urlencode "chat_id=$chat_id" \
-		--data-urlencode "message_id=$to_delete_id"
+		--form-string "chat_id=$chat_id" \
+		--form-string "message_id=$to_delete_id"
 }
 function get_normal_reply() {
 	if [ "${pf}" = "" ]; then
@@ -305,7 +305,7 @@ function get_normal_reply() {
 				request_id=$(jshon -e message_id -u <<< $message)
 				reply_id=$reply_to_id
 				if [ "$photo_id" != "" ]; then
-					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$photo_id" | jshon -e result -e file_path -u)
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$photo_id" | jshon -e result -e file_path -u)
 					wget -O pic-$request_id.jpg "https://api.telegram.org/file/bot$TOKEN/$file_path"
 					magick pic-$request_id.jpg -quality 15 pic-low-$request_id.jpg
 					
@@ -314,7 +314,7 @@ function get_normal_reply() {
 					
 					rm pic-$request_id.jpg pic-low-$request_id.jpg
 				elif [ "$animation_id" != "" ]; then
-					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$animation_id" | jshon -e result -e file_path -u)
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$animation_id" | jshon -e result -e file_path -u)
 					wget -O animation-$request_id.mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
 					send_processing
 					ffmpeg -i animation-$request_id.mp4 -crf 48 -an animation-low-$request_id.mp4
@@ -326,7 +326,7 @@ function get_normal_reply() {
 					to_delete_id=$edited_id ; delete_message
 					rm animation-$request_id.mp4 animation-low-$request_id.mp4
 				elif [ "$video_id" != "" ]; then
-					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$video_id" | jshon -e result -e file_path -u)
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$video_id" | jshon -e result -e file_path -u)
 					wget -O video-$request_id.mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
 					send_processing
 					ffmpeg -i video-$request_id.mp4 -crf 48 video-low-$request_id.mp4
@@ -338,7 +338,7 @@ function get_normal_reply() {
 					to_delete_id=$edited_id ; delete_message
 					rm video-$request_id.mp4 video-low-$request_id.mp4
 				elif [ "$sticker_id" != "" ]; then
-					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$sticker_id" | jshon -e result -e file_path -u)
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$sticker_id" | jshon -e result -e file_path -u)
 					wget -O sticker-$request_id.webp "https://api.telegram.org/file/bot$TOKEN/$file_path"
 					convert sticker-$request_id.webp sticker-$request_id.jpg
 					magick sticker-$request_id.jpg -quality 1 sticker-low-$request_id.jpg
@@ -349,7 +349,7 @@ function get_normal_reply() {
 					
 					rm sticker-$request_id.webp sticker-$request_id.jpg sticker-low-$request_id.jpg sticker-low-$request_id.webp
 				elif [ "$audio_id" != "" ]; then
-					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$audio_id" | jshon -e result -e file_path -u)
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$audio_id" | jshon -e result -e file_path -u)
 					wget -O audio-$request_id.mp3 "https://api.telegram.org/file/bot$TOKEN/$file_path"
 					send_processing
 					ffmpeg -i audio-$request_id.mp3 -vn -acodec libmp3lame -b:a 6k audio-low-$request_id.mp3
@@ -361,7 +361,7 @@ function get_normal_reply() {
 					to_delete_id=$edited_id ; delete_message
 					rm audio-$request_id.mp3 audio-low-$request_id.mp3
 				elif [ "$voice_id" != "" ]; then
-					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$voice_id" | jshon -e result -e file_path -u)
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$voice_id" | jshon -e result -e file_path -u)
 					wget -O voice-$request_id.ogg "https://api.telegram.org/file/bot$TOKEN/$file_path"
 					send_processing
 					ffmpeg -i voice-$request_id.ogg -vn -acodec opus -b:a 6k -strict -2 voice-low-$request_id.ogg
@@ -380,7 +380,7 @@ function get_normal_reply() {
 				animation_id=$(jshon -e reply_to_message -e animation -e file_id -u <<< $message)
 				request_id=$(jshon -e message_id -u <<< $message)
 				if [ "$video_id" != "" ]; then
-					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$video_id" | jshon -e result -e file_path -u)
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$video_id" | jshon -e result -e file_path -u)
 					wget -O video-$request_id.mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
 					send_processing
 					ffmpeg -i video-$request_id.mp4 -vf elbg=l=8,eq=saturation=3.0,noise=alls=20:allf=t+u video-fry-$request_id.mp4
@@ -392,7 +392,7 @@ function get_normal_reply() {
 					to_delete_id=$edited_id ; delete_message
 					rm video-$request_id.mp4 video-fry-$request_id.mp4
 				elif [ "$animation_id" != "" ]; then
-					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$animation_id" | jshon -e result -e file_path -u)
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$animation_id" | jshon -e result -e file_path -u)
 					wget -O animation-$request_id.mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
 					send_processing
 					ffmpeg -i animation-$request_id.mp4 -vf elbg=l=8,eq=saturation=3.0,noise=alls=20:allf=t+u -an animation-fry-$request_id.mp4
@@ -415,7 +415,7 @@ function get_normal_reply() {
 					return
 				fi
 				if [ "$video_id" != "" ]; then
-					file_path=$(curl -s "${TELEAPI}/getFile" --data-urlencode "file_id=$video_id" | jshon -e result -e file_path -u)
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$video_id" | jshon -e result -e file_path -u)
 					wget -O notwide-$request_id.mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
 					duration=$(ffprobe notwide-$request_id.mp4 2>&1 | grep Duration | sed 's/:/,/' | cut -d , -f 2 | sed 's/\..*//')
 					if [ `cut -d : -f 1 <<< "$duration"` != "00" ]; then
@@ -615,16 +615,20 @@ function get_normal_reply() {
 				reply=$(jshon -e reply_to_message -e text -u <<< $message)
 				if [ "$reply" != "" ]; then
 					[ "$first_normal" = "${pf}cringe" ] && owoarray=(" 🥵 " " 🙈 " " 🤣 " " 😘 " " 🥺 " " 💁‍♀️ " " OwO " " 😳 " " 🤠 " " 🤪 " " 😜 " " 🤬 " " 🤧 " " 🦹‍♂ ") || owoarray=(" owo " " ewe " " uwu ")
-					numberspace=$(sed 's/ / \n/g' <<< $reply | grep -c " ")
-					number=$(bc <<< "$numberspace / 3")
-					resultspace=$(echo "$number" ; bc <<< "$number + $number" ; bc <<< "$number*3")
-					tempspace=$(sed -e "s/\s/\n/g" <<< $resultspace)
-					for rig in 1 2 3; do
-						spacerandom[$rig]=$(sed -n "${rig}p" <<< $tempspace)
-						cringerandom[$rig]=${owoarray[$(( ( RANDOM % ${#owoarray[@]} )  + 0 ))]}
+					numberspace=$(($(tr -dc ' ' <<< $reply | wc -c) / 2))
+					
+					for x in $(seq $numberspace); do
+						reply=$(sed "s/\s/\n/$(((RANDOM % $numberspace)+1))" <<< $reply)
 					done
-					emoji=$(sed -e "s/ /${cringerandom[1]}/${spacerandom[1]}" -e "s/ /${cringerandom[2]}/${spacerandom[2]}" -e "s/ /${cringerandom[3]}/${spacerandom[3]}" <<< $reply)
-					text_id=$(sed -e 's/[lr]/w/g' -e 's/[LR]/W/g' <<< $emoji)
+					
+					fixed_text=$(
+						for x in $(seq $(($(wc -l <<< $reply) - 1))); do 
+							fixed_part[$x]=$(sed -n ${x}p <<< $reply)
+							fixed_part[$x]=$(sed "s/$/ ${owoarray[$(( ( RANDOM % ${#owoarray[@]} )  + 0 ))]}/" <<< ${fixed_part[$x]})
+						done
+						echo ${fixed_part[@]})
+					
+					text_id=$(sed -e 's/[lr]/w/g' -e 's/[LR]/W/g' <<< "$fixed_text")
 					reply_id=$reply_to_id
 				else
 					text_id="reply to a text message"
@@ -661,10 +665,10 @@ function get_normal_reply() {
 						username=$(jshon -e reply_to_message -e from -e username -u <<< $message)
 						user_id=$(jshon -e reply_to_message -e from -e id -u <<< $message)
 						curl -s "${TELEAPI}/restrictChatMember" \
-							--data-urlencode "chat_id=$chat_id" \
-							--data-urlencode "user_id=$user_id" \
-							--data-urlencode "can_send_messages=false" \
-							--data-urlencode "until_date=32477736097" > /dev/null
+							--form-string "chat_id=$chat_id" \
+							--form-string "user_id=$user_id" \
+							--form-string "can_send_messages=false" \
+							--form-string "until_date=32477736097" > /dev/null
 						
 						sticker_id="https://archneek.zapto.org/webpics/vicious_dies2.webp"
 						send_sticker
@@ -683,7 +687,7 @@ function get_normal_reply() {
 				reply_id=$message_id
 					if [ "$admin" != "" ]
 					then
-						if [ "$(curl -s "${TELEAPI}/getChat" --data-urlencode "chat_id=$chat_id" | jshon -e result -e permissions -e can_send_media_messages -u)" = "true" ]; then
+						if [ "$(curl -s "${TELEAPI}/getChat" --form-string "chat_id=$chat_id" | jshon -e result -e permissions -e can_send_media_messages -u)" = "true" ]; then
 							set_chat_permissions=$(curl -s "${TELEAPI}/setChatPermissions" -d "{ \"chat_id\": \"$chat_id\", \"permissions\": { \"can_send_messages\": true, \"can_send_media_messages\": false, \"can_send_other_messages\": false, \"can_send_polls\": false, \"can_add_web_page_previews\": false } }" -H 'Content-Type: application/json' | jshon -e ok -u)
 							if [ "$set_chat_permissions" = "true" ]; then
 								text_id="no-media mode activated, send again to deactivate"
@@ -710,7 +714,7 @@ function get_normal_reply() {
 				reply_id=$message_id
 					if [ "$admin" != "" ]
 					then
-						if [ "$(curl -s "${TELEAPI}/getChat" --data-urlencode "chat_id=$chat_id" | jshon -e result -e permissions -e can_send_messages -u)" = "true" ]; then
+						if [ "$(curl -s "${TELEAPI}/getChat" --form-string "chat_id=$chat_id" | jshon -e result -e permissions -e can_send_messages -u)" = "true" ]; then
 							set_chat_permissions=$(curl -s "${TELEAPI}/setChatPermissions" -d "{ \"chat_id\": \"$chat_id\", \"permissions\": { \"can_send_messages\": false, \"can_send_media_messages\": false, \"can_send_other_messages\": false, \"can_send_polls\": false, \"can_add_web_page_previews\": false } }" -H 'Content-Type: application/json' | jshon -e ok -u)
 							if [ "$set_chat_permissions" = "true" ]; then
 								text_id="read only mode activated, send again to deactivate"
@@ -738,7 +742,7 @@ function get_normal_reply() {
 				if [ "$admin" != "" ]; then
 					text_id="goodbye"
 					send_message
-					curl -s "$TELEAPI/leaveChat" --data-urlencode "chat_id=$chat_id" > /dev/null
+					curl -s "$TELEAPI/leaveChat" --form-string "chat_id=$chat_id" > /dev/null
 				else
 					text_id="<code>Access denied</code>"
 					send_message
