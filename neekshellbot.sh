@@ -615,7 +615,7 @@ function get_normal_reply() {
 				reply=$(jshon -e reply_to_message -e text -u <<< $message)
 				if [ "$reply" != "" ]; then
 					[ "$first_normal" = "${pf}cringe" ] && owoarray=(" 🥵 " " 🙈 " " 🤣 " " 😘 " " 🥺 " " 💁‍♀️ " " OwO " " 😳 " " 🤠 " " 🤪 " " 😜 " " 🤬 " " 🤧 " " 🦹‍♂ ") || owoarray=(" owo " " ewe " " uwu ")
-					numberspace=$(($(tr -dc ' ' <<< $reply | wc -c) / 2))
+					numberspace=$(($(tr -dc ' ' <<< $reply | wc -c) / 3))
 					
 					for x in $(seq $numberspace); do
 						reply=$(sed "s/\s/\n/$(((RANDOM % $numberspace)+1))" <<< $reply)
@@ -624,9 +624,9 @@ function get_normal_reply() {
 					fixed_text=$(
 						for x in $(seq $(($(wc -l <<< $reply) - 1))); do 
 							fixed_part[$x]=$(sed -n ${x}p <<< $reply)
-							fixed_part[$x]=$(sed "s/$/ ${owoarray[$(( ( RANDOM % ${#owoarray[@]} )  + 0 ))]}/" <<< ${fixed_part[$x]})
+							fixed_part[$x]=$(sed "s/$/ ${owoarray[$((RANDOM % ${#owoarray[@]}))]}/" <<< ${fixed_part[$x]})
 						done
-						echo ${fixed_part[@]})
+						echo ${fixed_part[@]} $(tail -1 <<< $reply))
 					
 					text_id=$(sed -e 's/[lr]/w/g' -e 's/[LR]/W/g' <<< "$fixed_text")
 					reply_id=$reply_to_id
