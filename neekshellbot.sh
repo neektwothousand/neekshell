@@ -2,8 +2,8 @@
 set -a
 TOKEN=$(cat ./token)
 TELEAPI="https://api.telegram.org/bot${TOKEN}"
-#exec 1>>neekshellbot.log
-#exec 2>>neekshellbot-errors.log
+exec 1>>neekshellbot.log
+exec 2>>neekshellbot-errors.log
 function inline_article() {
     cat <<EOF
     [{
@@ -197,7 +197,7 @@ function get_normal_reply() {
 			;;
 			*)
 			if [ "$(grep -r "$username_id" neekshell_db/bot_chats/)" != "" ] && [ "$type" = "private" ]; then
-				text_id=$first_normal photo_id=$first_normal animation_id=$first_normal video_id=$first_normal sticker_id=$first_normal audio_id=$first_normal voice_id=$first_normal
+				text_id=$first_normal photo_id=$first_normal animation_id=$first_normal video_id=$first_normal sticker_id=$first_normal audio_id=$first_normal voice_id=$first_normal document_id=$first_normal
 				bc_users=$(grep -r "$username_id" neekshell_db/bot_chats/ | sed 's/.*:\s//' | tr ' ' '\n' | grep -v $username_id)
 				bc_users_num=$(wc -l <<< $bc_users)
 				if [ "$text" != "" ]; then
@@ -237,6 +237,11 @@ function get_normal_reply() {
 					for c in $(seq $bc_users_num); do
 						chat_id=$(sed -n ${c}p <<< $bc_users)
 						send_voice
+					done
+				elif [ "$document_r" != "" ]; then
+					for c in $(seq $bc_users_num); do
+						chat_id=$(sed -n ${c}p <<< $bc_users)
+						send_document
 					done
 				fi
 			elif [ "$type" = "private" ]; then
@@ -558,7 +563,12 @@ function get_normal_reply() {
 				return
 			;;
 			"${pf}cpustat")
-				text_id=$(awk -v a="$(awk '/cpu /{print $2+$4,$2+$4+$5}' /proc/stat; sleep 1)" '/cpu /{split(a,b," "); print 100*($2+$4-b[1])/($2+$4+$5-b[2])}' /proc/stat | sed -E 's/(.*)\..*/\1%/')
+				text_id=$(cpu_perc=$(awk -v a="$(awk '/cpu /{print $2+$4,$2+$4+$5}' /proc/stat; sleep 1)" '/cpu /{split(a,b," "); print 100*($2+$4-b[1])/($2+$4+$5-b[2])}' /proc/stat)
+					if [ "$cpu_perc" != "100" ]; then 
+						sed -E 's/(.*)\..*/\1%/' <<< $cpu_perc
+					else
+						sed 's/$/%/' <<< $cpu_perc
+					fi)
 				reply_id=$message_id
 				send_message
 			;;
@@ -1015,6 +1025,7 @@ function process_reply() {
 	sticker_r=$(jshon -e sticker -e file_id -u <<< $message)
 	audio_r=$(jshon -e audio -e file_id -u <<< $message)
 	voice_r=$(jshon -e voice -e file_id -u <<< $message)
+	document_r=$(jshon -e document -e file_id -u <<< $message)
 	pf=${text/[^\/\!]*/}
 
 	reply_to_id=$(jshon -e reply_to_message -e message_id -u <<< $message)
@@ -1026,7 +1037,7 @@ function process_reply() {
 	callback=$(jshon -e callback_query <<< $input)
 	callback_user=$(jshon -e from -e username -u <<< $callback) callback_user_id=$(jshon -e from -e id -u <<< $callback) callback_id=$(jshon -e id -u <<< $callback) callback_data=$(jshon -e data -u <<< $callback) callback_message_text=$(jshon -e message -e text -u <<< $callback)
 	
-	first_normal=$(echo $photo_r $animation_r $video_r $sticker_r $audio_r $voice_r ${text/@$(cat botinfo | jshon -e result -e username -u)/})
+	first_normal=$(echo $photo_r $animation_r $video_r $sticker_r $audio_r $voice_r $document_r ${text/@$(cat botinfo | jshon -e result -e username -u)/})
 	[ "${first_normal/*[^0-9]/}" != "" ] && normaldice=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/\*.*//g') mul=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/.*\*//g')
 	trad=$(sed -e 's/[!/]w//' -e 's/\s.*//' <<< $first_normal | grep "enit\|iten")
 
