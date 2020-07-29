@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 set -a
 TOKEN=$(cat ./token)
 TELEAPI="https://api.telegram.org/bot${TOKEN}"
@@ -1045,7 +1045,9 @@ function process_reply() {
 	callback=$(jshon_n -e callback_query <<< $input)
 	callback_user=$(jshon_n -e from -e username -u <<< $callback) callback_user_id=$(jshon_n -e from -e id -u <<< $callback) callback_id=$(jshon_n -e id -u <<< $callback) callback_data=$(jshon_n -e data -u <<< $callback) callback_message_text=$(jshon_n -e message -e text -u <<< $callback)
 	
-	first_normal=$(echo $photo_r $animation_r $video_r $sticker_r $audio_r $voice_r $document_r ${text/@$(cat botinfo | jshon_n -e result -e username -u)/})
+	first_normal=$(echo $photo_r $animation_r $video_r $sticker_r $audio_r $voice_r)
+	[ "$first_normal" = "" ] && first_normal=$(echo $document_r)
+	[ "$first_normal" = "" ] && first_normal=$(echo "${text/@$(cat botinfo | jshon_n -e result -e username -u)/}")
 	[ "${first_normal/*[^0-9]/}" != "" ] && normaldice=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/\*.*//g') mul=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/.*\*//g')
 	trad=$(sed -e 's/[!/]w//' -e 's/\s.*//' <<< $first_normal | grep "enit\|iten")
 
@@ -1054,9 +1056,17 @@ function process_reply() {
 	[ "$callback_data" != "" ] && get_button_reply
 
 	if	[ "$first_normal" != "" ]; then
-		echo "normal=$first_normal" ; echo "from ${username_tag} at $(date "+%Y-%m-%d %H:%M")"
+		echo ""
+		echo "normal=$first_normal"
+		if [ "$type" = "private" ]; then
+			echo "from $username_tag at $(date "+%Y-%m-%d %H:%M") on @$(cat botinfo | jshon_n -e result -e username -u)"
+		else
+			echo "from $username_tag at $(date "+%Y-%m-%d %H:%M") on \"$chat_title\""
+		fi
 	elif [ "$results" != "" ]; then
-		echo "inline=${results}" ; echo "from ${inline_user} at $(date "+%Y-%m-%d %H:%M")"
+		echo ""
+		echo "inline=$results"
+		echo "from $inline_user at $(date "+%Y-%m-%d %H:%M")"
 	fi
 }
 input=$1
