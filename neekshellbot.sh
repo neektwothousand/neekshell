@@ -201,14 +201,10 @@ function get_normal_reply() {
 			*)
 			if [ "$(grep -r "$username_id" neekshell_db/bot_chats/)" != "" ] && [ "$type" = "private" ]; then
 				text_id=$first_normal photo_id=$first_normal animation_id=$first_normal video_id=$first_normal sticker_id=$first_normal audio_id=$first_normal voice_id=$first_normal document_id=$first_normal
-				#if [ "$photo_id" != "" ]; then
-				#	file_size=$(jshon_n -e photo -e 0 -e file_size -u)
-				#else
-				#	file_size=$()
-				#fi
 				bc_users=$(grep -r "$username_id" neekshell_db/bot_chats/ | sed 's/.*:\s//' | tr ' ' '\n' | grep -v $username_id)
 				bc_users_num=$(wc -l <<< $bc_users)
-				if [ "$text" != "" ]; then
+				case $input_type in
+					text)
 					for c in $(seq $bc_users_num); do
 						chat_id=$(sed -n ${c}p <<< $bc_users)
 						send_message
@@ -216,42 +212,58 @@ function get_normal_reply() {
 							sed -i "s/$chat_id //" $(grep -r "$username_id" neekshell_db/bot_chats/ | cut -d : -f 1)
 						fi
 					done
-				elif [ "$photo_r" != "" ]; then
+					return
+					;;
+					photo)
 					for c in $(seq $bc_users_num); do
 						chat_id=$(sed -n ${c}p <<< $bc_users)
 						send_photo
 					done
-				elif [ "$animation_r" != "" ]; then
+					return
+					;;
+					animation)
 					for c in $(seq $bc_users_num); do
 						chat_id=$(sed -n ${c}p <<< $bc_users)
 						send_animation
 					done
-				elif [ "$video_r" != "" ]; then
+					return
+					;;
+					video)
 					for c in $(seq $bc_users_num); do
 						chat_id=$(sed -n ${c}p <<< $bc_users)
 						send_video
 					done
-				elif [ "$sticker_r" != "" ]; then
+					return
+					;;
+					sticker)
 					for c in $(seq $bc_users_num); do
 						chat_id=$(sed -n ${c}p <<< $bc_users)
 						send_sticker
 					done
-				elif [ "$audio_r" != "" ]; then
+					return
+					;;
+					audio)
 					for c in $(seq $bc_users_num); do
 						chat_id=$(sed -n ${c}p <<< $bc_users)
 						send_audio
 					done
-				elif [ "$voice_r" != "" ]; then
+					return
+					;;
+					voice)
 					for c in $(seq $bc_users_num); do
 						chat_id=$(sed -n ${c}p <<< $bc_users)
 						send_voice
 					done
-				elif [ "$document_r" != "" ]; then
+					return
+					;;
+					document)
 					for c in $(seq $bc_users_num); do
 						chat_id=$(sed -n ${c}p <<< $bc_users)
 						send_document
 					done
-				fi
+					return
+					;;
+				esac
 			elif [ "$type" = "private" ]; then
 				number=$(( ( RANDOM % 500 )  + 1 ))
 				if		[ $number = 69 ]; then
@@ -883,10 +895,21 @@ function get_normal_reply() {
 }
 function get_inline_reply() {
 	inlinedice=$(echo $results | tr -d '[:alpha:]')
-	[ "$(grep -w "gb\|gbgif" <<< $results)" != "" ] && booru="gelbooru.com" && ilb="g"
-	[ "$(grep -w "xb\|xbgif" <<< $results)" != "" ] && booru="xbooru.com" && ilb="x"
-	[ "$(grep -w "realb\|realbgif" <<< $results)" != "" ] && booru="realbooru.com" && ilb="real"
-	[ "$(grep -w "r34b\|r34bgif" <<< $results)" != "" ] && booru="rule34.xxx" && ilb="r34"
+	
+	if [ "$(grep -w "gb\|gbgif" <<< $results)" != "" ]; then
+		booru="gelbooru.com"
+		ilb="g"
+	elif [ "$(grep -w "xb\|xbgif" <<< $results)" != "" ]; then
+		booru="xbooru.com"
+		ilb="x"
+	elif [ "$(grep -w "realb\|realbgif" <<< $results)" != "" ]; then
+		booru="realbooru.com"
+		ilb="real"
+	elif [ "$(grep -w "r34b\|r34bgif" <<< $results)" != "" ]; then
+		booru="rule34.xxx"
+		ilb="r34"
+	fi
+	
 	case $results in
 		"help")
 			title="Ok"
@@ -1009,7 +1032,7 @@ function get_button_reply() {
 }
 function process_reply() {
 	message=$(jshon_n -e message <<< $input)
-
+	
 	# user database
 	username_tag=$(jshon_n -e from -e username -u <<< $message) username_id=$(jshon_n -e from -e id -u <<< $message)
 	if [ "$username_tag" != "" ]; then
@@ -1026,19 +1049,31 @@ function process_reply() {
 	fi
 
 	[ ! -e ./botinfo ] && touch ./botinfo && wget -q -O ./botinfo "${TELEAPI}/getMe"
-	text=$(jshon_n -e text -u <<< $message)
-	photo_r=$(jshon_n -e photo -e 0 -e file_id -u <<< $message)
-	animation_r=$(jshon_n -e animation -e file_id -u <<< $message)
-	video_r=$(jshon_n -e video -e file_id -u <<< $message)
-	sticker_r=$(jshon_n -e sticker -e file_id -u <<< $message)
-	audio_r=$(jshon_n -e audio -e file_id -u <<< $message)
-	voice_r=$(jshon_n -e voice -e file_id -u <<< $message)
-	document_r=$(jshon_n -e document -e file_id -u <<< $message)
+	text=$(jshon_n -e text -u <<< $message) photo_r=$(jshon_n -e photo -e 0 -e file_id -u <<< $message) animation_r=$(jshon_n -e animation -e file_id -u <<< $message) video_r=$(jshon_n -e video -e file_id -u <<< $message) sticker_r=$(jshon_n -e sticker -e file_id -u <<< $message) audio_r=$(jshon_n -e audio -e file_id -u <<< $message) voice_r=$(jshon_n -e voice -e file_id -u <<< $message) document_r=$(jshon_n -e document -e file_id -u <<< $message)
+	
+	if [ "$text" != "" ]; then
+		input_type="text"
+	elif [ "$sticker_r" != "" ]; then
+		input_type="sticker"
+	elif [ "$animation_r" != "" ]; then
+		input_type="animation"
+	elif [ "$photo_r" != "" ]; then
+		input_type="photo"
+	elif [ "$video_r" != "" ]; then
+		input_type="video"
+	elif [ "$audio_r" != "" ]; then
+		input_type="audio"
+	elif [ "$voice_r" != "" ]; then
+		input_type="voice"
+	elif [ "$document_r" != "" ]; then
+		input_type="document"
+	fi
+	
 	pf=${text/[^\/\!]*/}
-
+	
 	reply_to_id=$(jshon_n -e reply_to_message -e message_id -u <<< $message)
 	message_id=$(jshon_n -e message_id -u <<< $message)
-
+	
 	inline=$(jshon_n -e inline_query <<< $input)
 	inline_user=$(jshon_n -e from -e username -u <<< $inline) inline_user_id=$(jshon_n -e from -e id -u <<< $inline) inline_id=$(jshon_n -e id -u <<< $inline) results=$(jshon_n -e query -u <<< $inline)
 
@@ -1046,15 +1081,24 @@ function process_reply() {
 	callback_user=$(jshon_n -e from -e username -u <<< $callback) callback_user_id=$(jshon_n -e from -e id -u <<< $callback) callback_id=$(jshon_n -e id -u <<< $callback) callback_data=$(jshon_n -e data -u <<< $callback) callback_message_text=$(jshon_n -e message -e text -u <<< $callback)
 	
 	first_normal=$(echo $photo_r $animation_r $video_r $sticker_r $audio_r $voice_r)
-	[ "$first_normal" = "" ] && first_normal=$(echo $document_r)
-	[ "$first_normal" = "" ] && first_normal=$(echo "${text/@$(cat botinfo | jshon_n -e result -e username -u)/}")
+	if [ "$first_normal" = "" ]; then
+		first_normal=$(echo $document_r)
+	fi
+	if [ "$first_normal" = "" ]; then
+		first_normal=$(echo "${text/@$(cat botinfo | jshon_n -e result -e username -u)/}")
+	fi
+	
 	[ "${first_normal/*[^0-9]/}" != "" ] && normaldice=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/\*.*//g') mul=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/.*\*//g')
 	trad=$(sed -e 's/[!/]w//' -e 's/\s.*//' <<< $first_normal | grep "enit\|iten")
-
-	[ "$first_normal" != "" ] && get_normal_reply
-	[ "$results" != "" ] && get_inline_reply
-	[ "$callback_data" != "" ] && get_button_reply
-
+	
+	if [ "$first_normal" != "" ]; then
+		get_normal_reply
+	elif [ "$results" != "" ]; then
+		get_inline_reply
+	elif [ "$callback_data" != "" ]; then
+		get_button_reply
+	fi
+	
 	if	[ "$first_normal" != "" ]; then
 		echo "normal=$first_normal" ; echo "from ${username_tag} at $(date "+%Y-%m-%d %H:%M")"
 	elif [ "$results" != "" ]; then
