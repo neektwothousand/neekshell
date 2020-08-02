@@ -75,7 +75,7 @@ function inline_searx() {
         \"type\":\"article\",
         \"id\":\"$RANDOM\",
         \"title\":\"${title}\",
-        \"input_message_content\":{\"message_text\":\"${title}\"},
+        \"input_message_content\":{\"message_text\":\"${title}\n${url}\"},
         \"description\":\"${description}\"
         },"
     done
@@ -1083,9 +1083,9 @@ function process_reply() {
 	first_normal=$(echo $photo_r $animation_r $video_r $sticker_r $audio_r $voice_r)
 	if [ "$first_normal" = "" ]; then
 		first_normal=$(echo $document_r)
-	fi
-	if [ "$first_normal" = "" ]; then
-		first_normal=$(echo "${text/@$(cat botinfo | jshon_n -e result -e username -u)/}")
+		if [ "$first_normal" = "" ]; then
+			first_normal=$(echo "${text/@$(cat botinfo | jshon_n -e result -e username -u)/}")
+		fi
 	fi
 	
 	[ "${first_normal/*[^0-9]/}" != "" ] && normaldice=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/\*.*//g') mul=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/.*\*//g')
