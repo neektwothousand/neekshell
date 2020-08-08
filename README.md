@@ -44,7 +44,8 @@ d[number] (dice)<br />
 tag [[@username] (new tag text)]<br />
 search [text to search on searx]<br />
 [g/x/r34/real]b [booru pic tag]<br />
-[g/x/r34/real]bgif [booru gif tag]
+[g/x/r34/real]bgif [booru gif tag]<br />
+joinchat (sends an invite button to a botchat)
 
 chat mode (in private):
 

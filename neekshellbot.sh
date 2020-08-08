@@ -20,9 +20,24 @@ function inline_article() {
     }]
 EOF
 }
+function inline_joinchat() {
+    for x in $(seq "$(ls -1 neekshell_db/bot_chats/ | wc -l)"); do
+        title=$(ls -1 neekshell_db/bot_chats/ | sed -n "${x}"p)
+        obj[$x]="{
+        \"type\":\"article\",
+        \"id\":\"$RANDOM\",
+        \"title\":\"${title}\",
+        \"reply_markup\":{\"inline_keyboard\":[[{\"text\":\"${title}\",\"url\":\"http://t.me/neekshellbot?start=joinchat${title}\"}]]},
+        \"input_message_content\":{\"message_text\":\"join ${title}\"}
+        },"
+    done
+    cat <<EOF
+    [ $(echo ${obj[@]} | sed -E 's/(.*)},/\1}/') ]
+EOF
+}
 function inline_keyboard_buttons() {
-	for j in $(seq $num_bot_chat); do
-		button_text[$j]=$(sed -n ${j}p <<< $list_bot_chat)
+	for j in $(seq "$num_bot_chat"); do
+		button_text[$j]=$(sed -n "${j}"p <<< "$list_bot_chat")
 		obj[$j]="[{\"text\":\"${button_text[$j]}\",\"callback_data\":\"${button_text[$j]}\"}],"
 	done
 	cat <<EOF
@@ -34,10 +49,10 @@ function inline_keyboard_buttons() {
 EOF
 }
 function inline_booru() {
-    for rig in $(seq $picnumber); do
-        pic=$(echo $piclist | tr " " "\n" | sed -n "${rig}p")
-        thumb=$(echo $thumblist | tr " " "\n" | sed -n "${rig}p")
-        file=$(echo $filelist | tr " " "\n" | sed -n "${rig}p")
+    for rig in $(seq "$picnumber"); do
+        pic=$(echo "$piclist" | tr " " "\n" | sed -n "${rig}p")
+        thumb=$(echo "$thumblist" | tr " " "\n" | sed -n "${rig}p")
+        file=$(echo "$filelist" | tr " " "\n" | sed -n "${rig}p")
         obj[$rig]="{
         \"type\":\"photo\",
         \"id\":\"$RANDOM\",
@@ -51,9 +66,9 @@ function inline_booru() {
 EOF
 }
 function inline_boorugif() {
-    for rig in $(seq $gifnumber); do
-        gif=$(echo $giflist | tr " " "\n" | sed -n "${rig}p")
-        file=$(echo $filelist | tr " " "\n" | sed -n "${rig}p")
+    for rig in $(seq "$gifnumber"); do
+        gif=$(echo "$giflist" | tr " " "\n" | sed -n "${rig}p")
+        file=$(echo "$filelist" | tr " " "\n" | sed -n "${rig}p")
         obj[$rig]="{
         \"type\":\"gif\",
         \"id\":\"$RANDOM\",
@@ -67,10 +82,10 @@ function inline_boorugif() {
 EOF
 }
 function inline_searx() {
-    for x in $(seq 0 $(($(jshon_n -e results -l <<< $searx_results)-1))); do
-        title=$(jshon_n -e results -e $x -e title -u <<< $searx_results | sed 's/"/\\"/g')
-        url=$(jshon_n -e results -e $x -e url -u <<< $searx_results | sed 's/"/\\"/g')
-        description=$(jshon_n -e results -e $x -e content -u <<< $searx_results | sed 's/"/\\"/g')
+    for x in $(seq 0 $(($(jshon_n -e results -l <<< "$searx_results")-1))); do
+        title=$(jshon_n -e results -e "$x" -e title -u <<< "$searx_results" | sed 's/"/\\"/g')
+        url=$(jshon_n -e results -e "$x" -e url -u <<< "$searx_results" | sed 's/"/\\"/g')
+        description=$(jshon_n -e results -e "$x" -e content -u <<< "$searx_results" | sed 's/"/\\"/g')
         obj[$x]="{
         \"type\":\"article\",
         \"id\":\"$RANDOM\",
@@ -153,7 +168,7 @@ function send_inline() {
 		--form-string "results=$return_query" \
 		--form-string "next_offset=$offset" \
 		--form-string "cache_time=100" \
-		--form-string "is_personal=true" > /dev/null
+		--form-string "is_personal=true"
 }
 function forward_message() {
 	curl -s "${TELEAPI}/forwardMessage" \
@@ -201,64 +216,64 @@ function get_normal_reply() {
 			*)
 			if [ "$(grep -r "$username_id" neekshell_db/bot_chats/)" != "" ] && [ "$type" = "private" ]; then
 				text_id=$first_normal photo_id=$first_normal animation_id=$first_normal video_id=$first_normal sticker_id=$first_normal audio_id=$first_normal voice_id=$first_normal document_id=$first_normal
-				bc_users=$(grep -r "$username_id" neekshell_db/bot_chats/ | sed 's/.*:\s//' | tr ' ' '\n' | grep -v $username_id)
-				bc_users_num=$(wc -l <<< $bc_users)
+				bc_users=$(grep -r "$username_id" neekshell_db/bot_chats/ | sed 's/.*:\s//' | tr ' ' '\n' | grep -v "$username_id")
+				bc_users_num=$(wc -l <<< "$bc_users")
 				case $input_type in
 					text)
-					for c in $(seq $bc_users_num); do
-						chat_id=$(sed -n ${c}p <<< $bc_users)
+					for c in $(seq "$bc_users_num"); do
+						chat_id=$(sed -n "${c}"p <<< "$bc_users")
 						send_message
 						if [ "$(jshon_n -e description -u <<< "$send_message_id")" = "Forbidden: bot was blocked by the user" ]; then
-							sed -i "s/$chat_id //" $(grep -r "$username_id" neekshell_db/bot_chats/ | cut -d : -f 1)
+							sed -i "s/$chat_id //" "$(grep -r "$username_id" neekshell_db/bot_chats/ | cut -d : -f 1)"
 						fi
 					done
 					return
 					;;
 					photo)
-					for c in $(seq $bc_users_num); do
-						chat_id=$(sed -n ${c}p <<< $bc_users)
+					for c in $(seq "$bc_users_num"); do
+						chat_id=$(sed -n "${c}"p <<< "$bc_users")
 						send_photo
 					done
 					return
 					;;
 					animation)
-					for c in $(seq $bc_users_num); do
-						chat_id=$(sed -n ${c}p <<< $bc_users)
+					for c in $(seq "$bc_users_num"); do
+						chat_id=$(sed -n "${c}"p <<< "$bc_users")
 						send_animation
 					done
 					return
 					;;
 					video)
-					for c in $(seq $bc_users_num); do
-						chat_id=$(sed -n ${c}p <<< $bc_users)
+					for c in $(seq "$bc_users_num"); do
+						chat_id=$(sed -n "${c}"p <<< "$bc_users")
 						send_video
 					done
 					return
 					;;
 					sticker)
-					for c in $(seq $bc_users_num); do
-						chat_id=$(sed -n ${c}p <<< $bc_users)
+					for c in $(seq "$bc_users_num"); do
+						chat_id=$(sed -n "${c}"p <<< "$bc_users")
 						send_sticker
 					done
 					return
 					;;
 					audio)
-					for c in $(seq $bc_users_num); do
-						chat_id=$(sed -n ${c}p <<< $bc_users)
+					for c in $(seq "$bc_users_num"); do
+						chat_id=$(sed -n "${c}"p <<< "$bc_users")
 						send_audio
 					done
 					return
 					;;
 					voice)
-					for c in $(seq $bc_users_num); do
-						chat_id=$(sed -n ${c}p <<< $bc_users)
+					for c in $(seq "$bc_users_num"); do
+						chat_id=$(sed -n "${c}"p <<< "$bc_users")
 						send_voice
 					done
 					return
 					;;
 					document)
-					for c in $(seq $bc_users_num); do
-						chat_id=$(sed -n ${c}p <<< $bc_users)
+					for c in $(seq "$bc_users_num"); do
+						chat_id=$(sed -n "${c}"p <<< "$bc_users")
 						send_document
 					done
 					return
@@ -270,10 +285,14 @@ function get_normal_reply() {
 					text_id="Nice."
 				elif	[ $number = 1 ]; then
 					text_id="We are number one"
-				elif	[ $number -gt 250 ]; then
-					text_id="Ok"
-				elif	[ $number -lt 250 ]; then
-					text_id="Alright"
+				else
+					text_id="$(
+						echo "Things that happen
+						Oh well
+						Ok
+						Alright
+						Damn
+						Bruh" | sort -R | head -n 1)"
 				fi
 				send_message
 			fi
@@ -288,11 +307,22 @@ function get_normal_reply() {
 				send_message
 				return
 			;;
+			"${pf}start joinchat"*)
+				if [ "$(grep -r "$username_id" neekshell_db/bot_chats/)" = "" ]; then
+					bot_chat_id=$(sed -e 's/[/!]start joinchat//' <<< "$first_normal")
+					sed -i "s/\(users: \)/\1$username_id /" neekshell_db/bot_chats/"$bot_chat_id"
+					text_id="joined $bot_chat_id"
+				else
+					text_id="you're already in an existing chat"
+				fi
+				send_message
+				return
+			;;
 			"${pf}neekshellzip")
-				zip neekshell-$message_id.zip neekshellbot.sh commands README.md LICENSE neekshelladmins.example neekshellbot-webhook.php
+				zip neekshell-"$message_id".zip neekshellbot.sh commands README.md LICENSE neekshelladmins.example neekshellbot-webhook.php
 				document_id="@neekshell-$message_id.zip" reply_id=$message_id
 				send_document
-				rm neekshell-$message_id.zip
+				rm neekshell-"$message_id".zip
 				return
 			;;
 			"${pf}help")
@@ -314,126 +344,126 @@ function get_normal_reply() {
 				return
 			;;
 			"${pf}button "*)
-				text_id=$(sed -e 's/[/!]button //' <<< $first_normal)
+				text_id=$(sed -e 's/[/!]button //' <<< "$first_normal")
 				reply_id=$message_id
 				markup_id=$(inline_keyboard_buttons)
 				send_message
 				return
 			;;
 			"${pf}jpg")
-				photo_id=$(jshon_n -e reply_to_message -e photo -e 0 -e file_id -u <<< $message)
-				animation_id=$(jshon_n -e reply_to_message -e animation -e file_id -u <<< $message)
-				video_id=$(jshon_n -e reply_to_message -e video -e file_id -u <<< $message)
-				sticker_id=$(jshon_n -e reply_to_message -e sticker -e file_id -u <<< $message)
-				audio_id=$(jshon_n -e reply_to_message -e audio -e file_id -u <<< $message)
-				voice_id=$(jshon_n -e reply_to_message -e voice -e file_id -u <<< $message)
-				request_id=$(jshon_n -e message_id -u <<< $message)
+				photo_id=$(jshon_n -e reply_to_message -e photo -e 0 -e file_id -u <<< "$message")
+				animation_id=$(jshon_n -e reply_to_message -e animation -e file_id -u <<< "$message")
+				video_id=$(jshon_n -e reply_to_message -e video -e file_id -u <<< "$message")
+				sticker_id=$(jshon_n -e reply_to_message -e sticker -e file_id -u <<< "$message")
+				audio_id=$(jshon_n -e reply_to_message -e audio -e file_id -u <<< "$message")
+				voice_id=$(jshon_n -e reply_to_message -e voice -e file_id -u <<< "$message")
+				request_id=$(jshon_n -e message_id -u <<< "$message")
 				reply_id=$reply_to_id
 				if [ "$photo_id" != "" ]; then
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$photo_id" | jshon_n -e result -e file_path -u)
-					wget -O pic-$request_id.jpg "https://api.telegram.org/file/bot$TOKEN/$file_path"
-					magick pic-$request_id.jpg -quality 15 pic-low-$request_id.jpg
+					wget -O pic-"$request_id".jpg "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					magick pic-"$request_id".jpg -quality 15 pic-low-"$request_id".jpg
 					
 					photo_id="@pic-low-$request_id.jpg"
 					send_photo
 					
-					rm pic-$request_id.jpg pic-low-$request_id.jpg
+					rm pic-"$request_id".jpg pic-low-"$request_id".jpg
 				elif [ "$animation_id" != "" ]; then
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$animation_id" | jshon_n -e result -e file_path -u)
-					wget -O animation-$request_id.mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					wget -O animation-"$request_id".mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
 					send_processing
-					ffmpeg -i animation-$request_id.mp4 -crf 48 -an animation-low-$request_id.mp4
+					ffmpeg -i animation-"$request_id".mp4 -crf 48 -an animation-low-"$request_id".mp4
 					to_edit_id=$processing_id edit_text="sending..." ; edit_message
 					
 					animation_id="@animation-low-$request_id.mp4"
 					send_animation
 					
 					to_delete_id=$edited_id ; delete_message
-					rm animation-$request_id.mp4 animation-low-$request_id.mp4
+					rm animation-"$request_id".mp4 animation-low-"$request_id".mp4
 				elif [ "$video_id" != "" ]; then
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$video_id" | jshon_n -e result -e file_path -u)
-					wget -O video-$request_id.mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					wget -O video-"$request_id".mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
 					send_processing
-					ffmpeg -i video-$request_id.mp4 -crf 48 video-low-$request_id.mp4
+					ffmpeg -i video-"$request_id".mp4 -crf 48 video-low-"$request_id".mp4
 					to_edit_id=$processing_id edit_text="sending..." ; edit_message
 					
 					video_id="@video-low-$request_id.mp4"
 					send_video
 					
 					to_delete_id=$edited_id ; delete_message
-					rm video-$request_id.mp4 video-low-$request_id.mp4
+					rm video-"$request_id".mp4 video-low-"$request_id".mp4
 				elif [ "$sticker_id" != "" ]; then
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$sticker_id" | jshon_n -e result -e file_path -u)
-					wget -O sticker-$request_id.webp "https://api.telegram.org/file/bot$TOKEN/$file_path"
-					convert sticker-$request_id.webp sticker-$request_id.jpg
-					magick sticker-$request_id.jpg -quality 1 sticker-low-$request_id.jpg
-					convert sticker-low-$request_id.jpg sticker-low-$request_id.webp
+					wget -O sticker-"$request_id".webp "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					convert sticker-"$request_id".webp sticker-"$request_id".jpg
+					magick sticker-"$request_id".jpg -quality 1 sticker-low-"$request_id".jpg
+					convert sticker-low-"$request_id".jpg sticker-low-"$request_id".webp
 					
 					sticker_id="@sticker-low-$request_id.webp"
 					send_sticker
 					
-					rm sticker-$request_id.webp sticker-$request_id.jpg sticker-low-$request_id.jpg sticker-low-$request_id.webp
+					rm sticker-"$request_id".webp sticker-"$request_id".jpg sticker-low-"$request_id".jpg sticker-low-"$request_id".webp
 				elif [ "$audio_id" != "" ]; then
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$audio_id" | jshon_n -e result -e file_path -u)
-					wget -O audio-$request_id.mp3 "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					wget -O audio-"$request_id".mp3 "https://api.telegram.org/file/bot$TOKEN/$file_path"
 					send_processing
-					ffmpeg -i audio-$request_id.mp3 -vn -acodec libmp3lame -b:a 6k audio-low-$request_id.mp3
+					ffmpeg -i audio-"$request_id".mp3 -vn -acodec libmp3lame -b:a 6k audio-low-"$request_id".mp3
 					to_edit_id=$processing_id edit_text="sending..." ; edit_message
 					
 					audio_id="@audio-low-$request_id.mp3"
 					send_audio
 					
 					to_delete_id=$edited_id ; delete_message
-					rm audio-$request_id.mp3 audio-low-$request_id.mp3
+					rm audio-"$request_id".mp3 audio-low-"$request_id".mp3
 				elif [ "$voice_id" != "" ]; then
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$voice_id" | jshon_n -e result -e file_path -u)
-					wget -O voice-$request_id.ogg "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					wget -O voice-"$request_id".ogg "https://api.telegram.org/file/bot$TOKEN/$file_path"
 					send_processing
-					ffmpeg -i voice-$request_id.ogg -vn -acodec opus -b:a 6k -strict -2 voice-low-$request_id.ogg
+					ffmpeg -i voice-"$request_id".ogg -vn -acodec opus -b:a 6k -strict -2 voice-low-"$request_id".ogg
 					to_edit_id=$processing_id edit_text="sending..." ; edit_message
 					
 					voice_id="@voice-low-$request_id.ogg"
 					send_voice
 					
 					to_delete_id=$edited_id ; delete_message
-					rm voice-$request_id.ogg voice-low-$request_id.ogg
+					rm voice-"$request_id".ogg voice-low-"$request_id".ogg
 				fi
 				return
 			;;
 			"${pf}nfry")
-				video_id=$(jshon_n -e reply_to_message -e video -e file_id -u <<< $message)
-				animation_id=$(jshon_n -e reply_to_message -e animation -e file_id -u <<< $message)
-				request_id=$(jshon_n -e message_id -u <<< $message)
+				video_id=$(jshon_n -e reply_to_message -e video -e file_id -u <<< "$message")
+				animation_id=$(jshon_n -e reply_to_message -e animation -e file_id -u <<< "$message")
+				request_id=$(jshon_n -e message_id -u <<< "$message")
 				if [ "$video_id" != "" ]; then
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$video_id" | jshon_n -e result -e file_path -u)
-					wget -O video-$request_id.mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					wget -O video-"$request_id".mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
 					send_processing
-					ffmpeg -i video-$request_id.mp4 -vf elbg=l=8,eq=saturation=3.0,noise=alls=20:allf=t+u video-fry-$request_id.mp4
+					ffmpeg -i video-"$request_id".mp4 -vf elbg=l=8,eq=saturation=3.0,noise=alls=20:allf=t+u video-fry-"$request_id".mp4
 					to_edit_id=$processing_id edit_text="sending..." ; edit_message
 					
 					video_id="@video-fry-$request_id.mp4"
 					send_video
 					
 					to_delete_id=$edited_id ; delete_message
-					rm video-$request_id.mp4 video-fry-$request_id.mp4
+					rm video-"$request_id".mp4 video-fry-"$request_id".mp4
 				elif [ "$animation_id" != "" ]; then
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$animation_id" | jshon_n -e result -e file_path -u)
-					wget -O animation-$request_id.mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					wget -O animation-"$request_id".mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
 					send_processing
-					ffmpeg -i animation-$request_id.mp4 -vf elbg=l=8,eq=saturation=3.0,noise=alls=20:allf=t+u -an animation-fry-$request_id.mp4
+					ffmpeg -i animation-"$request_id".mp4 -vf elbg=l=8,eq=saturation=3.0,noise=alls=20:allf=t+u -an animation-fry-"$request_id".mp4
 					to_edit_id=$processing_id edit_text="sending..." ; edit_message
 					
 					animation_id="@animation-fry-$request_id.mp4"
 					send_animation
 					
 					to_delete_id=$edited_id ; delete_message
-					rm animation-$request_id.mp4 animation-fry-$request_id.mp4
+					rm animation-"$request_id".mp4 animation-fry-"$request_id".mp4
 				fi
 			;;
 			"${pf}wide")
-				video_id=$(jshon_n -e reply_to_message -e video -e file_id -u <<< $message)
-				request_id=$(jshon_n -e message_id -u <<< $message)
-				if [ `jshon_n -e reply_to_message -e video -e duration -u <<< $message` -gt 60 ]; then
+				video_id=$(jshon_n -e reply_to_message -e video -e file_id -u <<< "$message")
+				request_id=$(jshon_n -e message_id -u <<< "$message")
+				if [ "$(jshon_n -e reply_to_message -e video -e duration -u <<< "$message")" -gt 60 ]; then
 					text_id="max video duration: 1 minute"
 					reply_id=$message_id
 					send_message
@@ -441,37 +471,37 @@ function get_normal_reply() {
 				fi
 				if [ "$video_id" != "" ]; then
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$video_id" | jshon_n -e result -e file_path -u)
-					wget -O notwide-$request_id.mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
-					duration=$(ffprobe notwide-$request_id.mp4 2>&1 | grep Duration | sed 's/:/,/' | cut -d , -f 2 | sed 's/\..*//')
-					if [ `cut -d : -f 1 <<< "$duration"` != "00" ]; then
+					wget -O notwide-"$request_id".mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					duration=$(ffprobe notwide-"$request_id".mp4 2>&1 | grep Duration | sed 's/:/,/' | cut -d , -f 2 | sed 's/\..*//')
+					if [ "$(cut -d : -f 1 <<< "$duration")" != "00" ]; then
 						duration=$(cut -d : -f 1,2,3 <<< "$duration")
-					elif [ `cut -d : -f 2 <<< "$duration"` != "00" ]; then
+					elif [ "$(cut -d : -f 2 <<< "$duration")" != "00" ]; then
 						duration=$(cut -d : -f 2,3 <<< "$duration")
-					elif [ `cut -d : -f 3 <<< "$duration"` != "00" ]; then
+					elif [ "$(cut -d : -f 3 <<< "$duration")" != "00" ]; then
 						duration=$(cut -d : -f 3 <<< "$duration")
 					fi
-					ffmpeg -i notwide-$request_id.mp4 -aspect 4:1 -c:v copy -an wide-$request_id.mp4
-					ffmpeg -ss 00 -t $duration -i wide-$request_id.mp4 -ss 00 -t $duration -i ../webaudio/fantasia.aac -c:v copy -c:a aac wide-fantasia-$request_id.mp4
+					ffmpeg -i notwide-"$request_id".mp4 -aspect 4:1 -c:v copy -an wide-"$request_id".mp4
+					ffmpeg -ss 00 -t "$duration" -i wide-"$request_id".mp4 -ss 00 -t "$duration" -i ../webaudio/fantasia.aac -c:v copy -c:a aac wide-fantasia-"$request_id".mp4
 					
 					video_id="@wide-fantasia-$request_id.mp4"
 					send_video
 					
-					rm notwide-$request_id.mp4 wide-$request_id.mp4 wide-fantasia-$request_id.mp4
+					rm notwide-"$request_id".mp4 wide-"$request_id".mp4 wide-fantasia-"$request_id".mp4
 				fi
 			;;
 			"${pf}d$normaldice")
-				chars=$(( $(wc -m <<< $normaldice) - 1 ))
-				text_id="<code>$(echo $(( ($(cat /dev/urandom | tr -dc '[:digit:]' | head -c $chars) % $normaldice) + 1 )) )</code>"
+				chars=$(( $(wc -m <<< "$normaldice") - 1 ))
+				text_id="<code>$(( ($(cat /dev/urandom | tr -dc '[:digit:]' | head -c $chars) % $normaldice) + 1 ))</code>"
 				reply_id=$message_id
 				send_message
 				return
 			;;
 			"${pf}d$normaldice*$mul")
-				for x in $(seq $mul); do
-					chars=$(( $(wc -m <<< $normaldice) - 1 ))
-					result[$x]=$(echo $(( ($(cat /dev/urandom | tr -dc '[:digit:]' | head -c $chars) % $normaldice) + 1 )) )
+				for x in $(seq "$mul"); do
+					chars=$(( $(wc -m <<< "$normaldice") - 1 ))
+					result[$x]=$(( ($(cat /dev/urandom | tr -dc '[:digit:]' | head -c $chars) % $normaldice) + 1 ))
 				done
-				text_id="<code>${result[@]}</code>"
+				text_id="<code>${result[*]}</code>"
 				reply_id=$message_id
 				send_message
 				return
@@ -481,10 +511,10 @@ function get_normal_reply() {
 				case $randweb in
 				0)
 					hflist=$(curl -s "https://www.hentai-foundry.com/pictures/random/?enterAgree=1" -c hfcookie/c | grep -io '<div class="thumbTitle"><a href=['"'"'"][^"'"'"']*['"'"'"]' | sed -e 's/^<div class="thumbTitle"><a href=["'"'"']//i' -e 's/["'"'"']$//i')
-					counth=$(echo $hflist | grep -c "\n")
-					randh=$(sed -n "$(( ( RANDOM % $counth ) + 1 ))p" <<< $hflist)
+					counth=$(echo "$hflist" | grep -c "\n")
+					randh=$(sed -n "$(( ( RANDOM % counth ) + 1 ))p" <<< "$hflist")
 					
-					photo_id=$(curl --cookie hfcookie/c -s https://www.hentai-foundry.com$randh | sed -n 's/.*src="\([^"]*\)".*/\1/p' | grep "pictures.hentai" | sed "s/^/https:/")
+					photo_id=$(curl --cookie hfcookie/c -s https://www.hentai-foundry.com"$randh" | sed -n 's/.*src="\([^"]*\)".*/\1/p' | grep "pictures.hentai" | sed "s/^/https:/")
 					caption="https://www.hentai-foundry.com$randh"
 					reply_id=$message_id
 					send_photo
@@ -494,8 +524,8 @@ function get_normal_reply() {
 				1)
 					randh=$(wget -q -O- 'https://rule34.xxx/index.php?page=post&s=random')
 					
-					photo_id=$(grep 'content="https://img.rule34.xxx' <<< $randh | sed -En 's/.*content="(.*)"\s.*/\1/p')
-					caption="https://rule34.xxx/index.php?page=post&s=view&$(grep 'action="index.php?' <<< $randh | sed -En 's/.*(id=.*)&.*/\1/p')"
+					photo_id=$(grep 'content="https://img.rule34.xxx' <<< "$randh" | sed -En 's/.*content="(.*)"\s.*/\1/p')
+					caption="https://rule34.xxx/index.php?page=post&s=view&$(grep 'action="index.php?' <<< "$randh" | sed -En 's/.*(id=.*)&.*/\1/p')"
 					reply_id=$message_id
 					send_photo
 					
@@ -504,8 +534,8 @@ function get_normal_reply() {
 				2)
 					randh=$(wget -q -O- 'https://safebooru.org/index.php?page=post&s=random')
 					
-					photo_id=$(grep 'content="https://safebooru.org' <<< $randh | sed -En 's/.*content="(.*)"\s.*/\1/p')
-					caption="https://safebooru.org/index.php?page=post&s=view&$(grep 'action="index.php?' <<< $randh | sed -En 's/.*(id=.*)&.*/\1/p')"
+					photo_id=$(grep 'content="https://safebooru.org' <<< "$randh" | sed -En 's/.*content="(.*)"\s.*/\1/p')
+					caption="https://safebooru.org/index.php?page=post&s=view&$(grep 'action="index.php?' <<< "$randh" | sed -En 's/.*(id=.*)&.*/\1/p')"
 					reply_id=$message_id
 					send_photo
 					
@@ -515,7 +545,7 @@ function get_normal_reply() {
 				return
 			;;
 			"${pf}w$trad "*)
-				search=$(sed -e "s/[/!]w$trad //" -e 's/\s/%20/g' <<< $first_normal)
+				search=$(sed -e "s/[/!]w$trad //" -e 's/\s/%20/g' <<< "$first_normal")
 				wordreference=$(curl -A 'neekshellbot/1.0' -s "https://www.wordreference.com/$trad/$search" | sed -En "s/.*\s>(.*\s)<em.*/\1/p" | sed -e "s/<a.*//g" -e "s/<span.*'\(.*\)'.*/\1/g" | head | awk '!x[$0]++')
 				reply_id=$message_id
 				if [ "$wordreference" != "" ]; then
@@ -527,19 +557,19 @@ function get_normal_reply() {
 				return
 			;;
 			"${pf}setadmin "*)
-				admin=$(grep -v "#" neekshelladmins | grep -w $username_id)
+				admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
 				reply_id=$message_id
 				if [ "$admin" != ""  ]; then
-					username=$(sed -e 's/[/!]setadmin @//' <<< $first_normal)
-					setadmin_id=$(sed -n 2p $(find neekshell_db/users/ -iname "$username") | sed "s/id: //")
-					admin_check=$(grep -v "#" neekshelladmins | grep -w $setadmin_id)
-					if [ -z $setadmin_id ]; then
-						text_id=$(echo "user not found")
+					username=$(sed -e 's/[/!]setadmin @//' <<< "$first_normal")
+					setadmin_id=$(sed -n 2p "$(find neekshell_db/users/ -iname "$username")" | sed "s/id: //")
+					admin_check=$(grep -v "#" neekshelladmins | grep -w "$setadmin_id")
+					if [ -z "$setadmin_id" ]; then
+						text_id="user not found"
 					elif [ "$admin_check" != "" ]; then
-						text_id=$(echo "$username already admin")
+						text_id="$username already admin"
 					else
 						echo -e "# $username\n$setadmin_id" >> neekshelladmins
-						text_id=$(echo "admin $username set!")
+						text_id="admin $username set!"
 					fi
 				else
 					text_id="<code>Access denied</code>"
@@ -548,18 +578,18 @@ function get_normal_reply() {
 				return
 			;;
 			"${pf}deladmin "*)
-				admin=$(grep -v "#" neekshelladmins | grep -w $username_id)
+				admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
 				reply_id=$message_id
 				if [ "$admin" != ""  ]; then
-					username=$(sed -e 's/[/!]deladmin @//' <<< $first_normal)
-					deladmin_id=$(sed -n 2p $(find neekshell_db/users/ -iname "$username") | sed "s/id: //")
-					admin_check=$(grep -v "#" neekshelladmins | grep -w $deladmin_id)
-					if [ -z $deladmin_id ]; then
-						text_id=$(echo "user not found")
+					username=$(sed -e 's/[/!]deladmin @//' <<< "$first_normal")
+					deladmin_id=$(sed -n 2p "$(find neekshell_db/users/ -iname "$username")" | sed "s/id: //")
+					admin_check=$(grep -v "#" neekshelladmins | grep -w "$deladmin_id")
+					if [ -z "$deladmin_id" ]; then
+						text_id="user not found"
 					elif [ "x$admin_check" != "x" ]; then
 						sed -i "/$username/d" neekshelladmins
 						sed -i "/$deladmin_id/d" neekshelladmins
-						text_id=$(echo "$username is no longer admin")
+						text_id="$username is no longer admin"
 					else
 						echo "$username is not admin"
 					fi
@@ -570,7 +600,7 @@ function get_normal_reply() {
 				return
 			;;
 			"${pf}bin "*)
-				admin=$(grep -v "#" neekshelladmins | grep -w $username_id)
+				admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
 				reply_id=$message_id
 				if [ "$admin" != "" ]; then
 					command=$(sed 's/[/!]bin //' <<< "$first_normal")
@@ -585,36 +615,36 @@ function get_normal_reply() {
 			"${pf}cpustat")
 				text_id=$(cpu_perc=$(awk -v a="$(awk '/cpu /{print $2+$4,$2+$4+$5}' /proc/stat; sleep 1)" '/cpu /{split(a,b," "); print 100*($2+$4-b[1])/($2+$4+$5-b[2])}' /proc/stat)
 					if [ "$cpu_perc" != "100" ]; then 
-						sed -E 's/(.*)\..*/\1%/' <<< $cpu_perc
+						sed -E 's/(.*)\..*/\1%/' <<< "$cpu_perc"
 					else
-						sed 's/$/%/' <<< $cpu_perc
+						sed 's/$/%/' <<< "$cpu_perc"
 					fi)
 				reply_id=$message_id
 				send_message
 			;;
 			"${pf}broadcast "*|"${pf}broadcast")
-				admin=$(grep -v "#" neekshelladmins | grep -w $username_id)
+				admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
 				if [ "$admin" != "" ]; then
 					listchats=$(grep -rnw neekshell_db/chats/ -e 'supergroup' | cut -d ':' -f 1)
 					numchats=$(wc -l <<< "$listchats")
-					text_id=$(sed "s/[!/]broadcast//" <<< $first_normal)
+					text_id=$(sed "s/[!/]broadcast//" <<< "$first_normal")
 					if [ "$text_id" != "" ]; then
-						for x in $(seq $numchats); do
-							brid[$x]=$(sed -n 2p "$(sed -n ${x}p <<< "$listchats")" | sed 's/id: //')
+						for x in $(seq "$numchats"); do
+							brid[$x]=$(sed -n 2p "$(sed -n "${x}"p <<< "$listchats")" | sed 's/id: //')
 							chat_id=${brid[$x]}
 							send_message
 							sleep 2
 						done
 					elif [ "$reply_to_id" != "" ]; then
-						text_id=$(jshon_n -e reply_to_message -e text -u <<< $message)
-						photo_id=$(jshon_n -e reply_to_message -e photo -e 0 -e file_id -u <<< $message)
-						animation_id=$(jshon_n -e reply_to_message -e animation -e file_id -u <<< $message)
-						video_id=$(jshon_n -e reply_to_message -e video -e file_id -u <<< $message)
-						sticker_id=$(jshon_n -e reply_to_message -e sticker -e file_id -u <<< $message)
-						audio_id=$(jshon_n -e reply_to_message -e audio -e file_id -u <<< $message)
-						voice_id=$(jshon_n -e reply_to_message -e voice -e file_id -u <<< $message)
-						for x in $(seq $numchats); do
-							brid[$x]=$(sed -n 2p "$(sed -n ${x}p <<< "$listchats")" | sed 's/id: //')
+						text_id=$(jshon_n -e reply_to_message -e text -u <<< "$message")
+						photo_id=$(jshon_n -e reply_to_message -e photo -e 0 -e file_id -u <<< "$message")
+						animation_id=$(jshon_n -e reply_to_message -e animation -e file_id -u <<< "$message")
+						video_id=$(jshon_n -e reply_to_message -e video -e file_id -u <<< "$message")
+						sticker_id=$(jshon_n -e reply_to_message -e sticker -e file_id -u <<< "$message")
+						audio_id=$(jshon_n -e reply_to_message -e audio -e file_id -u <<< "$message")
+						voice_id=$(jshon_n -e reply_to_message -e voice -e file_id -u <<< "$message")
+						for x in $(seq "$numchats"); do
+							brid[$x]=$(sed -n 2p "$(sed -n "${x}"p <<< "$listchats")" | sed 's/id: //')
 							chat_id=${brid[$x]}
 							[ "$text_id" != "" ] && send_message
 							[ "$photo_id" != "" ] && send_photo
@@ -642,21 +672,21 @@ function get_normal_reply() {
 				return
 			;;
 			"${pf}owoifer"|"${pf}cringe")
-				reply=$(jshon_n -e reply_to_message -e text -u <<< $message)
+				reply=$(jshon_n -e reply_to_message -e text -u <<< "$message")
 				if [ "$reply" != "" ]; then
 					[ "$first_normal" = "${pf}cringe" ] && owoarray=(" 🥵 " " 🙈 " " 🤣 " " 😘 " " 🥺 " " 💁‍♀️ " " OwO " " 😳 " " 🤠 " " 🤪 " " 😜 " " 🤬 " " 🤧 " " 🦹‍♂ ") || owoarray=(" owo " " ewe " " uwu ")
-					numberspace=$(($(tr -dc ' ' <<< $reply | wc -c) / 3))
+					numberspace=$(($(tr -dc ' ' <<< "$reply" | wc -c) / 3))
 					
 					for x in $(seq $numberspace); do
-						reply=$(sed "s/\s/\n/$(((RANDOM % $numberspace)+1))" <<< $reply)
+						reply=$(sed "s/\s/\n/$(((RANDOM % numberspace)+1))" <<< "$reply")
 					done
 					
 					fixed_text=$(
-						for x in $(seq $(($(wc -l <<< $reply) - 1))); do 
-							fixed_part[$x]=$(sed -n ${x}p <<< $reply)
-							fixed_part[$x]=$(sed "s/$/ ${owoarray[$((RANDOM % ${#owoarray[@]}))]}/" <<< ${fixed_part[$x]})
+						for x in $(seq $(($(wc -l <<< "$reply") - 1))); do 
+							fixed_part[$x]=$(sed -n "${x}"p <<< "$reply")
+							fixed_part[$x]=$(sed "s/$/ ${owoarray[$((RANDOM % ${#owoarray[@]}))]}/" <<< "${fixed_part[$x]}")
 						done
-						echo ${fixed_part[@]} $(tail -1 <<< $reply))
+						echo "${fixed_part[@]}" "$(tail -1 <<< "$reply")")
 					
 					text_id=$(sed -e 's/[lr]/w/g' -e 's/[LR]/W/g' <<< "$fixed_text")
 					reply_id=$reply_to_id
@@ -668,9 +698,9 @@ function get_normal_reply() {
 				return
 			;;
 			"${pf}sed "*)
-				reply=$(jshon_n -e reply_to_message -e text -u <<< $message)
+				reply=$(jshon_n -e reply_to_message -e text -u <<< "$message")
 				if [ "$reply" != "" ]; then
-					regex=$(sed -e 's/[/!]sed //' <<< $first_normal)
+					regex=$(sed -e 's/[/!]sed //' <<< "$first_normal")
 					sed=$(sed -En "s/$regex/p" <<< "$reply")
 					text_id=$(echo "<b>FTFY:</b>" ; echo "$sed")
 					reply_id=$reply_to_id
@@ -688,12 +718,12 @@ function get_normal_reply() {
 				return
 			;;
 			"${pf}bang")
-				if [ $type != "private" ]; then
-				admin=$(grep -v "#" neekshelladmins | grep -w $username_id)
+				if [ "$type" != "private" ]; then
+				admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
 				reply_id=$reply_to_id
 					if [ "$admin" != "" ]; then
-						username=$(jshon_n -e reply_to_message -e from -e username -u <<< $message)
-						user_id=$(jshon_n -e reply_to_message -e from -e id -u <<< $message)
+						username=$(jshon_n -e reply_to_message -e from -e username -u <<< "$message")
+						user_id=$(jshon_n -e reply_to_message -e from -e id -u <<< "$message")
 						curl -s "${TELEAPI}/restrictChatMember" \
 							--form-string "chat_id=$chat_id" \
 							--form-string "user_id=$user_id" \
@@ -712,8 +742,8 @@ function get_normal_reply() {
 				fi
 			;;
 			"${pf}nomedia")
-				if [ $type != "private" ]; then
-				admin=$(grep -v "#" neekshelladmins | grep -w $username_id)
+				if [ "$type" != "private" ]; then
+				admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
 				reply_id=$message_id
 					if [ "$admin" != "" ]
 					then
@@ -739,8 +769,8 @@ function get_normal_reply() {
 				fi
 			;;
 			"${pf}silence")
-				if [ $type != "private" ]; then
-				admin=$(grep -v "#" neekshelladmins | grep -w $username_id)
+				if [ "$type" != "private" ]; then
+				admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
 				reply_id=$message_id
 					if [ "$admin" != "" ]
 					then
@@ -767,7 +797,7 @@ function get_normal_reply() {
 				fi
 			;;
 			"${pf}exit")
-				admin=$(grep -v "#" neekshelladmins | grep -w $username_id)
+				admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
 				reply_id=$message_id
 				if [ "$admin" != "" ]; then
 					text_id="goodbye"
@@ -779,9 +809,9 @@ function get_normal_reply() {
 				fi
 			;;
 			"${pf}tag "*)
-				username=$(sed -E 's/.* (\[.*\]) .*/\1/' <<< $first_normal | tr -d '[@]')
-				usertext=$(sed -E 's/^.*\s.*\s(\(.*)/\1/' <<< $first_normal | tr -d '()')
-				userid=$(sed -n 2p $(find neekshell_db/users/ -iname "$username") | sed "s/id: //")
+				username=$(sed -E 's/.* (\[.*\]) .*/\1/' <<< "$first_normal" | tr -d '[@]')
+				usertext=$(sed -E 's/^.*\s.*\s(\(.*)/\1/' <<< "$first_normal" | tr -d '()')
+				userid=$(sed -n 2p "$(find neekshell_db/users/ -iname "$username")" | sed "s/id: //")
 				if [ "$userid" != "" ] && [ "$usertext" != "" ]; then
 					text_id=$(echo -e "<a href=\"tg://user?id=$userid\">$usertext</a>")
 				elif [ "$userid" = "" ]; then
@@ -791,14 +821,14 @@ function get_normal_reply() {
 				return
 			;;
 			"${pf}forward "*)
-			if [ $type = "private" ]; then
-				username=$(echo $first_normal | sed -e 's/[/!]forward @//')
+			if [ "$type" = "private" ]; then
+				username=$(echo "$first_normal" | sed -e 's/[/!]forward @//')
 				reply_id=$message_id
 				if [ ! -e "$(find neekshell_db/users/ -iname "$username")" ]; then
 					text_id="user not found"
 					send_message
 				else
-					to_chat_id=$(sed -n 2p $(find neekshell_db/users/ -iname "$username") | sed "s/id: //")
+					to_chat_id=$(sed -n 2p "$(find neekshell_db/users/ -iname "$username")" | sed "s/id: //")
 					forward_id=$reply_to_id
 					forward_message
 				fi
@@ -806,15 +836,15 @@ function get_normal_reply() {
 			return
 			;;
 			"${pf}chat "*|"${pf}chat")
-			if [ $type = "private" ]; then
-				action=$(echo $first_normal | sed -e 's/[/!]chat //')
+			if [ "$type" = "private" ]; then
+				action=$(echo "$first_normal" | sed -e 's/[/!]chat //')
 				reply_id=$message_id
 				case $action in
 					"create")
-						request_id=$(jshon_n -e message_id -u <<< $message)
+						request_id=$(jshon_n -e message_id -u <<< "$message")
 						bot_chat_id=$username_id
 						[ ! -d neekshell_db/bot_chats/ ] && mkdir -p neekshell_db/bot_chats/
-						if [ "$(dir neekshell_db/bot_chats/ | grep -o $bot_chat_id)" = "" ]; then
+						if [ "$(dir neekshell_db/bot_chats/ | grep -o "$bot_chat_id")" = "" ]; then
 							file_bot_chat="neekshell_db/bot_chats/$bot_chat_id"
 							[ ! -e "$file_bot_chat" ] && echo "users: " > "$file_bot_chat"
 							text_id="your chat id: \"$bot_chat_id\""
@@ -826,7 +856,7 @@ function get_normal_reply() {
 					"delete")
 						bot_chat_id=$username_id
 						[ ! -d neekshell_db/bot_chats/ ] && text_id="no existing chats" && send_message && return
-						if [ "$(dir neekshell_db/bot_chats/ | grep -o $bot_chat_id)" != "" ]; then
+						if [ "$(dir neekshell_db/bot_chats/ | grep -o "$bot_chat_id")" != "" ]; then
 							file_bot_chat="neekshell_db/bot_chats/$bot_chat_id"
 							rm "$file_bot_chat"
 							text_id="\"$bot_chat_id\" deleted"
@@ -866,7 +896,7 @@ function get_normal_reply() {
 						send_message
 					;;
 					"list")
-						text_id="$(for c in $(seq $(ls -1 neekshell_db/bot_chats/ | wc -l)); do echo "chat: $(/bin/ls -1 neekshell_db/bot_chats/ | sed -n ${c}p) users: $(grep -r "users: " neekshell_db/bot_chats/ | sed 's/.*:\s//' | tr ' ' '\n' | sed '/^$/d' | wc -l)" ; done)"
+						text_id="$(for c in $(seq "$(ls -1 neekshell_db/bot_chats/ | wc -l)"); do echo "chat: $(/bin/ls -1 neekshell_db/bot_chats/ | sed -n "${c}"p) users: $(grep -r "users: " neekshell_db/bot_chats/ | sed 's/.*:\s//' | tr ' ' '\n' | sed '/^$/d' | wc -l)" ; done)"
 						send_message
 					;;
 					*)
@@ -879,33 +909,33 @@ function get_normal_reply() {
 			;;
 			"${pf}neofetch")
 				text_id=$(neofetch --stdout)
-				text_id="<code>$(	echo '              ' $(sed -n 1p <<< $text_id)
-									echo '  .-----.     ' $(sed -n 2p <<< $text_id)
-									echo '.`    _  `.   ' $(sed -n 3p <<< $text_id)
-									echo '`.   (_)   `. ' $(sed -n 4p <<< $text_id)
-									echo '  `.        / ' $(sed -n 5p <<< $text_id)
-									echo ' .`       .`  ' $(sed -n 6p <<< $text_id)
-									echo '/       .`    ' $(sed -n 8p <<< $text_id)
-									echo '\____.-`      ' $(sed -n 11p <<< $text_id)
-									echo '              ' $(sed -n 12p <<< $text_id))</code>"
+				text_id="<code>$(	echo '              ' "$(sed -n 1p <<< "$text_id")"
+									echo '  .-----.     ' "$(sed -n 2p <<< "$text_id")"
+									echo '.`    _  `.   ' "$(sed -n 3p <<< "$text_id")"
+									echo '`.   (_)   `. ' "$(sed -n 4p <<< "$text_id")"
+									echo '  `.        / ' "$(sed -n 5p <<< "$text_id")"
+									echo ' .`       .`  ' "$(sed -n 6p <<< "$text_id")"
+									echo '/       .`    ' "$(sed -n 8p <<< "$text_id")"
+									echo '\____.-`      ' "$(sed -n 11p <<< "$text_id")"
+									echo '              ' "$(sed -n 12p <<< "$text_id")")</code>"
 				send_message
 			;;
 		esac
 	fi
 }
 function get_inline_reply() {
-	inlinedice=$(echo $results | tr -d '[:alpha:]')
+	inlinedice=$(echo "$results" | tr -d '[:alpha:]')
 	
-	if [ "$(grep -w "gb\|gbgif" <<< $results)" != "" ]; then
+	if [ "$(grep -w "gb\|gbgif" <<< "$results")" != "" ]; then
 		booru="gelbooru.com"
 		ilb="g"
-	elif [ "$(grep -w "xb\|xbgif" <<< $results)" != "" ]; then
+	elif [ "$(grep -w "xb\|xbgif" <<< "$results")" != "" ]; then
 		booru="xbooru.com"
 		ilb="x"
-	elif [ "$(grep -w "realb\|realbgif" <<< $results)" != "" ]; then
+	elif [ "$(grep -w "realb\|realbgif" <<< "$results")" != "" ]; then
 		booru="realbooru.com"
 		ilb="real"
-	elif [ "$(grep -w "r34b\|r34bgif" <<< $results)" != "" ]; then
+	elif [ "$(grep -w "r34b\|r34bgif" <<< "$results")" != "" ]; then
 		booru="rule34.xxx"
 		ilb="r34"
 	fi
@@ -919,11 +949,16 @@ function get_inline_reply() {
 			send_inline
 			return
 		;;
+		"joinchat")
+			return_query=$(inline_joinchat)
+			send_inline
+			return
+		;;
 		"d$inlinedice")
 			if [ "$inlinedice" != "" ]
 				then
 				title="Result of d$inlinedice"
-				number=$(( ( RANDOM % $inlinedice )  + 1 ))
+				number=$(( ( RANDOM % inlinedice )  + 1 ))
 				message_text=$(echo -e "Result of d$inlinedice\n: $number")
 				return_query=$(inline_article)
 				send_inline
@@ -931,10 +966,10 @@ function get_inline_reply() {
 			return
 		;;
 		*" bin")
-			admin=$(grep -v "#" neekshelladmins | grep -w $inline_user_id)
+			admin=$(grep -v "#" neekshelladmins | grep -w "$inline_user_id")
 			if [ "$admin" != "" ]; then
-				command=$(sed 's/ bin//' <<< $results)
-				title="$(echo "$~> "$command"" ; bash -c "$command" 2>&1 )"
+				command=$(sed 's/ bin//' <<< "$results")
+				title="$(echo "$~> ""$command""" ; bash -c "$command" 2>&1 )"
 				message_text="<code>$title</code>"
 				return_query=$(inline_article)
 				send_inline
@@ -942,9 +977,9 @@ function get_inline_reply() {
 			return
 		;;
 		"tag "*)
-			username=$(sed -Ee 's/(.* )(\[.*\]) ((.*))/\2/' -e 's/[[:punct:]]//g' <<< $results)
-			title=$(sed -Ee 's/(.* )(\[.*\]) ((.*))/\3/' -Ee 's/[[:punct:]](.*)[[:punct:]]/\1/' <<< $results)
-			userid=$(sed -n 2p $(find neekshell_db/users/ -iname "$username") | sed "s/id: //")
+			username=$(sed -Ee 's/(.* )(\[.*\]) ((.*))/\2/' -e 's/[[:punct:]]//g' <<< "$results")
+			title=$(sed -Ee 's/(.* )(\[.*\]) ((.*))/\3/' -Ee 's/[[:punct:]](.*)[[:punct:]]/\1/' <<< "$results")
+			userid=$(sed -n 2p "$(find neekshell_db/users/ -iname "$username")" | sed "s/id: //")
 			message_text="<a href=\\\"tg://user?id=$userid\\\">$title</a>"
 			description=",\"description\":\"$username\""
 			return_query=$(inline_article)
@@ -952,36 +987,36 @@ function get_inline_reply() {
 			return
 		;;
 		'search '*)
-			offset=$(($(jshon_n -e offset -u <<< $inline)+1))
-			search=$(sed 's/search //' <<< $results | sed 's/\s/%20/g')
+			offset=$(($(jshon_n -e offset -u <<< "$inline")+1))
+			search=$(sed 's/search //' <<< "$results" | sed 's/\s/%20/g')
 			searx_results=$(curl -s "https://archneek.zapto.org/searx/?q=$search&pageno=$offset&categories=general&format=json")
 			return_query=$(inline_searx)
 			send_inline
 			return
 		;;
 		"${ilb}b "*)
-			offset=$(($(jshon_n -e offset -u <<< $inline)+1))
-			tags=$(sed "s/${ilb}b //" <<< $results)
+			offset=$(($(jshon_n -e offset -u <<< "$inline")+1))
+			tags=$(sed "s/${ilb}b //" <<< "$results")
 			getbooru=$(curl -A 'Mozilla/5.0' -s "https://$booru/index.php?page=dapi&s=post&pid=$offset&tags=$tags&q=index&limit=5")
-			thumblist=$(sed -n 's/.*preview_url="\([^"]*\)".*/\1/p' <<< $getbooru | grep -E 'jpg|jpeg|png')
-			piclist=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< $getbooru | grep -E 'jpg|jpeg|png')
-			filelist=$(sed -n 's/.*file_url="\([^"]*\)".*/\1/p' <<< $getbooru | grep -E 'jpg|jpeg|png')
-			picnumber=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< $getbooru | grep -E -c 'jpg|jpeg|png')
+			thumblist=$(sed -n 's/.*preview_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'jpg|jpeg|png')
+			piclist=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'jpg|jpeg|png')
+			filelist=$(sed -n 's/.*file_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'jpg|jpeg|png')
+			picnumber=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E -c 'jpg|jpeg|png')
 			return_query=$(inline_booru)
 			send_inline
 			return
 		;;
 		"${ilb}bgif "*)
-			offset=$(($(jshon_n -e offset -u <<< $inline)+1))
-			tags=$(sed "s/${ilb}bgif //" <<< $results)
+			offset=$(($(jshon_n -e offset -u <<< "$inline")+1))
+			tags=$(sed "s/${ilb}bgif //" <<< "$results")
 			if [ "$ilb" != "g" ]; then
 				getbooru=$(curl -A 'Mozilla/5.0' -s "https://$booru/index.php?page=dapi&s=post&pid=$offset&tags=gif+$tags&q=index&limit=20")
 			else
 				getbooru=$(curl -A 'Mozilla/5.0' -s "https://$booru/index.php?page=dapi&s=post&pid=$offset&tags=animated+$tags&q=index&limit=20")
 			fi
-			giflist=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< $getbooru | grep -E 'gif')
-			filelist=$(sed -n 's/.*file_url="\([^"]*\)".*/\1/p' <<< $getbooru | grep -E 'gif')
-			gifnumber=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< $getbooru | grep -E -c 'gif')
+			giflist=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'gif')
+			filelist=$(sed -n 's/.*file_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'gif')
+			gifnumber=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E -c 'gif')
 			return_query=$(inline_boorugif)
 			send_inline
 			return
@@ -1001,7 +1036,7 @@ function get_button_reply() {
 		"Select chat to join:")
 			chat_id=$callback_user_id
 			if [ "$(grep -r "$callback_user_id" neekshell_db/bot_chats/)" = "" ]; then
-				sed -i "s/\(users: \)/\1$callback_user_id /" neekshell_db/bot_chats/$callback_data
+				sed -i "s/\(users: \)/\1$callback_user_id /" neekshell_db/bot_chats/"$callback_data"
 				button_text_reply="joined"
 				text_id="joined $callback_data"
 			else
@@ -1013,7 +1048,7 @@ function get_button_reply() {
 			return
 		;;
 		"Select chat to leave:")
-			sed -i "s/$callback_user_id //" neekshell_db/bot_chats/$callback_data
+			sed -i "s/$callback_user_id //" neekshell_db/bot_chats/"$callback_data"
 			button_text_reply="bye"
 			button_reply
 			chat_id=$callback_user_id
@@ -1031,17 +1066,17 @@ function get_button_reply() {
 	esac
 }
 function process_reply() {
-	message=$(jshon_n -e message <<< $input)
+	message=$(jshon_n -e message <<< "$input")
 	
 	# user database
-	username_tag=$(jshon_n -e from -e username -u <<< $message) username_id=$(jshon_n -e from -e id -u <<< $message)
+	username_tag=$(jshon_n -e from -e username -u <<< "$message") username_id=$(jshon_n -e from -e id -u <<< "$message")
 	if [ "$username_tag" != "" ]; then
 		[ ! -d neekshell_db/users/ ] && mkdir -p neekshell_db/users/
 		file_user=neekshell_db/users/$username_tag
-		[ ! -e "$file_user" ] && echo -e "tag: $username_tag\nid: $username_id" > $file_user
+		[ ! -e "$file_user" ] && echo -e "tag: $username_tag\nid: $username_id" > "$file_user"
 	fi
 	# chat database
-	chat_title=$(jshon_n -e chat -e title -u <<< $message) chat_id=$(jshon -e chat -e id -u <<< $message) type=$(jshon_n -e chat -e type -u <<< $message)
+	chat_title=$(jshon_n -e chat -e title -u <<< "$message") chat_id=$(jshon -e chat -e id -u <<< "$message") type=$(jshon_n -e chat -e type -u <<< "$message")
 	if [ "$chat_title" != "" ]; then
 		[ ! -d neekshell_db/chats/ ] && mkdir -p neekshell_db/chats/
 		file_chat="neekshell_db/chats/$chat_title"
@@ -1049,7 +1084,7 @@ function process_reply() {
 	fi
 
 	[ ! -e ./botinfo ] && touch ./botinfo && wget -q -O ./botinfo "${TELEAPI}/getMe"
-	text=$(jshon_n -e text -u <<< $message) photo_r=$(jshon_n -e photo -e 0 -e file_id -u <<< $message) animation_r=$(jshon_n -e animation -e file_id -u <<< $message) video_r=$(jshon_n -e video -e file_id -u <<< $message) sticker_r=$(jshon_n -e sticker -e file_id -u <<< $message) audio_r=$(jshon_n -e audio -e file_id -u <<< $message) voice_r=$(jshon_n -e voice -e file_id -u <<< $message) document_r=$(jshon_n -e document -e file_id -u <<< $message)
+	text=$(jshon_n -e text -u <<< "$message") photo_r=$(jshon_n -e photo -e 0 -e file_id -u <<< "$message") animation_r=$(jshon_n -e animation -e file_id -u <<< "$message") video_r=$(jshon_n -e video -e file_id -u <<< "$message") sticker_r=$(jshon_n -e sticker -e file_id -u <<< "$message") audio_r=$(jshon_n -e audio -e file_id -u <<< "$message") voice_r=$(jshon_n -e voice -e file_id -u <<< "$message") document_r=$(jshon_n -e document -e file_id -u <<< "$message")
 	
 	if [ "$text" != "" ]; then
 		input_type="text"
@@ -1071,25 +1106,25 @@ function process_reply() {
 	
 	pf=${text/[^\/\!]*/}
 	
-	reply_to_id=$(jshon_n -e reply_to_message -e message_id -u <<< $message)
-	message_id=$(jshon_n -e message_id -u <<< $message)
+	reply_to_id=$(jshon_n -e reply_to_message -e message_id -u <<< "$message")
+	message_id=$(jshon_n -e message_id -u <<< "$message")
 	
-	inline=$(jshon_n -e inline_query <<< $input)
-	inline_user=$(jshon_n -e from -e username -u <<< $inline) inline_user_id=$(jshon_n -e from -e id -u <<< $inline) inline_id=$(jshon_n -e id -u <<< $inline) results=$(jshon_n -e query -u <<< $inline)
+	inline=$(jshon_n -e inline_query <<< "$input")
+	inline_user=$(jshon_n -e from -e username -u <<< "$inline") inline_user_id=$(jshon_n -e from -e id -u <<< "$inline") inline_id=$(jshon_n -e id -u <<< "$inline") results=$(jshon_n -e query -u <<< "$inline")
 
-	callback=$(jshon_n -e callback_query <<< $input)
-	callback_user=$(jshon_n -e from -e username -u <<< $callback) callback_user_id=$(jshon_n -e from -e id -u <<< $callback) callback_id=$(jshon_n -e id -u <<< $callback) callback_data=$(jshon_n -e data -u <<< $callback) callback_message_text=$(jshon_n -e message -e text -u <<< $callback)
+	callback=$(jshon_n -e callback_query <<< "$input")
+	callback_user=$(jshon_n -e from -e username -u <<< "$callback") callback_user_id=$(jshon_n -e from -e id -u <<< "$callback") callback_id=$(jshon_n -e id -u <<< "$callback") callback_data=$(jshon_n -e data -u <<< "$callback") callback_message_text=$(jshon_n -e message -e text -u <<< "$callback")
 	
 	first_normal=$(echo $photo_r $animation_r $video_r $sticker_r $audio_r $voice_r)
 	if [ "$first_normal" = "" ]; then
-		first_normal=$(echo $document_r)
+		first_normal="$document_r"
 		if [ "$first_normal" = "" ]; then
-			first_normal=$(echo "${text/@$(cat botinfo | jshon_n -e result -e username -u)/}")
+			first_normal="${text/@$(cat botinfo | jshon_n -e result -e username -u)/}"
 		fi
 	fi
 	
-	[ "${first_normal/*[^0-9]/}" != "" ] && normaldice=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/\*.*//g') mul=$(echo $first_normal | tr -d '/![:alpha:]' | sed 's/.*\*//g')
-	trad=$(sed -e 's/[!/]w//' -e 's/\s.*//' <<< $first_normal | grep "enit\|iten")
+	[ "${first_normal/*[^0-9]/}" != "" ] && normaldice=$(echo "$first_normal" | tr -d '/![:alpha:]' | sed 's/\*.*//g') mul=$(echo "$first_normal" | tr -d '/![:alpha:]' | sed 's/.*\*//g')
+	trad=$(sed -e 's/[!/]w//' -e 's/\s.*//' <<< "$first_normal" | grep "enit\|iten")
 	
 	if [ "$first_normal" != "" ]; then
 		get_normal_reply
