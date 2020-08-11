@@ -1134,11 +1134,11 @@ function process_reply() {
 		get_button_reply
 	fi
 	
-	if	[ "$first_normal" != "" ] && [ "$type" = "private" ] ; then
-		echo "normal=$first_normal" ; echo "from ${username_tag}, type = $input_type, at $(date "+%Y-%m-%d %H:%M")" ; echo "--"
-	elif [ "$results" != "" ]; then
-		echo "inline=${results}" ; echo "from ${inline_user} at $(date "+%Y-%m-%d %H:%M")" ; echo "--"
-	fi
+#	if	[ "$first_normal" != "" ] && [ "$type" = "private" ] ; then
+#		echo "normal=$first_normal" ; echo "from ${username_tag}, type = $input_type, at $(date "+%Y-%m-%d %H:%M")" ; echo "--"
+#	elif [ "$results" != "" ]; then
+#		echo "inline=${results}" ; echo "from ${inline_user} at $(date "+%Y-%m-%d %H:%M")" ; echo "--"
+#	fi
 }
 input=$1
 process_reply
