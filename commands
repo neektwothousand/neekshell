@@ -32,7 +32,7 @@ tag [[@username] (new tag text)]
 search [text to search on searx]
 [g/x/r34/real/]b [booru pic tag]
 [g/x/r34/real/]bgif [booru gif tag]
-joinchat (sends an invite button to a botchat)
+joinchat (sends an invite button to a bot chat)
 endinline
 
 botchat

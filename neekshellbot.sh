@@ -21,8 +21,8 @@ function inline_article() {
 EOF
 }
 function inline_joinchat() {
-    for x in $(seq "$(ls -1 neekshell_db/bot_chats/ | wc -l)"); do
-        title=$(ls -1 neekshell_db/bot_chats/ | sed -n "${x}"p)
+    for x in $(seq "$(ls -1 $bot_chat_dir | wc -l)"); do
+        title=$(ls -1 $bot_chat_dir | sed -n "${x}"p)
         obj[$x]="{
         \"type\":\"article\",
         \"id\":\"$RANDOM\",
@@ -214,9 +214,9 @@ function get_normal_reply() {
 				send_voice
 			;;
 			*)
-			if [ "$(grep -r "$username_id" neekshell_db/bot_chats/)" != "" ] && [ "$type" = "private" ]; then
+			if [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" != "" ]; then
 				text_id=$first_normal photo_id=$first_normal animation_id=$first_normal video_id=$first_normal sticker_id=$first_normal audio_id=$first_normal voice_id=$first_normal document_id=$first_normal
-				bc_users=$(grep -r "$username_id" neekshell_db/bot_chats/ | sed 's/.*:\s//' | tr ' ' '\n' | grep -v "$username_id")
+				bc_users=$(grep -r -- "$bot_chat_user_id" $bot_chat_dir | sed 's/.*:\s//' | tr ' ' '\n' | grep -v -- "$bot_chat_user_id")
 				bc_users_num=$(wc -l <<< "$bc_users")
 				case $input_type in
 					text)
@@ -224,7 +224,7 @@ function get_normal_reply() {
 						chat_id=$(sed -n "${c}"p <<< "$bc_users")
 						send_message
 						if [ "$(jshon_n -e description -u <<< "$send_message_id")" = "Forbidden: bot was blocked by the user" ]; then
-							sed -i "s/$chat_id //" "$(grep -r "$username_id" neekshell_db/bot_chats/ | cut -d : -f 1)"
+							sed -i "s/$chat_id //" "$(grep -r -- "$bot_chat_user_id" $bot_chat_dir | cut -d : -f 1)"
 						fi
 					done
 					return
@@ -308,9 +308,10 @@ function get_normal_reply() {
 				return
 			;;
 			"${pf}start joinchat"*)
-				if [ "$(grep -r "$username_id" neekshell_db/bot_chats/)" = "" ]; then
+				admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
+				if [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" = "" ] && [ "$admin" != "" ] ; then
 					bot_chat_id=$(sed -e 's/[/!]start joinchat//' <<< "$first_normal")
-					sed -i "s/\(users: \)/\1$username_id /" neekshell_db/bot_chats/"$bot_chat_id"
+					sed -i "s/\(users: \)/\1$bot_chat_user_id /" "$bot_chat_dir$bot_chat_id"
 					text_id="joined $bot_chat_id"
 				else
 					text_id="you're already in an existing chat"
@@ -559,7 +560,7 @@ function get_normal_reply() {
 			"${pf}setadmin "*)
 				admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
 				reply_id=$message_id
-				if [ "$admin" != ""  ]; then
+				if [ "$admin" != "" ]; then
 					username=$(sed -e 's/[/!]setadmin @//' <<< "$first_normal")
 					setadmin_id=$(sed -n 2p "$(find neekshell_db/users/ -iname "$username")" | sed "s/id: //")
 					admin_check=$(grep -v "#" neekshelladmins | grep -w "$setadmin_id")
@@ -580,7 +581,7 @@ function get_normal_reply() {
 			"${pf}deladmin "*)
 				admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
 				reply_id=$message_id
-				if [ "$admin" != ""  ]; then
+				if [ "$admin" != "" ]; then
 					username=$(sed -e 's/[/!]deladmin @//' <<< "$first_normal")
 					deladmin_id=$(sed -n 2p "$(find neekshell_db/users/ -iname "$username")" | sed "s/id: //")
 					admin_check=$(grep -v "#" neekshelladmins | grep -w "$deladmin_id")
@@ -836,76 +837,83 @@ function get_normal_reply() {
 			return
 			;;
 			"${pf}chat "*|"${pf}chat")
-			if [ "$type" = "private" ]; then
-				action=$(echo "$first_normal" | sed -e 's/[/!]chat //')
-				reply_id=$message_id
-				case $action in
-					"create")
-						request_id=$(jshon_n -e message_id -u <<< "$message")
-						bot_chat_id=$username_id
-						[ ! -d neekshell_db/bot_chats/ ] && mkdir -p neekshell_db/bot_chats/
-						if [ "$(dir neekshell_db/bot_chats/ | grep -o "$bot_chat_id")" = "" ]; then
-							file_bot_chat="neekshell_db/bot_chats/$bot_chat_id"
-							[ ! -e "$file_bot_chat" ] && echo "users: " > "$file_bot_chat"
-							text_id="your chat id: \"$bot_chat_id\""
-						else
-							text_id="you've already an existing chat"
-						fi
-						send_message
-					;;
-					"delete")
-						bot_chat_id=$username_id
-						[ ! -d neekshell_db/bot_chats/ ] && text_id="no existing chats" && send_message && return
-						if [ "$(dir neekshell_db/bot_chats/ | grep -o "$bot_chat_id")" != "" ]; then
-							file_bot_chat="neekshell_db/bot_chats/$bot_chat_id"
-							rm "$file_bot_chat"
-							text_id="\"$bot_chat_id\" deleted"
-						else
-							text_id="you have not created any chat yet"
-						fi
-						send_message
-					;;
-					"join")
-						if [ "$(grep -r "$username_id" neekshell_db/bot_chats/)" = "" ]; then
-							text_id="Select chat to join:"
-							num_bot_chat=$(ls -1 neekshell_db/bot_chats/ | wc -l)
-							list_bot_chat=$(ls -1 neekshell_db/bot_chats/)
-							markup_id=$(inline_keyboard_buttons)
-						else
-							text_id="you're already in an existing chat"
-						fi
-						send_message
-					;;
-					"leave")
-						if [ "$(grep -r "$username_id" neekshell_db/bot_chats/)" != "" ]; then
-							text_id="Select chat to leave:"
-							num_bot_chat=$(ls -1 neekshell_db/bot_chats/ | wc -l)
-							list_bot_chat=$(ls -1 neekshell_db/bot_chats/)
-							markup_id=$(inline_keyboard_buttons)
-						else
-							text_id="you are not in an any chat yet"
-						fi
-						send_message
-					;;
-					"users")
-						if [ "$(grep -r "$username_id" neekshell_db/bot_chats/)" != "" ]; then
-							text_id="number of active users: $(grep -r "$username_id" neekshell_db/bot_chats/ | sed 's/.*:\s//' | tr ' ' '\n' | sed '/^$/d' | wc -l)"
-						else
-							text_id="you are not in an any chat yet"
-						fi
-						send_message
-					;;
-					"list")
-						text_id="$(for c in $(seq "$(ls -1 neekshell_db/bot_chats/ | wc -l)"); do echo "chat: $(/bin/ls -1 neekshell_db/bot_chats/ | sed -n "${c}"p) users: $(grep -r "users: " neekshell_db/bot_chats/ | sed 's/.*:\s//' | tr ' ' '\n' | sed '/^$/d' | wc -l)" ; done)"
-						send_message
-					;;
-					*)
-						text_id=$(sed -n '/botchat/,/endbotchat/ p' commands | sed -e '1d' -e '$d')
-						send_message
-					;;
-				esac
-			fi
-			return
+				admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
+				if [ "$type" = "private" ] || [ "$admin" != "" ] ; then
+					action=$(echo "$first_normal" | sed -e 's/[/!]chat //')
+					reply_id=$message_id
+					case $action in
+						"create")
+							[ ! -d $bot_chat_dir ] && mkdir -p $bot_chat_dir
+							if [ "$(dir $bot_chat_dir | grep -o -- "$bot_chat_user_id")" = "" ]; then
+								file_bot_chat="$bot_chat_dir$bot_chat_user_id"
+								[ ! -e "$file_bot_chat" ] && echo "users: " > "$file_bot_chat"
+								text_id="your chat id: \"$bot_chat_user_id\""
+							else
+								text_id="you've already an existing chat"
+							fi
+							send_message
+						;;
+						"delete")
+							[ ! -d $bot_chat_dir ] && text_id="no existing chats" && send_message && return
+							if [ "$(dir $bot_chat_dir | grep -o -- "$bot_chat_user_id")" != "" ]; then
+								file_bot_chat="$bot_chat_dir$bot_chat_user_id"
+								rm "$file_bot_chat"
+								text_id="\"$bot_chat_user_id\" deleted"
+							else
+								text_id="you have not created any chat yet"
+							fi
+							send_message
+						;;
+						"join")
+							if [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" = "" ] && [ "$type" = "private" ] ; then
+								text_id="Select chat to join:"
+								num_bot_chat=$(ls -1 $bot_chat_dir | wc -l)
+								list_bot_chat=$(ls -1 $bot_chat_dir)
+								markup_id=$(inline_keyboard_buttons)
+							elif [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" = "" ] && [ "$type" != "private" ] ; then
+								text_id="Attention: you're in a group, send !start joinchat[bot_chat_id] to join a group chat, e.g.: /start joinchat-1234567890. Use !chat list for a list of available group chats"
+							else
+								text_id="you're already in an existing chat"
+							fi
+							send_message
+						;;
+						"leave")
+							if [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" != "" ]; then
+								text_id="Select chat to leave:"
+								num_bot_chat=$(ls -1 $bot_chat_dir | wc -l)
+								list_bot_chat=$(ls -1 $bot_chat_dir)
+								markup_id=$(inline_keyboard_buttons)
+							else
+								text_id="you are not in an any chat yet"
+							fi
+							send_message
+						;;
+						"users")
+							if [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" != "" ]; then
+								text_id="number of active users: $(grep -r -- "$bot_chat_user_id" $bot_chat_dir | sed 's/.*:\s//' | tr ' ' '\n' | sed '/^$/d' | wc -l)"
+							else
+								text_id="you are not in an any chat yet"
+							fi
+							send_message
+						;;
+						"list")
+							text_id="$(
+								for c in $(seq "$(ls -1 "$bot_chat_dir" | wc -l)"); do
+									bot_chat_id=$(ls -1 "$bot_chat_dir" | sed -n "${c}"p)
+									bot_chat_users=$(sed 's/.*:\s//' "$bot_chat_dir$bot_chat_id" | tr ' ' '\n' | sed '/^$/d' | wc -l)
+									echo "chat: $bot_chat_id users: $bot_chat_users"
+								done
+							)"
+							[ "$text_id" = "" ] && text_id="no chats found"
+							send_message
+						;;
+						*)
+							text_id=$(sed -n '/botchat/,/endbotchat/ p' commands | sed -e '1d' -e '$d')
+							send_message
+						;;
+					esac
+				fi
+				return
 			;;
 			"${pf}neofetch")
 				text_id=$(neofetch --stdout)
@@ -1035,8 +1043,8 @@ function get_button_reply() {
 	case $callback_message_text in
 		"Select chat to join:")
 			chat_id=$callback_user_id
-			if [ "$(grep -r "$callback_user_id" neekshell_db/bot_chats/)" = "" ]; then
-				sed -i "s/\(users: \)/\1$callback_user_id /" neekshell_db/bot_chats/"$callback_data"
+			if [ "$(grep -r "$callback_user_id" $bot_chat_dir)" = "" ]; then
+				sed -i "s/\(users: \)/\1$callback_user_id /" $bot_chat_dir"$callback_data"
 				button_text_reply="joined"
 				text_id="joined $callback_data"
 			else
@@ -1048,7 +1056,7 @@ function get_button_reply() {
 			return
 		;;
 		"Select chat to leave:")
-			sed -i "s/$callback_user_id //" neekshell_db/bot_chats/"$callback_data"
+			sed -i "s/$callback_user_id //" $bot_chat_dir"$callback_data"
 			button_text_reply="bye"
 			button_reply
 			chat_id=$callback_user_id
@@ -1082,7 +1090,14 @@ function process_reply() {
 		file_chat="neekshell_db/chats/$chat_title"
 		[ ! -e "$file_chat" ] && echo "title: $chat_title" > "$file_chat" && echo -e "id: $chat_id\ntype: $type" >> "$file_chat"
 	fi
-
+	if [ "$type" = "private" ]; then
+		bot_chat_dir="neekshell_db/bot_chats/"
+		bot_chat_user_id=$username_id
+	else
+		bot_chat_dir="neekshell_db/bot_group_chats/"
+		bot_chat_user_id=$chat_id
+	fi
+	
 	[ ! -e ./botinfo ] && touch ./botinfo && wget -q -O ./botinfo "${TELEAPI}/getMe"
 	text=$(jshon_n -e text -u <<< "$message") photo_r=$(jshon_n -e photo -e 0 -e file_id -u <<< "$message") animation_r=$(jshon_n -e animation -e file_id -u <<< "$message") video_r=$(jshon_n -e video -e file_id -u <<< "$message") sticker_r=$(jshon_n -e sticker -e file_id -u <<< "$message") audio_r=$(jshon_n -e audio -e file_id -u <<< "$message") voice_r=$(jshon_n -e voice -e file_id -u <<< "$message") document_r=$(jshon_n -e document -e file_id -u <<< "$message")
 	
