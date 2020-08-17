@@ -209,9 +209,17 @@ function get_normal_reply() {
 	if [ "${pf}" = "" ]; then
 		case $first_normal in	
 			"+")
-				voice_id="https://archneek.zapto.org/webaudio/respect.ogg"
-				reply_id=$reply_to_id
-				send_voice
+				if [ "$username_id" != "$reply_to_user_id" ]; then
+					prevrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
+					[ "$prevrep" = "" ] && echo "rep: 0" >> neekshell_db/users/"$reply_to_user_id" && prevrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
+					sed -i "s/rep: ./rep: $((prevrep+1))/" neekshell_db/users/"$reply_to_user_id"
+					newrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
+					voice_id="https://archneek.zapto.org/webaudio/respect.ogg"
+					reply_id=$reply_to_id
+					caption="respect + to $reply_to_user_fname ($newrep)"
+					send_voice
+				fi
+				return
 			;;
 			*)
 			if [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" != "" ]; then
@@ -315,6 +323,20 @@ function get_normal_reply() {
 					text_id="joined $bot_chat_id"
 				else
 					text_id="you're already in an existing chat"
+				fi
+				send_message
+				return
+			;;
+			"${pf}top+")
+				list_rep=$(grep -r "rep: " neekshell_db/users/ | cut -d : -f 1)
+				for x in $(seq $(wc -l <<< "$list_rep")); do
+					user_file[$x]=$(sed -n ${x}p <<< "$list_rep")
+					user_rep[$x]=$(sed -e 1,2d "${user_file[$x]}" | sed -e 's/fname: //' -e 's/lname: //' -e 's/rep: //' | tr '\n' ' ' | sed -E "s|(.*)\s(.*)\s|\2 ☆ <b>\1</b>|")
+				done
+				if [ "${user_rep[*]}" = "" ]; then
+					text_id="oops, respect not found"
+				else
+					text_id=$(sort -nr <<< "$(printf '%s\n' "${user_rep[@]}")" | head -n 5)
 				fi
 				send_message
 				return
@@ -562,7 +584,7 @@ function get_normal_reply() {
 				reply_id=$message_id
 				if [ "$admin" != "" ]; then
 					username=$(sed -e 's/[/!]setadmin @//' <<< "$first_normal")
-					setadmin_id=$(sed -n 2p "$(find neekshell_db/users/ -iname "$username")" | sed "s/id: //")
+					setadmin_id=$(cat "$(grep -r -- "$username" neekshell_db/users/ | cut -d : -f 1)" | sed -n 2p | sed 's/id: //')
 					admin_check=$(grep -v "#" neekshelladmins | grep -w "$setadmin_id")
 					if [ -z "$setadmin_id" ]; then
 						text_id="user not found"
@@ -583,7 +605,7 @@ function get_normal_reply() {
 				reply_id=$message_id
 				if [ "$admin" != "" ]; then
 					username=$(sed -e 's/[/!]deladmin @//' <<< "$first_normal")
-					deladmin_id=$(sed -n 2p "$(find neekshell_db/users/ -iname "$username")" | sed "s/id: //")
+					deladmin_id=$(cat "$(grep -r -- "$username" neekshell_db/users/ | cut -d : -f 1)" | sed -n 2p | sed 's/id: //')
 					admin_check=$(grep -v "#" neekshelladmins | grep -w "$deladmin_id")
 					if [ -z "$deladmin_id" ]; then
 						text_id="user not found"
@@ -676,18 +698,17 @@ function get_normal_reply() {
 				reply=$(jshon_n -e reply_to_message -e text -u <<< "$message")
 				if [ "$reply" != "" ]; then
 					[ "$first_normal" = "${pf}cringe" ] && owoarray=(" 🥵 " " 🙈 " " 🤣 " " 😘 " " 🥺 " " 💁‍♀️ " " OwO " " 😳 " " 🤠 " " 🤪 " " 😜 " " 🤬 " " 🤧 " " 🦹‍♂ ") || owoarray=(" owo " " ewe " " uwu ")
-					numberspace=$(($(tr -dc ' ' <<< "$reply" | wc -c) / 3))
+					numberspace=$(tr -dc ' ' <<< "$reply" | wc -c)
 					
-					for x in $(seq $numberspace); do
+					for x in $(seq $((numberspace / 8))); do
 						reply=$(sed "s/\s/\n/$(((RANDOM % numberspace)+1))" <<< "$reply")
 					done
 					
 					fixed_text=$(
 						for x in $(seq $(($(wc -l <<< "$reply") - 1))); do 
-							fixed_part[$x]=$(sed -n "${x}"p <<< "$reply")
-							fixed_part[$x]=$(sed "s/$/ ${owoarray[$((RANDOM % ${#owoarray[@]}))]}/" <<< "${fixed_part[$x]}")
+							fixed_part[$x]=$(sed -n "${x}"p <<< "$reply" | sed "s/$/ ${owoarray[$((RANDOM % ${#owoarray[@]}))]}/")
 						done
-						echo "${fixed_part[@]}" "$(tail -1 <<< "$reply")")
+						echo "${fixed_part[*]}" "$(tail -1 <<< "$reply")")
 					
 					text_id=$(sed -e 's/[lr]/w/g' -e 's/[LR]/W/g' <<< "$fixed_text")
 					reply_id=$reply_to_id
@@ -812,7 +833,7 @@ function get_normal_reply() {
 			"${pf}tag "*)
 				username=$(sed -E 's/.* (\[.*\]) .*/\1/' <<< "$first_normal" | tr -d '[@]')
 				usertext=$(sed -E 's/^.*\s.*\s(\(.*)/\1/' <<< "$first_normal" | tr -d '()')
-				userid=$(sed -n 2p "$(find neekshell_db/users/ -iname "$username")" | sed "s/id: //")
+				userid=$(cat "$(grep -r -- "$username" neekshell_db/users/ | cut -d : -f 1)" | sed -n 2p | sed 's/id: //')
 				if [ "$userid" != "" ] && [ "$usertext" != "" ]; then
 					text_id=$(echo -e "<a href=\"tg://user?id=$userid\">$usertext</a>")
 				elif [ "$userid" = "" ]; then
@@ -829,7 +850,7 @@ function get_normal_reply() {
 					text_id="user not found"
 					send_message
 				else
-					to_chat_id=$(sed -n 2p "$(find neekshell_db/users/ -iname "$username")" | sed "s/id: //")
+					to_chat_id=$(cat "$(grep -r -- "$username" neekshell_db/users/ | cut -d : -f 1)" | sed -n 2p | sed 's/id: //')
 					forward_id=$reply_to_id
 					forward_message
 				fi
@@ -987,7 +1008,7 @@ function get_inline_reply() {
 		"tag "*)
 			username=$(sed -Ee 's/(.* )(\[.*\]) ((.*))/\2/' -e 's/[[:punct:]]//g' <<< "$results")
 			title=$(sed -Ee 's/(.* )(\[.*\]) ((.*))/\3/' -Ee 's/[[:punct:]](.*)[[:punct:]]/\1/' <<< "$results")
-			userid=$(sed -n 2p "$(find neekshell_db/users/ -iname "$username")" | sed "s/id: //")
+			userid=$(cat "$(grep -r -- "$username" neekshell_db/users/ | cut -d : -f 1)" | sed -n 2p | sed 's/id: //')
 			message_text="<a href=\\\"tg://user?id=$userid\\\">$title</a>"
 			description=",\"description\":\"$username\""
 			return_query=$(inline_article)
@@ -1077,11 +1098,29 @@ function process_reply() {
 	message=$(jshon_n -e message <<< "$input")
 	
 	# user database
-	username_tag=$(jshon_n -e from -e username -u <<< "$message") username_id=$(jshon_n -e from -e id -u <<< "$message")
-	if [ "$username_tag" != "" ]; then
+	username_tag=$(jshon_n -e from -e username -u <<< "$message") username_id=$(jshon_n -e from -e id -u <<< "$message") username_fname=$(jshon_n -e from -e first_name -u <<< "$message") username_lname=$(jshon_n -e from -e last_name -u <<< "$message")
+	if [ "$username_id" != "" ]; then
 		[ ! -d neekshell_db/users/ ] && mkdir -p neekshell_db/users/
-		file_user=neekshell_db/users/$username_tag
-		[ ! -e "$file_user" ] && echo -e "tag: $username_tag\nid: $username_id" > "$file_user"
+		file_user=neekshell_db/users/"$username_id"
+		if [ ! -e "$file_user" ]; then
+			[ "$username_tag" = "" ] && username_tag="(empty)"
+			echo "tag: $username_tag" > "$file_reply_user"
+			echo "id: $username_id" >> "$file_reply_user"
+			echo "fname: $username_fname" >> "$file_reply_user"
+			echo "lname: $username_lname" >> "$file_reply_user"
+		fi
+	fi
+	reply_to_id=$(jshon_n -e reply_to_message -e message_id -u <<< "$message") reply_to_user_id=$(jshon_n -e reply_to_message -e from -e id -u <<< "$message") reply_to_user_tag=$(jshon_n -e reply_to_message -e from -e username -u <<< "$message") reply_to_user_fname=$(jshon_n -e reply_to_message -e from -e first_name -u <<< "$message") reply_to_user_lname=$(jshon_n -e reply_to_message -e from -e last_name -u <<< "$message")
+	if [ "$reply_to_user_id" != "" ]; then
+		[ ! -d neekshell_db/users/ ] && mkdir -p neekshell_db/users/
+		file_reply_user=neekshell_db/users/"$reply_to_user_id"
+		if [ ! -e "$file_reply_user" ]; then
+			[ "$reply_to_user_tag" = "" ] && $reply_to_user_tag="(empty)"
+			echo "tag: $reply_to_user_tag" > "$file_reply_user"
+			echo "id: $reply_to_user_id" >> "$file_reply_user"
+			echo "fname: $reply_to_user_fname" >> "$file_reply_user"
+			echo "lname: $reply_to_user_lname" >> "$file_reply_user"
+		fi
 	fi
 	# chat database
 	chat_title=$(jshon_n -e chat -e title -u <<< "$message") chat_id=$(jshon -e chat -e id -u <<< "$message") type=$(jshon_n -e chat -e type -u <<< "$message")
@@ -1120,8 +1159,6 @@ function process_reply() {
 	fi
 	
 	pf=${text/[^\/\!]*/}
-	
-	reply_to_id=$(jshon_n -e reply_to_message -e message_id -u <<< "$message")
 	message_id=$(jshon_n -e message_id -u <<< "$message")
 	
 	inline=$(jshon_n -e inline_query <<< "$input")
