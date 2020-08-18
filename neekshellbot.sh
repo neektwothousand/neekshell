@@ -341,6 +341,16 @@ function get_normal_reply() {
 				send_message
 				return
 			;;
+			"${pf}my+")
+				user_rep=$(sed -e 1,2d "$file_user" | sed -e 's/fname: //' -e 's/lname: //' -e 's/rep: //' | tr '\n' ' ' | sed -E "s|(.*)\s(.*)\s|\2 ☆ <b>\1</b>|")
+				if [ "$user_rep" = "" ]; then
+					text_id="oops, respect not found"
+				else
+					text_id=$user_rep
+				fi
+				send_message
+				return
+			;;
 			"${pf}neekshellzip")
 				zip neekshell-"$message_id".zip neekshellbot.sh commands README.md LICENSE neekshelladmins.example neekshellbot-webhook.php
 				document_id="@neekshell-$message_id.zip" reply_id=$message_id
@@ -1108,6 +1118,15 @@ function process_reply() {
 			echo "id: $username_id" >> "$file_reply_user"
 			echo "fname: $username_fname" >> "$file_reply_user"
 			echo "lname: $username_lname" >> "$file_reply_user"
+		fi
+		if [ "tag: $username_tag" != "$(grep "tag" "$file_user")" ]; then
+			sed -i "s/tag: .*/tag: $username_tag/" "$file_user"
+		fi
+		if [ "fname: $username_fname" != "$(grep "fname" "$file_user")" ]; then
+			sed -i "s/fname: .*/fname: $username_fname/" "$file_user"
+		fi
+		if [ "lname: $username_fname" != "$(grep "lname" "$file_user")" ]; then
+			sed -i "s/lname: .*/lname: $username_lname/" "$file_user"
 		fi
 	fi
 	reply_to_id=$(jshon_n -e reply_to_message -e message_id -u <<< "$message") reply_to_user_id=$(jshon_n -e reply_to_message -e from -e id -u <<< "$message") reply_to_user_tag=$(jshon_n -e reply_to_message -e from -e username -u <<< "$message") reply_to_user_fname=$(jshon_n -e reply_to_message -e from -e first_name -u <<< "$message") reply_to_user_lname=$(jshon_n -e reply_to_message -e from -e last_name -u <<< "$message")

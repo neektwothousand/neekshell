@@ -12,7 +12,8 @@ normal
 !cpustat (displays % of current cpu usage)
 !neofetch (displays general system info)
 !ping
-!top+ (get points classific)
+!top+ (gets a top 5 highscores)
+!my+ (gets your score)
 + (on reply to give a point)
 endnormal
 
