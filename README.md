@@ -27,7 +27,7 @@ Utilities used:
 !ping</br />
 !top+ (gets a top 5 highscores)<br />
 !my+ (gets your score)<br />
-+ (on reply to give a point)
+\+ (on reply to give a point)
 
 administrative commands:
 
