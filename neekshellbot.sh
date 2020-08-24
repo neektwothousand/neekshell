@@ -21,14 +21,14 @@ function inline_article() {
 EOF
 }
 function inline_joinchat() {
-    for x in $(seq "$(ls -1 $bot_chat_dir | wc -l)"); do
-        title=$(ls -1 $bot_chat_dir | sed -n "${x}"p)
+    for x in $(seq "$(ls -1 "$bot_chat_dir" | wc -l)"); do
+        title=$(ls -1 "$bot_chat_dir" | sed -n "${x}"p)
         obj[$x]="{
         \"type\":\"article\",
         \"id\":\"$RANDOM\",
         \"title\":\"${title}\",
         \"reply_markup\":{\"inline_keyboard\":[[{\"text\":\"${title}\",\"url\":\"http://t.me/neekshellbot?start=joinchat${title}\"}]]},
-        \"input_message_content\":{\"message_text\":\"join ${title}\"}
+        \"input_message_content\":{\"message_text\":\"anonymous group bot chat:\"}
         },"
     done
     cat <<EOF
@@ -98,6 +98,18 @@ function inline_searx() {
     [ $(echo ${obj[@]} | sed -E 's/(.*)},/\1}/') ]
 EOF
 }
+function mediagroup_nhentai() {
+    for x in $(seq $numpages); do
+        nhentai_pic=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/$x/" | grep 'img src' | sed -e 's/.*<img src="//' -e 's/".*//')
+        obj[$x]="{
+        \"type\":\"photo\",
+        \"media\":\"$nhentai_pic\"
+        },"
+    done
+    cat <<EOF
+    [ $(echo ${obj[@]} | sed -E 's/(.*)},/\1}/') ]
+EOF
+}
 function send_message() {
 	send_message_id=$(curl -s "${TELEAPI}/sendMessage" \
 		--form-string "chat_id=$chat_id" \
@@ -121,6 +133,14 @@ function send_video() {
 		-F "reply_to_message_id=$reply_id" \
 		-F "caption=$caption" \
 		-F "video=$video_id" > /dev/null
+}
+function send_mediagroup() {
+	curl -s "${TELEAPI}/sendMediaGroup" \
+		-F "chat_id=$chat_id" \
+		-F "parse_mode=html" \
+		-F "reply_to_message_id=$reply_id" \
+		-F "caption=$caption" \
+		-F "media=$mediagroup_id" > /dev/null
 }
 function send_audio() {
 	curl -s "${TELEAPI}/sendAudio" \
@@ -167,7 +187,7 @@ function send_inline() {
 		--form-string "inline_query_id=$inline_id" \
 		--form-string "results=$return_query" \
 		--form-string "next_offset=$offset" \
-		--form-string "cache_time=100" \
+		--form-string "cache_time=0" \
 		--form-string "is_personal=true"
 }
 function forward_message() {
@@ -317,7 +337,7 @@ function get_normal_reply() {
 			;;
 			"${pf}start joinchat"*)
 				admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
-				if [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" = "" ] && [ "$admin" != "" ] ; then
+				if [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" = "" ] && [ "$type" = "supergroup" ] && [ "$admin" != "" ] || [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" = "" ] && [ "$type" = "private" ]; then
 					bot_chat_id=$(sed -e 's/[/!]start joinchat//' <<< "$first_normal")
 					sed -i "s/\(users: \)/\1$bot_chat_user_id /" "$bot_chat_dir$bot_chat_id"
 					text_id="joined $bot_chat_id"
@@ -338,6 +358,7 @@ function get_normal_reply() {
 				else
 					text_id=$(sort -nr <<< "$(printf '%s\n' "${user_rep[@]}")" | head -n 5)
 				fi
+				reply_id=$message_id
 				send_message
 				return
 			;;
@@ -348,6 +369,7 @@ function get_normal_reply() {
 				else
 					text_id=$user_rep
 				fi
+				reply_id=$message_id
 				send_message
 				return
 			;;
@@ -543,15 +565,19 @@ function get_normal_reply() {
 				randweb=$(( ( RANDOM % 3 ) ))
 				case $randweb in
 				0)
-					hflist=$(curl -s "https://www.hentai-foundry.com/pictures/random/?enterAgree=1" -c hfcookie/c | grep -io '<div class="thumbTitle"><a href=['"'"'"][^"'"'"']*['"'"'"]' | sed -e 's/^<div class="thumbTitle"><a href=["'"'"']//i' -e 's/["'"'"']$//i')
-					counth=$(echo "$hflist" | grep -c "\n")
+					popfeat=$(wget -q -O- "https://www.hentai-foundry.com/pictures/random/?enterAgree=1" | \
+						grep -io '<div class="thumbTitle"><a href=['"'"'"][^"'"'"']*['"'"'"]' | \
+						sed -e 's/^<div class="thumbTitle"><a href=["'"'"']//i' -e 's/["'"'"']$//i')
+					hflist=$(sort -t / -k 5 <<< "$popfeat")
+					counth=$(wc -l <<< "$hflist")
 					randh=$(sed -n "$(( ( RANDOM % counth ) + 1 ))p" <<< "$hflist")
-					
-					photo_id=$(curl --cookie hfcookie/c -s https://www.hentai-foundry.com"$randh" | sed -n 's/.*src="\([^"]*\)".*/\1/p' | grep "pictures.hentai" | sed "s/^/https:/")
+					wgethf=$(wget -q -O- "https://www.hentai-foundry.com$randh/?enterAgree=1")
+					photo_id=$(sed -n 's/.*src="\([^"]*\)".*/\1/p' <<< "$wgethf" | \
+						grep "pictures.hentai" | \
+						sed "s/^/https:/")
 					caption="https://www.hentai-foundry.com$randh"
 					reply_id=$message_id
 					send_photo
-					
 					return
 				;;
 				1)
@@ -576,6 +602,63 @@ function get_normal_reply() {
 				;;
 				esac
 				return
+			;;
+			"${pf}nhzip "*)
+				nhentai_id=$(sed "s/[/!]nhzip //" <<< "$first_normal" | cut -d / -f 5)
+				nhentai_check=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/1/")
+				reply_id=$message_id
+				if [ "$nhentai_check" != "" ]; then
+					numpages=$(grep 'num-pages' <<< "$nhentai_check" | sed -e 's/.*<span class="num-pages">//' -e 's/<.*//')
+					if [ "$numpages" -lt 31 ]; then
+						send_processing
+						nhentai_title=$(wget -q -O- "https://nhentai.net/g/$nhentai_id" | grep 'meta itemprop="name"' | sed -e 's/.*<meta itemprop="name" content="//' -e 's/".*//')
+						nhentai_ext=$(grep 'img src' <<< "$nhentai_check" | sed -e 's/.*<img src="//' -e 's/".*//' | sed 's/.*\.//')
+						mkdir "nhentai-$message_id"
+						for x in $(seq $numpages); do
+							nhentai_pic=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/$x/" | grep 'img src' | sed -e 's/.*<img src="//' -e 's/".*//')
+							wget -q -O "nhentai-$message_id/pic-$x.$nhentai_ext" "$nhentai_pic" &
+						done
+						wait
+						zip "$nhentai_title-$message_id.zip" "nhentai-$message_id/"*
+						document_id="@$nhentai_title-$message_id.zip"
+						to_edit_id=$processing_id edit_text="sending..." ; edit_message
+						send_document
+						to_delete_id=$edited_id ; delete_message
+						rm -r "nhentai-$message_id" "$nhentai_title-$message_id.zip"
+					else
+						text_id="too many pages (max 30)"
+						send_message
+					fi
+				else
+					text_id="invalid id"
+					send_message
+				fi
+			;;
+			"${pf}nh "*)
+				nhentai_id=$(sed "s/[/!]nh //" <<< "$first_normal" | cut -d / -f 5)
+				nhentai_check=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/1/")
+				reply_id=$message_id
+				if [ "$nhentai_check" != "" ]; then
+					numpages=$(grep 'num-pages' <<< "$nhentai_check" | sed -e 's/.*<span class="num-pages">//' -e 's/<.*//')
+					if [ "$numpages" -gt 10 ]; then
+						num=$numpages x=1
+						while [ "$num" -gt 10 ]; do 
+							x=$((x+9)) num=$((num-10))
+							numpages="$((x-9)) $x"
+							mediagroup_id=$(mediagroup_nhentai)
+							send_mediagroup
+						done
+						numpages="$((x+1)) $((x+num))"
+						mediagroup_id=$(mediagroup_nhentai)
+						send_mediagroup
+					else
+						mediagroup_id=$(mediagroup_nhentai)
+						send_mediagroup
+					fi
+				else
+					text_id="invalid id"
+					send_message
+				fi
 			;;
 			"${pf}w$trad "*)
 				search=$(sed -e "s/[/!]w$trad //" -e 's/\s/%20/g' <<< "$first_normal")
@@ -1106,6 +1189,7 @@ function get_button_reply() {
 }
 function process_reply() {
 	message=$(jshon_n -e message <<< "$input")
+	inline=$(jshon_n -e inline_query <<< "$input")
 	
 	# user database
 	username_tag=$(jshon_n -e from -e username -u <<< "$message") username_id=$(jshon_n -e from -e id -u <<< "$message") username_fname=$(jshon_n -e from -e first_name -u <<< "$message") username_lname=$(jshon_n -e from -e last_name -u <<< "$message")
@@ -1142,13 +1226,13 @@ function process_reply() {
 		fi
 	fi
 	# chat database
-	chat_title=$(jshon_n -e chat -e title -u <<< "$message") chat_id=$(jshon -e chat -e id -u <<< "$message") type=$(jshon_n -e chat -e type -u <<< "$message")
+	chat_title=$(jshon_n -e chat -e title -u <<< "$message") chat_id=$(jshon_n -e chat -e id -u <<< "$message") type=$(jshon_n -e chat -e type -u <<< "$message")
 	if [ "$chat_title" != "" ]; then
 		[ ! -d neekshell_db/chats/ ] && mkdir -p neekshell_db/chats/
 		file_chat="neekshell_db/chats/$chat_title"
 		[ ! -e "$file_chat" ] && echo "title: $chat_title" > "$file_chat" && echo -e "id: $chat_id\ntype: $type" >> "$file_chat"
 	fi
-	if [ "$type" = "private" ]; then
+	if [ "$type" = "private" ] || [ "$inline" != "" ] ; then
 		bot_chat_dir="neekshell_db/bot_chats/"
 		bot_chat_user_id=$username_id
 	else
@@ -1180,7 +1264,6 @@ function process_reply() {
 	pf=${text/[^\/\!]*/}
 	message_id=$(jshon_n -e message_id -u <<< "$message")
 	
-	inline=$(jshon_n -e inline_query <<< "$input")
 	inline_user=$(jshon_n -e from -e username -u <<< "$inline") inline_user_id=$(jshon_n -e from -e id -u <<< "$inline") inline_id=$(jshon_n -e id -u <<< "$inline") results=$(jshon_n -e query -u <<< "$inline")
 
 	callback=$(jshon_n -e callback_query <<< "$input")
