@@ -1030,16 +1030,20 @@ function get_normal_reply() {
 				return
 			;;
 			"${pf}neofetch")
-				text_id=$(neofetch --stdout)
-				text_id="<code>$(	echo '              ' "$(sed -n 1p <<< "$text_id")"
-									echo '  .-----.     ' "$(sed -n 2p <<< "$text_id")"
-									echo '.`    _  `.   ' "$(sed -n 3p <<< "$text_id")"
-									echo '`.   (_)   `. ' "$(sed -n 4p <<< "$text_id")"
-									echo '  `.        / ' "$(sed -n 5p <<< "$text_id")"
-									echo ' .`       .`  ' "$(sed -n 6p <<< "$text_id")"
-									echo '/       .`    ' "$(sed -n 8p <<< "$text_id")"
-									echo '\____.-`      ' "$(sed -n 11p <<< "$text_id")"
-									echo '              ' "$(sed -n 12p <<< "$text_id")")</code>"
+				neofetch=$(neofetch --stdout)
+				if [ "$(lsb_release -a | grep Gentoo)" != "" ]; then
+					text_id="<code>$(	echo '              ' "$(sed -n 1p <<< "$neofetch")"
+										echo '  .-----.     ' "$(sed -n 2p <<< "$neofetch")"
+										echo '.`    _  `.   ' "$(sed -n 3p <<< "$neofetch")"
+										echo '`.   (_)   `. ' "$(sed -n 4p <<< "$neofetch")"
+										echo '  `.        / ' "$(sed -n 5p <<< "$neofetch")"
+										echo ' .`       .`  ' "$(sed -n 6p <<< "$neofetch")"
+										echo '/       .`    ' "$(sed -n 8p <<< "$neofetch")"
+										echo '\____.-`      ' "$(sed -n 11p <<< "$neofetch")"
+										echo '              ' "$(sed -n 12p <<< "$neofetch")")</code>"
+					else
+					text_id="<code>$neofetch</code>"
+				fi
 				send_message
 			;;
 		esac
