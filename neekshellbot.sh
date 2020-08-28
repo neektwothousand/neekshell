@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 set -a
 TOKEN=$(cat ./token)
 TELEAPI="https://api.telegram.org/bot${TOKEN}"
@@ -1202,10 +1202,10 @@ function process_reply() {
 		file_user=neekshell_db/users/"$username_id"
 		if [ ! -e "$file_user" ]; then
 			[ "$username_tag" = "" ] && username_tag="(empty)"
-			echo "tag: $username_tag" > "$file_reply_user"
-			echo "id: $username_id" >> "$file_reply_user"
-			echo "fname: $username_fname" >> "$file_reply_user"
-			echo "lname: $username_lname" >> "$file_reply_user"
+			echo "tag: $username_tag" > "$file_user"
+			echo "id: $username_id" >> "$file_user"
+			echo "fname: $username_fname" >> "$file_user"
+			echo "lname: $username_lname" >> "$file_user"
 		fi
 		if [ "tag: $username_tag" != "$(grep "tag" "$file_user")" ]; then
 			sed -i "s/tag: .*/tag: $username_tag/" "$file_user"
@@ -1236,7 +1236,11 @@ function process_reply() {
 		file_chat="neekshell_db/chats/$chat_title"
 		[ ! -e "$file_chat" ] && echo "title: $chat_title" > "$file_chat" && echo -e "id: $chat_id\ntype: $type" >> "$file_chat"
 	fi
-	if [ "$type" = "private" ] || [ "$inline" != "" ] ; then
+	
+	callback=$(jshon_n -e callback_query <<< "$input")
+	callback_user=$(jshon_n -e from -e username -u <<< "$callback") callback_user_id=$(jshon_n -e from -e id -u <<< "$callback") callback_id=$(jshon_n -e id -u <<< "$callback") callback_data=$(jshon_n -e data -u <<< "$callback") callback_message_text=$(jshon_n -e message -e text -u <<< "$callback")
+	
+	if [ "$type" = "private" ] || [ "$inline" != "" ] || [ "$callback" != "" ]; then
 		bot_chat_dir="neekshell_db/bot_chats/"
 		bot_chat_user_id=$username_id
 	else
@@ -1269,9 +1273,6 @@ function process_reply() {
 	message_id=$(jshon_n -e message_id -u <<< "$message")
 	
 	inline_user=$(jshon_n -e from -e username -u <<< "$inline") inline_user_id=$(jshon_n -e from -e id -u <<< "$inline") inline_id=$(jshon_n -e id -u <<< "$inline") results=$(jshon_n -e query -u <<< "$inline")
-
-	callback=$(jshon_n -e callback_query <<< "$input")
-	callback_user=$(jshon_n -e from -e username -u <<< "$callback") callback_user_id=$(jshon_n -e from -e id -u <<< "$callback") callback_id=$(jshon_n -e id -u <<< "$callback") callback_data=$(jshon_n -e data -u <<< "$callback") callback_message_text=$(jshon_n -e message -e text -u <<< "$callback")
 	
 	first_normal=$(echo $photo_r $animation_r $video_r $sticker_r $audio_r $voice_r)
 	if [ "$first_normal" = "" ]; then
