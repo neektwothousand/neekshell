@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 set -a
 TOKEN=$(cat ./token)
 TELEAPI="https://api.telegram.org/bot${TOKEN}"
@@ -232,12 +232,24 @@ function get_normal_reply() {
 				if [ "$username_id" != "$reply_to_user_id" ]; then
 					prevrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
 					[ "$prevrep" = "" ] && echo "rep: 0" >> neekshell_db/users/"$reply_to_user_id" && prevrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
-					sed -i "s/rep: ./rep: $((prevrep+1))/" neekshell_db/users/"$reply_to_user_id"
+					sed -i "s/rep: .*/rep: $((prevrep+1))/" neekshell_db/users/"$reply_to_user_id"
 					newrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
 					voice_id="https://archneek.zapto.org/webaudio/respect.ogg"
 					reply_id=$reply_to_id
 					caption="respect + to $reply_to_user_fname ($newrep)"
 					send_voice
+				fi
+				return
+			;;
+			"-")
+				if [ "$username_id" != "$reply_to_user_id" ]; then
+					prevrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
+					[ "$prevrep" = "" ] && echo "rep: 0" >> neekshell_db/users/"$reply_to_user_id" && prevrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
+					sed -i "s/rep: .*/rep: $((prevrep-1))/" neekshell_db/users/"$reply_to_user_id"
+					newrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
+					reply_id=$reply_to_id
+					text_id="respect - to $reply_to_user_fname ($newrep)"
+					send_message
 				fi
 				return
 			;;
