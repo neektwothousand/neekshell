@@ -25,7 +25,7 @@ Utilities used:
 !cpustat (displays % of current cpu usage)<br />
 !neofetch (displays general system info)<br />
 !ping</br />
-!top+ (gets a top 5 highscores)<br />
+!top+ (gets a top 10 highscores)<br />
 !my+ (gets your score)<br />
 \+ (on reply to give a point)
 

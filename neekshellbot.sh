@@ -368,7 +368,7 @@ function get_normal_reply() {
 				if [ "${user_rep[*]}" = "" ]; then
 					text_id="oops, respect not found"
 				else
-					text_id=$(sort -nr <<< "$(printf '%s\n' "${user_rep[@]}")" | head -n 5)
+					text_id=$(sort -nr <<< "$(printf '%s\n' "${user_rep[@]}")" | head -n 10)
 				fi
 				reply_id=$message_id
 				send_message
