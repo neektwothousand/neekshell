@@ -230,16 +230,19 @@ function get_normal_reply() {
 		case $first_normal in	
 			"+"|"-"|"+"*|"-"*)
 				if [ "$username_id" != "$reply_to_user_id" ]; then
-					rep_sign=$(sed 's/[^-+]//' <<< "$first_normal")
+					rep_sign=$(sed 's/[^-+].*//' <<< "$first_normal")
+					rep_n=$(sed 's/[+-]//' <<< "$first_normal")
 					admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
 					prevrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
 					[ "$prevrep" = "" ] && echo "rep: 0" >> neekshell_db/users/"$reply_to_user_id" && prevrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
 					reply_id=$reply_to_id
 					if [ "$rep_n" = "" ]; then
 						sed -i "s/rep: .*/rep: $((prevrep $rep_sign 1))/" neekshell_db/users/"$reply_to_user_id"
-					elif [ "$admin" != "" ] && [ "$rep_n" -eq "$rep_n" ]; then
+					elif [ "$admin" != "" ]; then
+						[ "$rep_n" -eq "$rep_n" ] || return
 						sed -i "s/rep: .*/rep: $((prevrep $rep_sign rep_n))/" neekshell_db/users/"$reply_to_user_id"
 					else
+						[ "$rep_n" -eq "$rep_n" ] || return
 						text_id="<code>Access denied</code>"
 						reply_id=$message_id
 						send_message
@@ -1303,7 +1306,6 @@ function process_reply() {
 	if [ "${first_normal/*[^0-9]/}" != "" ]; then 
 		normaldice=$(tr -d '/![:alpha:]' <<< "$first_normal" | sed 's/\*.*//g')
 		mul=$(tr -d '/![:alpha:]' <<< "$first_normal" | sed 's/.*\*//g')
-		rep_n=$(sed 's/[+-]//' <<< "$first_normal")
 		trad=$(sed -e 's/[!/]w//' -e 's/\s.*//' <<< "$first_normal" | grep "enit\|iten")
 	fi
 	
