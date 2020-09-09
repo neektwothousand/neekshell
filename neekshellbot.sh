@@ -228,10 +228,14 @@ function delete_message() {
 function get_normal_reply() {
 	if [ "${pf}" = "" ]; then
 		case $first_normal in	
-			"+"|"-"|"+"*|"-"*)
+			"respect+"|"+"|"-"|"+"*|"-"*)
 				if [ "$username_id" != "$reply_to_user_id" ]; then
-					rep_sign=$(sed 's/[^-+].*//' <<< "$first_normal")
-					rep_n=$(sed 's/[+-]//' <<< "$first_normal")
+					if [ "$(grep respect <<< "$first_normal")" = "" ]; then
+						rep_sign=$(sed 's/[^-+].*//' <<< "$first_normal")
+						rep_n=$(sed 's/[+-]//' <<< "$first_normal")
+					else
+						rep_sign=$(sed 's/respect//' <<< "$first_normal")
+					fi
 					admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
 					prevrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
 					[ "$prevrep" = "" ] && echo "rep: 0" >> neekshell_db/users/"$reply_to_user_id" && prevrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
@@ -250,15 +254,20 @@ function get_normal_reply() {
 					fi
 					newrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
 					voice_id="https://archneek.zapto.org/webaudio/respect.ogg"
-					case "$rep_sign" in 
-						"+") 
-							caption="respect + to $reply_to_user_fname ($newrep)"
-							send_voice
-						;;
-						"-")
-							text_id="respect - to $reply_to_user_fname ($newrep)"
-							send_message
-					esac
+					if [ "$(grep respect <<< "$first_normal")" = "" ]; then
+						case "$rep_sign" in 
+							"+") 
+								text_id="respect + to $reply_to_user_fname ($newrep)"
+								send_message
+							;;
+							"-")
+								text_id="respect - to $reply_to_user_fname ($newrep)"
+								send_message
+						esac
+					else
+						caption="respect + to $reply_to_user_fname ($newrep)"
+						send_voice
+					fi
 				fi
 				return
 			;;
@@ -811,7 +820,7 @@ function get_normal_reply() {
 			"${pf}owoifer"|"${pf}cringe")
 				reply=$(jshon_n -e reply_to_message -e text -u <<< "$message")
 				if [ "$reply" != "" ]; then
-					[ "$first_normal" = "${pf}cringe" ] && owoarray=(" 🥵 " " 🙈 " " 🤣 " " 😘 " " 🥺 " " 💁‍♀️ " " OwO " " 😳 " " 🤠 " " 🤪 " " 😜 " " 🤬 " " 🤧 " " 🦹‍♂ ") || owoarray=(" owo " " ewe " " uwu ")
+					[ "$first_normal" = "${pf}cringe" ] && owoarray=("🥵" "🙈" "🤣" "😘" "🥺" "💁‍♀️" "OwO" "😳" "🤠" "🤪" "😜" "🤬" "🤧" "🦹‍♂" "🍌") || owoarray=("owo" "ewe" "uwu")
 					numberspace=$(tr -dc ' ' <<< "$reply" | wc -c)
 					
 					for x in $(seq $((numberspace / 8))); do

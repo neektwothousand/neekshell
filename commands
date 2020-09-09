@@ -14,6 +14,7 @@ normal
 !ping
 !top+ (gets a top 10 highscores)
 !my+ (gets your score)
+respect+ (on reply to give a point with audio)
 + (on reply to give a point)
 endnormal
 
