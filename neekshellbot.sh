@@ -228,28 +228,34 @@ function delete_message() {
 function get_normal_reply() {
 	if [ "${pf}" = "" ]; then
 		case $first_normal in	
-			"+")
+			"+"|"-"|"+"*|"-"*)
 				if [ "$username_id" != "$reply_to_user_id" ]; then
+					rep_sign=$(sed 's/[^-+]//' <<< "$first_normal")
+					admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
 					prevrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
 					[ "$prevrep" = "" ] && echo "rep: 0" >> neekshell_db/users/"$reply_to_user_id" && prevrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
-					sed -i "s/rep: .*/rep: $((prevrep+1))/" neekshell_db/users/"$reply_to_user_id"
+					reply_id=$reply_to_id
+					if [ "$rep_n" = "" ]; then
+						sed -i "s/rep: .*/rep: $((prevrep $rep_sign 1))/" neekshell_db/users/"$reply_to_user_id"
+					elif [ "$admin" != "" ] && [ "$rep_n" -eq "$rep_n" ]; then
+						sed -i "s/rep: .*/rep: $((prevrep $rep_sign rep_n))/" neekshell_db/users/"$reply_to_user_id"
+					else
+						text_id="<code>Access denied</code>"
+						reply_id=$message_id
+						send_message
+						return
+					fi
 					newrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
 					voice_id="https://archneek.zapto.org/webaudio/respect.ogg"
-					reply_id=$reply_to_id
-					caption="respect + to $reply_to_user_fname ($newrep)"
-					send_voice
-				fi
-				return
-			;;
-			"-")
-				if [ "$username_id" != "$reply_to_user_id" ]; then
-					prevrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
-					[ "$prevrep" = "" ] && echo "rep: 0" >> neekshell_db/users/"$reply_to_user_id" && prevrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
-					sed -i "s/rep: .*/rep: $((prevrep-1))/" neekshell_db/users/"$reply_to_user_id"
-					newrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
-					reply_id=$reply_to_id
-					text_id="respect - to $reply_to_user_fname ($newrep)"
-					send_message
+					case "$rep_sign" in 
+						"+") 
+							caption="respect + to $reply_to_user_fname ($newrep)"
+							send_voice
+						;;
+						"-")
+							text_id="respect - to $reply_to_user_fname ($newrep)"
+							send_message
+					esac
 				fi
 				return
 			;;
@@ -1294,8 +1300,12 @@ function process_reply() {
 		fi
 	fi
 	
-	[ "${first_normal/*[^0-9]/}" != "" ] && normaldice=$(echo "$first_normal" | tr -d '/![:alpha:]' | sed 's/\*.*//g') mul=$(echo "$first_normal" | tr -d '/![:alpha:]' | sed 's/.*\*//g')
-	trad=$(sed -e 's/[!/]w//' -e 's/\s.*//' <<< "$first_normal" | grep "enit\|iten")
+	if [ "${first_normal/*[^0-9]/}" != "" ]; then 
+		normaldice=$(tr -d '/![:alpha:]' <<< "$first_normal" | sed 's/\*.*//g')
+		mul=$(tr -d '/![:alpha:]' <<< "$first_normal" | sed 's/.*\*//g')
+		rep_n=$(sed 's/[+-]//' <<< "$first_normal")
+		trad=$(sed -e 's/[!/]w//' -e 's/\s.*//' <<< "$first_normal" | grep "enit\|iten")
+	fi
 	
 	if [ "$first_normal" != "" ]; then
 		get_normal_reply
