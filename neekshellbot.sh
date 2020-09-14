@@ -225,6 +225,27 @@ function delete_message() {
 		--form-string "chat_id=$chat_id" \
 		--form-string "message_id=$to_delete_id"
 }
+function get_file_type() {
+	[ "$1" = "reply" ] && message=$reply_to_message
+	text=$(jshon_n -e text -u <<< "$message") photo_r=$(jshon_n -e photo -e 0 -e file_id -u <<< "$message") animation_r=$(jshon_n -e animation -e file_id -u <<< "$message") video_r=$(jshon_n -e video -e file_id -u <<< "$message") sticker_r=$(jshon_n -e sticker -e file_id -u <<< "$message") audio_r=$(jshon_n -e audio -e file_id -u <<< "$message") voice_r=$(jshon_n -e voice -e file_id -u <<< "$message") document_r=$(jshon_n -e document -e file_id -u <<< "$message")
+	if [ "$text" != "" ]; then
+		file_type="text"
+	elif [ "$sticker_r" != "" ]; then
+		file_type="sticker"
+	elif [ "$animation_r" != "" ]; then
+		file_type="animation"
+	elif [ "$photo_r" != "" ]; then
+		file_type="photo"
+	elif [ "$video_r" != "" ]; then
+		file_type="video"
+	elif [ "$audio_r" != "" ]; then
+		file_type="audio"
+	elif [ "$voice_r" != "" ]; then
+		file_type="voice"
+	elif [ "$document_r" != "" ]; then
+		file_type="document"
+	fi
+}
 function get_normal_reply() {
 	if [ "${pf}" = "" ]; then
 		case $first_normal in	
@@ -276,7 +297,8 @@ function get_normal_reply() {
 				text_id=$first_normal photo_id=$first_normal animation_id=$first_normal video_id=$first_normal sticker_id=$first_normal audio_id=$first_normal voice_id=$first_normal document_id=$first_normal
 				bc_users=$(grep -r -- "$bot_chat_user_id" $bot_chat_dir | sed 's/.*:\s//' | tr ' ' '\n' | grep -v -- "$bot_chat_user_id")
 				bc_users_num=$(wc -l <<< "$bc_users")
-				case $input_type in
+				get_file_type
+				case $file_type in
 					text)
 					if [ "$reply_to_text" != "" ]; then
 						if [ "$(wc -c <<< "$reply_to_text")" -gt 20 ]; then
@@ -285,8 +307,9 @@ function get_normal_reply() {
 							quote=$(grep -v '|' <<< "$reply_to_text" | sed 's/^/| /g')
 						fi
 					text_id=$(echo "$quote" ; echo "" ; echo "$text_id")
-					elif [ "$reply_to_id" != "" ] && [ "$reply_to_text" = "" ]; then
-						text_id=$(echo "| [$input_type]" ; echo "" ; echo "$text_id")
+					elif [ "$reply_to_message" != "" ] && [ "$reply_to_text" = "" ]; then
+						get_file_type reply
+						text_id=$(echo "| [$file_type]" ; echo "" ; echo "$text_id")
 					fi
 					for c in $(seq "$bc_users_num"); do
 						chat_id=$(sed -n "${c}"p <<< "$bc_users")
@@ -783,7 +806,7 @@ function get_normal_reply() {
 				if [ "$admin" != "" ]; then
 					group_broadcast_chats=$(grep -rnw neekshell_db/chats/ -e 'supergroup' | cut -d ':' -f 1 | sed 's|neekshell_db/chats/||')
 					private_broadcast_chats=$(grep -r users neekshell_db/bot_chats/ | sed 's/.*: //' | tr ' ' '\n' | sed '/^$/d')
-					listchats=$(echo -e -- "$group_broadcast_chats\n$private_broadcast_chats" | grep -v -- "$chat_id")
+					listchats=$(echo -e -- "$group_broadcast_chats\n$private_broadcast_chats" | grep -vw -- "$chat_id")
 					numchats=$(wc -l <<< "$listchats")
 					text_id=$(sed "s/[!/]broadcast//" <<< "$first_normal")
 					if [ "$text_id" != "" ]; then
@@ -792,26 +815,9 @@ function get_normal_reply() {
 							send_message
 							sleep 2
 						done
-					elif [ "$reply_to_id" != "" ]; then
-						text_id=$(jshon_n -e reply_to_message -e text -u <<< "$message") photo_id=$(jshon_n -e reply_to_message -e photo -e 0 -e file_id -u <<< "$message") animation_id=$(jshon_n -e reply_to_message -e animation -e file_id -u <<< "$message") video_id=$(jshon_n -e reply_to_message -e video -e file_id -u <<< "$message") sticker_id=$(jshon_n -e reply_to_message -e sticker -e file_id -u <<< "$message") audio_id=$(jshon_n -e reply_to_message -e audio -e file_id -u <<< "$message") voice_id=$(jshon_n -e reply_to_message -e voice -e file_id -u <<< "$message") document_id=$(jshon_n -e reply_to_message -e document -e file_id -u <<< "$message")
-						if [ "$text_id" != "" ]; then
-							input_type_reply="text"
-						elif [ "$sticker_id" != "" ]; then
-							input_type_reply="sticker"
-						elif [ "$animation_id" != "" ]; then
-							input_type_reply="animation"
-						elif [ "$photo_id" != "" ]; then
-							input_type_reply="photo"
-						elif [ "$video_id" != "" ]; then
-							input_type_reply="video"
-						elif [ "$audio_id" != "" ]; then
-							input_type_reply="audio"
-						elif [ "$voice_id" != "" ]; then
-							input_type_reply="voice"
-						elif [ "$document_id" != "" ]; then
-							input_type_reply="document"
-						fi
-						case $input_type_reply in
+					elif [ "$reply_to_message" != "" ]; then
+						get_file_type reply
+						case $file_type in
 							text)
 								for x in $(seq "$numchats"); do
 									chat_id=$(sed -n ${x}p <<< "$listchats")
@@ -1307,9 +1313,9 @@ function process_reply() {
 			sed -i "s/lname: .*/lname: $username_lname/" "$file_user"
 		fi
 	fi
-	reply_to_id=$(jshon_n -e reply_to_message -e message_id -u <<< "$message")
-	if [ "$reply_to_id" != "" ]; then
-		reply_to_user_id=$(jshon_n -e reply_to_message -e from -e id -u <<< "$message") reply_to_user_tag=$(jshon_n -e reply_to_message -e from -e username -u <<< "$message") reply_to_user_fname=$(jshon_n -e reply_to_message -e from -e first_name -u <<< "$message") reply_to_user_lname=$(jshon_n -e reply_to_message -e from -e last_name -u <<< "$message") reply_to_text=$(jshon_n -e reply_to_message -e text -u <<< "$message")
+	reply_to_message=$(jshon_n -e reply_to_message <<< "$message")
+	if [ "$reply_to_message" != "" ]; then
+		reply_to_id=$(jshon_n -e message_id -u <<< "$reply_to_message") reply_to_user_id=$(jshon_n -e from -e id -u <<< "$reply_to_message") reply_to_user_tag=$(jshon_n -e from -e username -u <<< "$reply_to_message") reply_to_user_fname=$(jshon_n -e from -e first_name -u <<< "$reply_to_message") reply_to_user_lname=$(jshon_n -e from -e last_name -u <<< "$reply_to_message") reply_to_text=$(jshon_n -e text -u <<< "$reply_to_message")
 		[ ! -d neekshell_db/users/ ] && mkdir -p neekshell_db/users/
 		file_reply_user=neekshell_db/users/"$reply_to_user_id"
 		if [ ! -e "$file_reply_user" ]; then
@@ -1339,25 +1345,9 @@ function process_reply() {
 		bot_chat_user_id=$chat_id
 	fi
 	
+	get_file_type
+	
 	[ ! -e ./botinfo ] && touch ./botinfo && wget -q -O ./botinfo "${TELEAPI}/getMe"
-	text=$(jshon_n -e text -u <<< "$message") photo_r=$(jshon_n -e photo -e 0 -e file_id -u <<< "$message") animation_r=$(jshon_n -e animation -e file_id -u <<< "$message") video_r=$(jshon_n -e video -e file_id -u <<< "$message") sticker_r=$(jshon_n -e sticker -e file_id -u <<< "$message") audio_r=$(jshon_n -e audio -e file_id -u <<< "$message") voice_r=$(jshon_n -e voice -e file_id -u <<< "$message") document_r=$(jshon_n -e document -e file_id -u <<< "$message")
-	if [ "$text" != "" ]; then
-		input_type="text"
-	elif [ "$sticker_r" != "" ]; then
-		input_type="sticker"
-	elif [ "$animation_r" != "" ]; then
-		input_type="animation"
-	elif [ "$photo_r" != "" ]; then
-		input_type="photo"
-	elif [ "$video_r" != "" ]; then
-		input_type="video"
-	elif [ "$audio_r" != "" ]; then
-		input_type="audio"
-	elif [ "$voice_r" != "" ]; then
-		input_type="voice"
-	elif [ "$document_r" != "" ]; then
-		input_type="document"
-	fi
 	pf=${text/[^\/\!]*/}
 	message_id=$(jshon_n -e message_id -u <<< "$message")
 	
@@ -1386,7 +1376,7 @@ function process_reply() {
 	fi
 	
 #	if	[ "$first_normal" != "" ] && [ "$type" = "private" ] ; then
-#		echo "normal=$first_normal" ; echo "from ${username_tag}, type = $input_type, at $(date "+%Y-%m-%d %H:%M")" ; echo "--"
+#		echo "normal=$first_normal" ; echo "from ${username_tag}, type = $file_type, at $(date "+%Y-%m-%d %H:%M")" ; echo "--"
 #	elif [ "$results" != "" ]; then
 #		echo "inline=${results}" ; echo "from ${inline_user} at $(date "+%Y-%m-%d %H:%M")" ; echo "--"
 #	fi
