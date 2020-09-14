@@ -111,12 +111,12 @@ function mediagroup_nhentai() {
 EOF
 }
 function send_message() {
-	send_message_id=$(curl -s "${TELEAPI}/sendMessage" \
+	curl -s "${TELEAPI}/sendMessage" \
 		--form-string "chat_id=$chat_id" \
 		--form-string "parse_mode=html" \
 		--form-string "reply_to_message_id=$reply_id" \
 		--form-string "reply_markup=$markup_id" \
-		--form-string "text=$text_id")
+		--form-string "text=$text_id"
 }
 function send_photo() {
 	curl -s "${TELEAPI}/sendPhoto" \
@@ -241,10 +241,10 @@ function get_normal_reply() {
 					[ "$prevrep" = "" ] && echo "rep: 0" >> neekshell_db/users/"$reply_to_user_id" && prevrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
 					reply_id=$reply_to_id
 					if [ "$rep_n" = "" ]; then
-						sed -i "s/rep: .*/rep: $((prevrep $rep_sign 1))/" neekshell_db/users/"$reply_to_user_id"
+						sed -i "s/rep: .*/rep: $(bc <<< "$prevrep $rep_sign 1")/" neekshell_db/users/"$reply_to_user_id"
 					elif [ "$admin" != "" ]; then
 						[ "$rep_n" -eq "$rep_n" ] || return
-						sed -i "s/rep: .*/rep: $((prevrep $rep_sign rep_n))/" neekshell_db/users/"$reply_to_user_id"
+						sed -i "s/rep: .*/rep: $(bc <<< "$prevrep $rep_sign $rep_n")/" neekshell_db/users/"$reply_to_user_id"
 					else
 						[ "$rep_n" -eq "$rep_n" ] || return
 						text_id="<code>Access denied</code>"
@@ -278,9 +278,19 @@ function get_normal_reply() {
 				bc_users_num=$(wc -l <<< "$bc_users")
 				case $input_type in
 					text)
+					if [ "$reply_to_text" != "" ]; then
+						if [ "$(wc -c <<< "$reply_to_text")" -gt 20 ]; then
+							quote="$(head -c 17 <<< "$reply_to_text" | sed 's/^/| /g')..."
+						else
+							quote=$(grep -v '|' <<< "$reply_to_text" | sed 's/^/| /g')
+						fi
+					text_id=$(echo "$quote" ; echo "" ; echo "$text_id")
+					elif [ "$reply_to_id" != "" ] && [ "$reply_to_text" = "" ]; then
+						text_id=$(echo "| [$input_type]" ; echo "" ; echo "$text_id")
+					fi
 					for c in $(seq "$bc_users_num"); do
 						chat_id=$(sed -n "${c}"p <<< "$bc_users")
-						send_message
+						send_message_id=$(send_message)
 						if [ "$(jshon_n -e description -u <<< "$send_message_id")" = "Forbidden: bot was blocked by the user" ]; then
 							sed -i "s/$chat_id //" "$(grep -r -- "$bot_chat_user_id" $bot_chat_dir | cut -d : -f 1)"
 						fi
@@ -771,36 +781,86 @@ function get_normal_reply() {
 			"${pf}broadcast "*|"${pf}broadcast")
 				admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
 				if [ "$admin" != "" ]; then
-					listchats=$(grep -rnw neekshell_db/chats/ -e 'supergroup' | cut -d ':' -f 1)
+					group_broadcast_chats=$(grep -rnw neekshell_db/chats/ -e 'supergroup' | cut -d ':' -f 1 | sed 's|neekshell_db/chats/||')
+					private_broadcast_chats=$(grep -r users neekshell_db/bot_chats/ | sed 's/.*: //' | tr ' ' '\n' | sed '/^$/d')
+					listchats=$(echo -e -- "$group_broadcast_chats\n$private_broadcast_chats" | grep -v -- "$chat_id")
 					numchats=$(wc -l <<< "$listchats")
 					text_id=$(sed "s/[!/]broadcast//" <<< "$first_normal")
 					if [ "$text_id" != "" ]; then
 						for x in $(seq "$numchats"); do
-							brid[$x]=$(sed -n 2p "$(sed -n "${x}"p <<< "$listchats")" | sed 's/id: //')
-							chat_id=${brid[$x]}
+							chat_id=$(sed -n ${x}p <<< "$listchats")
 							send_message
 							sleep 2
 						done
 					elif [ "$reply_to_id" != "" ]; then
-						text_id=$(jshon_n -e reply_to_message -e text -u <<< "$message")
-						photo_id=$(jshon_n -e reply_to_message -e photo -e 0 -e file_id -u <<< "$message")
-						animation_id=$(jshon_n -e reply_to_message -e animation -e file_id -u <<< "$message")
-						video_id=$(jshon_n -e reply_to_message -e video -e file_id -u <<< "$message")
-						sticker_id=$(jshon_n -e reply_to_message -e sticker -e file_id -u <<< "$message")
-						audio_id=$(jshon_n -e reply_to_message -e audio -e file_id -u <<< "$message")
-						voice_id=$(jshon_n -e reply_to_message -e voice -e file_id -u <<< "$message")
-						for x in $(seq "$numchats"); do
-							brid[$x]=$(sed -n 2p "$(sed -n "${x}"p <<< "$listchats")" | sed 's/id: //')
-							chat_id=${brid[$x]}
-							[ "$text_id" != "" ] && send_message
-							[ "$photo_id" != "" ] && send_photo
-							[ "$animation_id" != "" ] && send_animation
-							[ "$video_id" != "" ] && send_video
-							[ "$sticker_id" != "" ] && send_sticker
-							[ "$audio_id" != "" ] && send_audio
-							[ "$voice_id" != "" ] && send_voice
-							sleep 2
-						done
+						text_id=$(jshon_n -e reply_to_message -e text -u <<< "$message") photo_id=$(jshon_n -e reply_to_message -e photo -e 0 -e file_id -u <<< "$message") animation_id=$(jshon_n -e reply_to_message -e animation -e file_id -u <<< "$message") video_id=$(jshon_n -e reply_to_message -e video -e file_id -u <<< "$message") sticker_id=$(jshon_n -e reply_to_message -e sticker -e file_id -u <<< "$message") audio_id=$(jshon_n -e reply_to_message -e audio -e file_id -u <<< "$message") voice_id=$(jshon_n -e reply_to_message -e voice -e file_id -u <<< "$message") document_id=$(jshon_n -e reply_to_message -e document -e file_id -u <<< "$message")
+						if [ "$text_id" != "" ]; then
+							input_type_reply="text"
+						elif [ "$sticker_id" != "" ]; then
+							input_type_reply="sticker"
+						elif [ "$animation_id" != "" ]; then
+							input_type_reply="animation"
+						elif [ "$photo_id" != "" ]; then
+							input_type_reply="photo"
+						elif [ "$video_id" != "" ]; then
+							input_type_reply="video"
+						elif [ "$audio_id" != "" ]; then
+							input_type_reply="audio"
+						elif [ "$voice_id" != "" ]; then
+							input_type_reply="voice"
+						elif [ "$document_id" != "" ]; then
+							input_type_reply="document"
+						fi
+						case $input_type_reply in
+							text)
+								for x in $(seq "$numchats"); do
+									chat_id=$(sed -n ${x}p <<< "$listchats")
+									send_message
+								done
+							;;
+							photo)
+								for x in $(seq "$numchats"); do
+									chat_id=$(sed -n ${x}p <<< "$listchats")
+									send_photo
+								done
+							;;
+							animation)
+								for x in $(seq "$numchats"); do
+									chat_id=$(sed -n ${x}p <<< "$listchats")
+									send_animation
+								done
+							;;
+							video)
+								for x in $(seq "$numchats"); do
+									chat_id=$(sed -n ${x}p <<< "$listchats")
+									send_video
+								done
+							;;
+							sticker)
+								for x in $(seq "$numchats"); do
+									chat_id=$(sed -n ${x}p <<< "$listchats")
+									send_sticker
+								done
+							;;
+							audio)
+								for x in $(seq "$numchats"); do
+									chat_id=$(sed -n ${x}p <<< "$listchats")
+									send_audio
+								done
+							;;
+							voice)
+								for x in $(seq "$numchats"); do
+									chat_id=$(sed -n ${x}p <<< "$listchats")
+									send_voice
+								done
+							;;
+							document)
+								for x in $(seq "$numchats"); do
+									chat_id=$(sed -n ${x}p <<< "$listchats")
+									send_document
+								done
+							;;
+						esac
 					else
 						text_id="Write something after broadcast command or reply to forward"
 						send_message
@@ -808,6 +868,7 @@ function get_normal_reply() {
 					return
 				else
 					text_id="<code>Access denied</code>"
+					send_message
 				fi
 				return
 			;;
@@ -843,10 +904,9 @@ function get_normal_reply() {
 				return
 			;;
 			"${pf}sed "*)
-				reply=$(jshon_n -e reply_to_message -e text -u <<< "$message")
 				if [ "$reply" != "" ]; then
 					regex=$(sed -e 's/[/!]sed //' <<< "$first_normal")
-					sed=$(sed -En "s/$regex/p" <<< "$reply")
+					sed=$(sed -E "s/$regex/" <<< "$reply_to_text")
 					text_id=$(echo "<b>FTFY:</b>" ; echo "$sed")
 					reply_id=$reply_to_id
 				else
@@ -1247,8 +1307,9 @@ function process_reply() {
 			sed -i "s/lname: .*/lname: $username_lname/" "$file_user"
 		fi
 	fi
-	reply_to_id=$(jshon_n -e reply_to_message -e message_id -u <<< "$message") reply_to_user_id=$(jshon_n -e reply_to_message -e from -e id -u <<< "$message") reply_to_user_tag=$(jshon_n -e reply_to_message -e from -e username -u <<< "$message") reply_to_user_fname=$(jshon_n -e reply_to_message -e from -e first_name -u <<< "$message") reply_to_user_lname=$(jshon_n -e reply_to_message -e from -e last_name -u <<< "$message")
-	if [ "$reply_to_user_id" != "" ]; then
+	reply_to_id=$(jshon_n -e reply_to_message -e message_id -u <<< "$message")
+	if [ "$reply_to_id" != "" ]; then
+		reply_to_user_id=$(jshon_n -e reply_to_message -e from -e id -u <<< "$message") reply_to_user_tag=$(jshon_n -e reply_to_message -e from -e username -u <<< "$message") reply_to_user_fname=$(jshon_n -e reply_to_message -e from -e first_name -u <<< "$message") reply_to_user_lname=$(jshon_n -e reply_to_message -e from -e last_name -u <<< "$message") reply_to_text=$(jshon_n -e reply_to_message -e text -u <<< "$message")
 		[ ! -d neekshell_db/users/ ] && mkdir -p neekshell_db/users/
 		file_reply_user=neekshell_db/users/"$reply_to_user_id"
 		if [ ! -e "$file_reply_user" ]; then
@@ -1263,7 +1324,7 @@ function process_reply() {
 	chat_title=$(jshon_n -e chat -e title -u <<< "$message") chat_id=$(jshon_n -e chat -e id -u <<< "$message") type=$(jshon_n -e chat -e type -u <<< "$message")
 	if [ "$chat_title" != "" ]; then
 		[ ! -d neekshell_db/chats/ ] && mkdir -p neekshell_db/chats/
-		file_chat="neekshell_db/chats/$chat_title"
+		file_chat=neekshell_db/chats/"$chat_id"
 		[ ! -e "$file_chat" ] && echo "title: $chat_title" > "$file_chat" && echo -e "id: $chat_id\ntype: $type" >> "$file_chat"
 	fi
 	
@@ -1280,7 +1341,6 @@ function process_reply() {
 	
 	[ ! -e ./botinfo ] && touch ./botinfo && wget -q -O ./botinfo "${TELEAPI}/getMe"
 	text=$(jshon_n -e text -u <<< "$message") photo_r=$(jshon_n -e photo -e 0 -e file_id -u <<< "$message") animation_r=$(jshon_n -e animation -e file_id -u <<< "$message") video_r=$(jshon_n -e video -e file_id -u <<< "$message") sticker_r=$(jshon_n -e sticker -e file_id -u <<< "$message") audio_r=$(jshon_n -e audio -e file_id -u <<< "$message") voice_r=$(jshon_n -e voice -e file_id -u <<< "$message") document_r=$(jshon_n -e document -e file_id -u <<< "$message")
-	
 	if [ "$text" != "" ]; then
 		input_type="text"
 	elif [ "$sticker_r" != "" ]; then
@@ -1298,7 +1358,6 @@ function process_reply() {
 	elif [ "$document_r" != "" ]; then
 		input_type="document"
 	fi
-	
 	pf=${text/[^\/\!]*/}
 	message_id=$(jshon_n -e message_id -u <<< "$message")
 	
