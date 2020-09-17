@@ -275,6 +275,11 @@ function get_normal_reply() {
 					fi
 					newrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
 					voice_id="https://archneek.zapto.org/webaudio/respect.ogg"
+					
+					# check existing lock+
+					[ ! -d .lock+/ ] && mkdir .lock+/
+					[ -e .lock+/"$username_id"-lock ] && return
+					
 					if [ "$(grep respect <<< "$first_normal")" = "" ]; then
 						case "$rep_sign" in 
 							"+") 
@@ -289,6 +294,9 @@ function get_normal_reply() {
 						caption="respect + to $reply_to_user_fname ($newrep)"
 						send_voice
 					fi
+					
+					# create lock+
+					touch .lock+/"$username_id"-lock && $(sleep $((3600 + (RANDOM % 99) )) && rm .lock+/"$username_id") & disown
 				fi
 				return
 			;;
