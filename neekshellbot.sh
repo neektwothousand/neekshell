@@ -296,7 +296,7 @@ function get_normal_reply() {
 					fi
 					
 					# create lock+
-					touch .lock+/"$username_id"-lock && $(sleep $((3600 + (RANDOM % 99) )) && rm .lock+/"$username_id") & disown
+					touch .lock+/"$username_id"-lock && $(sleep $((30 + (RANDOM % 30) )) ; rm .lock+/"$username_id"-lock) & disown
 				fi
 				return
 			;;
