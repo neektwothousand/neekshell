@@ -918,7 +918,7 @@ function get_normal_reply() {
 				return
 			;;
 			"${pf}sed "*)
-				if [ "$reply" != "" ]; then
+				if [ "$reply_to_text" != "" ]; then
 					regex=$(sed -e 's/[/!]sed //' <<< "$first_normal")
 					sed=$(sed -E "s/$regex/" <<< "$reply_to_text")
 					text_id=$(echo "<b>FTFY:</b>" ; echo "$sed")
