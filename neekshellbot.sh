@@ -892,10 +892,13 @@ function get_normal_reply() {
 				send_message
 				return
 			;;
-			"${pf}owoifer"|"${pf}cringe")
+			"${pf}owoifer"|"${pf}owo"|"${pf}cringe")
 				reply=$(jshon_n -e reply_to_message -e text -u <<< "$message")
 				if [ "$reply" != "" ]; then
-					[ "$first_normal" = "${pf}cringe" ] && owoarray=("🥵" "🙈" "🤣" "😘" "🥺" "💁‍♀️" "OwO" "😳" "🤠" "🤪" "😜" "🤬" "🤧" "🦹‍♂" "🍌") || owoarray=("owo" "ewe" "uwu")
+					case $first_normal in
+						"${pf}cringe") owoarray=("🥵" "🙈" "🤣" "😘" "🥺" "💁‍♀️" "OwO" "😳" "🤠" "🤪" "😜" "🤬" "🤧" "🦹‍♂" "🍌") ;;
+						"${pf}owoifer"|"${pf}owo") owoarray=("owo" "ewe" "uwu" ":3" "x3")
+					esac
 					numberspace=$(tr -dc ' ' <<< "$reply" | wc -c)
 					
 					for x in $(seq $((numberspace / 8))); do
