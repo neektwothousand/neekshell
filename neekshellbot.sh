@@ -312,7 +312,7 @@ function get_normal_reply() {
 						if [ "$(wc -c <<< "$reply_to_text")" -gt 20 ]; then
 							quote="$(head -c 17 <<< "$reply_to_text" | sed 's/^/| /g')..."
 						else
-							quote=$(grep -v '|' <<< "$reply_to_text" | sed 's/^/| /g')
+							quote=$(grep -v '|' <<< "$reply_to_text" | sed 1d | sed 's/^/| /g')
 						fi
 					text_id=$(echo "$quote" ; echo "" ; echo "$text_id")
 					elif [ "$reply_to_message" != "" ] && [ "$reply_to_text" = "" ]; then
@@ -1135,6 +1135,7 @@ function get_normal_reply() {
 			;;
 			"${pf}neofetch")
 				neofetch=$(neofetch --stdout)
+				reply_id=$message_id
 				if [ "$(lsb_release -a | grep Gentoo)" != "" ]; then
 					text_id="<code>$(	echo '              ' "$(sed -n 1p <<< "$neofetch")"
 										echo '  .-----.     ' "$(sed -n 2p <<< "$neofetch")"

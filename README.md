@@ -24,7 +24,7 @@ Utilities used:
 !tag [[@username] (new tag text)] (in private)<br />
 !cpustat (displays % of current cpu usage)<br />
 !neofetch (displays general system info)<br />
-!ping</br />
+!ping<br />
 !top+ (gets a top 10 highscores)<br />
 !my+ (gets your score)<br />
 respect+ (on reply to give a point with audio)<br />
