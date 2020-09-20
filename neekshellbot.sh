@@ -227,22 +227,22 @@ function delete_message() {
 }
 function get_file_type() {
 	[ "$1" = "reply" ] && message=$reply_to_message
-	text=$(jshon_n -e text -u <<< "$message") photo_r=$(jshon_n -e photo -e 0 -e file_id -u <<< "$message") animation_r=$(jshon_n -e animation -e file_id -u <<< "$message") video_r=$(jshon_n -e video -e file_id -u <<< "$message") sticker_r=$(jshon_n -e sticker -e file_id -u <<< "$message") audio_r=$(jshon_n -e audio -e file_id -u <<< "$message") voice_r=$(jshon_n -e voice -e file_id -u <<< "$message") document_r=$(jshon_n -e document -e file_id -u <<< "$message")
-	if [ "$text" != "" ]; then
+	text_id=$(jshon_n -e text -u <<< "$message") photo_id=$(jshon_n -e photo -e 0 -e file_id -u <<< "$message") animation_id=$(jshon_n -e animation -e file_id -u <<< "$message") video_id=$(jshon_n -e video -e file_id -u <<< "$message") sticker_id=$(jshon_n -e sticker -e file_id -u <<< "$message") audio_id=$(jshon_n -e audio -e file_id -u <<< "$message") voice_id=$(jshon_n -e voice -e file_id -u <<< "$message") document_id=$(jshon_n -e document -e file_id -u <<< "$message")
+	if [ "$text_id" != "" ]; then
 		file_type="text"
-	elif [ "$sticker_r" != "" ]; then
+	elif [ "$sticker_id" != "" ]; then
 		file_type="sticker"
-	elif [ "$animation_r" != "" ]; then
+	elif [ "$animation_id" != "" ]; then
 		file_type="animation"
-	elif [ "$photo_r" != "" ]; then
+	elif [ "$photo_id" != "" ]; then
 		file_type="photo"
-	elif [ "$video_r" != "" ]; then
+	elif [ "$video_id" != "" ]; then
 		file_type="video"
-	elif [ "$audio_r" != "" ]; then
+	elif [ "$audio_id" != "" ]; then
 		file_type="audio"
-	elif [ "$voice_r" != "" ]; then
+	elif [ "$voice_id" != "" ]; then
 		file_type="voice"
-	elif [ "$document_r" != "" ]; then
+	elif [ "$document_id" != "" ]; then
 		file_type="document"
 	fi
 }
@@ -302,7 +302,7 @@ function get_normal_reply() {
 			;;
 			*)
 			if [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" != "" ]; then
-				text_id=$first_normal photo_id=$first_normal animation_id=$first_normal video_id=$first_normal sticker_id=$first_normal audio_id=$first_normal voice_id=$first_normal document_id=$first_normal
+				#text_id=$first_normal photo_id=$first_normal animation_id=$first_normal video_id=$first_normal sticker_id=$first_normal audio_id=$first_normal voice_id=$first_normal document_id=$first_normal
 				bc_users=$(grep -r -- "$bot_chat_user_id" $bot_chat_dir | sed 's/.*:\s//' | tr ' ' '\n' | grep -v -- "$bot_chat_user_id")
 				bc_users_num=$(wc -l <<< "$bc_users")
 				get_file_type
@@ -1360,16 +1360,16 @@ function process_reply() {
 	get_file_type
 	
 	[ ! -e ./botinfo ] && touch ./botinfo && wget -q -O ./botinfo "${TELEAPI}/getMe"
-	pf=${text/[^\/\!]*/}
+	pf=${text_id/[^\/\!]*/}
 	message_id=$(jshon_n -e message_id -u <<< "$message")
 	
 	inline_user=$(jshon_n -e from -e username -u <<< "$inline") inline_user_id=$(jshon_n -e from -e id -u <<< "$inline") inline_id=$(jshon_n -e id -u <<< "$inline") results=$(jshon_n -e query -u <<< "$inline")
 	
-	first_normal=$(echo $photo_r $animation_r $video_r $sticker_r $audio_r $voice_r)
+	first_normal=$(echo $photo_id $animation_id $video_id $sticker_id $audio_id $voice_id)
 	if [ "$first_normal" = "" ]; then
-		first_normal="$document_r"
+		first_normal="$document_id"
 		if [ "$first_normal" = "" ]; then
-			first_normal="${text/@$(cat botinfo | jshon_n -e result -e username -u)/}"
+			first_normal="${text_id/@$(cat botinfo | jshon_n -e result -e username -u)/}"
 		fi
 	fi
 	
