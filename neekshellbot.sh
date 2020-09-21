@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 set -a
 TOKEN=$(cat ./token)
 TELEAPI="https://api.telegram.org/bot${TOKEN}"
@@ -792,6 +792,11 @@ function get_normal_reply() {
 				if [ "$admin" != "" ]; then
 					command=$(sed 's/[/!]bin //' <<< "$first_normal")
 					text_id=$(bash -c "$command" 2>&1)
+					if [ "$text_id" = "" ]; then
+						text_id="[no output]"
+						send_message
+						return
+					fi
 					text_id="<code>$(sed 's/[<]/\&lt;/g' <<< "$text_id")</code>"
 				else
 					text_id="<code>Access denied</code>"
@@ -1210,8 +1215,8 @@ function get_inline_reply() {
 		*" bin")
 			admin=$(grep -v "#" neekshelladmins | grep -w "$inline_user_id")
 			if [ "$admin" != "" ]; then
-				command=$(sed 's/ bin//' <<< "$results")
-				title="$(echo "$~> ""$command""" ; bash -c "$command" 2>&1 )"
+				command=$(sed 's/ bin$//' <<< "$results")
+				title=$(echo "$~> $command" ; bash -c "$command" 2>&1 )
 				message_text="<code>$title</code>"
 				return_query=$(inline_article)
 				send_inline
