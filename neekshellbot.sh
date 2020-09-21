@@ -408,7 +408,7 @@ function get_normal_reply() {
 			;;
 			"${pf}start joinchat"*)
 				admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
-				if [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" = "" ] && [ "$type" = "supergroup" ] && [ "$admin" != "" ] || [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" = "" ] && [ "$type" = "private" ]; then
+				if [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" = "" ] && [ "$(grep "supergroup\|group" <<< "$type")" != "" ] && [ "$admin" != "" ] || [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" = "" -a "$type" = "private" ]; then
 					bot_chat_id=$(sed -e 's/[/!]start joinchat//' <<< "$first_normal")
 					sed -i "s/\(users: \)/\1$bot_chat_user_id /" "$bot_chat_dir$bot_chat_id"
 					text_id="joined $bot_chat_id"
@@ -1088,8 +1088,8 @@ function get_normal_reply() {
 						"join")
 							if [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" = "" ] && [ "$type" = "private" ] ; then
 								text_id="Select chat to join:"
-								num_bot_chat=$(ls -1 $bot_chat_dir | wc -l)
-								list_bot_chat=$(ls -1 $bot_chat_dir)
+								num_bot_chat=$(ls -1 "$bot_chat_dir" | wc -l)
+								list_bot_chat=$(ls -1 "$bot_chat_dir")
 								markup_id=$(inline_keyboard_buttons)
 							elif [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" = "" ] && [ "$type" != "private" ] ; then
 								text_id="Attention: you're in a group, send !start joinchat[bot_chat_id] to join a group chat, e.g.: /start joinchat-1234567890. Use !chat list for a list of available group chats"
