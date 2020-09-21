@@ -923,7 +923,15 @@ function get_normal_reply() {
 			"${pf}sed "*)
 				if [ "$reply_to_text" != "" ]; then
 					regex=$(sed -e 's/[/!]sed //' <<< "$first_normal")
-					sed=$(sed -E "s/$regex/" <<< "$reply_to_text")
+					case "$regex" in 
+						"$(grep /g$ <<< "$regex")")
+							regex=$(sed 's|/g$||' <<< "$regex")
+							sed=$(sed -E "s/$regex/g" <<< "$reply_to_text")
+						;; 
+						*) 
+							sed=$(sed -E "s/$regex/" <<< "$reply_to_text")
+						;;
+					esac
 					text_id=$(echo "<b>FTFY:</b>" ; echo "$sed")
 					reply_id=$reply_to_id
 				else
