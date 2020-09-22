@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 set -a
 TOKEN=$(cat ./token)
 TELEAPI="https://api.telegram.org/bot${TOKEN}"
@@ -743,6 +743,49 @@ function get_normal_reply() {
 				send_message
 				return
 			;;
+			"${pf}denylist "*)
+				admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
+				reply_id=$message_id
+				if [ "$admin" != "" ]; then
+					username=$(sed -e 's/[/!]denylist @//' <<< "$first_normal")
+					denylist_id=$(cat "$(grep -r -- "^tag: $username" neekshell_db/users/ | cut -d : -f 1)" | grep "^id:" | sed 's/id: //')
+					denylist_check=$(grep -v "#" denylist | grep -w "$denylist_id")
+					if [ -z "$denylist_id" ]; then
+						text_id="user not found"
+					elif [ "$denylist_check" != "" ]; then
+						text_id="$username already in denylist"
+					else
+						echo -e "# $username\n$denylist_id" >> denylist
+						text_id="$username denylisted!"
+					fi
+				else
+					text_id="<code>Access denied</code>"
+				fi
+				send_message
+				return
+			;;
+			"${pf}allowlist "*)
+				admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
+				reply_id=$message_id
+				if [ "$admin" != "" ]; then
+					username=$(sed -e 's/[/!]allowlist @//' <<< "$first_normal")
+					allowlist_id=$(cat "$(grep -r -- "^tag: $username" neekshell_db/users/ | cut -d : -f 1)" | grep "^id:" | sed 's/id: //')
+					allowlist_check=$(grep -v "#" denylist | grep -w "$allowlist_id")
+					if [ -z "$allowlist_id" ]; then
+						text_id="user not found"
+					elif [ "$allowlist_check" != "" ]; then
+						sed -i "/$username/d" denylist
+						sed -i "/$denylist_id/d" denylist
+						text_id="$username is no longer in denylist"
+					else
+						echo "$username is not denylisted"
+					fi
+				else
+					text_id="<code>Access denied</code>"
+				fi
+				send_message
+				return
+			;;
 			"${pf}setadmin "*)
 				admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
 				reply_id=$message_id
@@ -1392,11 +1435,11 @@ function process_reply() {
 		trad=$(sed -e 's/[!/]w//' -e 's/\s.*//' <<< "$first_normal" | grep "enit\|iten")
 	fi
 	
-	if [ "$first_normal" != "" ]; then
+	if [ "$first_normal" != "" -a "$(grep -- "$username_id" denylist)" = "" ]; then
 		get_normal_reply
-	elif [ "$results" != "" ]; then
+	elif [ "$results" != "" -a "$(grep -- "$inline_user_id" denylist)" = "" ]; then
 		get_inline_reply
-	elif [ "$callback_data" != "" ]; then
+	elif [ "$callback_data" != "" -a "$(grep -- "$callback_user_id" denylist)" = "" ]; then
 		get_button_reply
 	fi
 	

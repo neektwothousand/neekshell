@@ -22,6 +22,8 @@ admin
 !bin [system command]
 !setadmin @username
 !deladmin @username
+!denylist @username
+!allowlist @username (delete ID from denylist)
 !nomedia (disable media messages)
 !silence (disable messages)
 !bang (on reply to mute)

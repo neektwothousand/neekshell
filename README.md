@@ -35,6 +35,8 @@ administrative commands:
 !bin [system command]<br />
 !setadmin @username<br />
 !deladmin @username<br />
+!denylist @username<br />
+!allowlist @username (delete ID from denylist)<br />
 !nomedia (disable media messages)<br />
 !silence (disable messages)<br />
 !bang (on reply to mute)<br >
@@ -62,3 +64,6 @@ chat mode (in private):
 
 # enable administrative commands
 To use administrative commands you need a text file named `neekshelladmins` inside `neekshellbot` folder with a list of admin IDs, like: [neekshelladmins.example](https://gitlab.com/craftmallus/neekshell-telegrambot/-/blob/master/neekshelladmins.example)
+
+# denylist and allowlist
+To deny access to a user you need to be a bot admin and denylist an ID using !denylist @username
