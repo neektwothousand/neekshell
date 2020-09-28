@@ -229,6 +229,8 @@ function get_file_type() {
 	[ "$1" = "reply" ] && message=$reply_to_message
 	text_id=$(jshon_n -e text -u <<< "$message") photo_id=$(jshon_n -e photo -e 0 -e file_id -u <<< "$message") animation_id=$(jshon_n -e animation -e file_id -u <<< "$message") video_id=$(jshon_n -e video -e file_id -u <<< "$message") sticker_id=$(jshon_n -e sticker -e file_id -u <<< "$message") audio_id=$(jshon_n -e audio -e file_id -u <<< "$message") voice_id=$(jshon_n -e voice -e file_id -u <<< "$message") document_id=$(jshon_n -e document -e file_id -u <<< "$message")
 	if [ "$text_id" != "" ]; then
+		[ ! -e ./botinfo ] && touch ./botinfo && wget -q -O ./botinfo "${TELEAPI}/getMe"
+		text_id=${text_id/@$(cat botinfo | jshon_n -e result -e username -u)/}
 		file_type="text"
 	elif [ "$sticker_id" != "" ]; then
 		file_type="sticker"
@@ -731,7 +733,8 @@ function get_normal_reply() {
 					send_message
 				fi
 			;;
-			"${pf}w$trad "*)
+			"${pf}wenit "*|"${pf}witen "*)
+				trad=$(sed -e 's/[!/]w//' -e 's/\s.*//' <<< "$first_normal")
 				search=$(sed -e "s/[/!]w$trad //" -e 's/\s/%20/g' <<< "$first_normal")
 				wordreference=$(curl -A 'neekshellbot/1.0' -s "https://www.wordreference.com/$trad/$search" | sed -En "s/.*\s>(.*\s)<em.*/\1/p" | sed -e "s/<a.*//g" -e "s/<span.*'\(.*\)'.*/\1/g" | head | awk '!x[$0]++')
 				reply_id=$message_id
@@ -1415,39 +1418,50 @@ function process_reply() {
 	
 	get_file_type
 	
-	[ ! -e ./botinfo ] && touch ./botinfo && wget -q -O ./botinfo "${TELEAPI}/getMe"
 	pf=${text_id/[^\/\!]*/}
 	message_id=$(jshon_n -e message_id -u <<< "$message")
 	
 	inline_user=$(jshon_n -e from -e username -u <<< "$inline") inline_user_id=$(jshon_n -e from -e id -u <<< "$inline") inline_id=$(jshon_n -e id -u <<< "$inline") results=$(jshon_n -e query -u <<< "$inline")
 	
-	first_normal=$(echo $photo_id $animation_id $video_id $sticker_id $audio_id $voice_id)
-	if [ "$first_normal" = "" ]; then
-		first_normal="$document_id"
-		if [ "$first_normal" = "" ]; then
-			first_normal="${text_id/@$(cat botinfo | jshon_n -e result -e username -u)/}"
-		fi
+	case "$file_type" in
+		text)
+			first_normal=$text_id
+		;;
+		photo)
+			first_normal=$photo_id
+		;;
+		animation)
+			first_normal=$animation_id
+		;;
+		video)
+			first_normal=$video_id
+		;;
+		sticker)
+			first_normal=$sticker_id
+		;;
+		audio)
+			first_normal=$audio_id
+		;;
+		voice)
+			first_normal=$voice_id
+		;;
+		document)
+			first_normal=$document_id
+		;;
+	esac
+	
+	if [ "${text_id/*[^0-9]/}" != "" ]; then # if has number at the end
+		normaldice=$(tr -d '/![:alpha:]' <<< "$first_normal" | sed 's/\*.*//g') # number before "*"
+		mul=$(tr -d '/![:alpha:]' <<< "$first_normal" | sed 's/.*\*//g') # number after "*"
 	fi
 	
-	if [ "${first_normal/*[^0-9]/}" != "" ]; then 
-		normaldice=$(tr -d '/![:alpha:]' <<< "$first_normal" | sed 's/\*.*//g')
-		mul=$(tr -d '/![:alpha:]' <<< "$first_normal" | sed 's/.*\*//g')
-		trad=$(sed -e 's/[!/]w//' -e 's/\s.*//' <<< "$first_normal" | grep "enit\|iten")
-	fi
-	
-	if [ "$first_normal" != "" -a "$(grep -- "$username_id" denylist)" = "" ]; then
+	if [ "$first_normal" != "" -a "$(grep -w -- "$username_id" denylist)" = "" ]; then
 		get_normal_reply
-	elif [ "$results" != "" -a "$(grep -- "$inline_user_id" denylist)" = "" ]; then
+	elif [ "$results" != "" -a "$(grep -w -- "$inline_user_id" denylist)" = "" ]; then
 		get_inline_reply
-	elif [ "$callback_data" != "" -a "$(grep -- "$callback_user_id" denylist)" = "" ]; then
+	elif [ "$callback_data" != "" -a "$(grep -w -- "$callback_user_id" denylist)" = "" ]; then
 		get_button_reply
 	fi
-	
-#	if	[ "$first_normal" != "" ] && [ "$type" = "private" ] ; then
-#		echo "normal=$first_normal" ; echo "from ${username_tag}, type = $file_type, at $(date "+%Y-%m-%d %H:%M")" ; echo "--"
-#	elif [ "$results" != "" ]; then
-#		echo "inline=${results}" ; echo "from ${inline_user} at $(date "+%Y-%m-%d %H:%M")" ; echo "--"
-#	fi
 }
 input=$1
 process_reply
