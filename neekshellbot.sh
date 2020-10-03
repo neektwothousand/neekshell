@@ -256,6 +256,7 @@ function get_normal_reply() {
 					if [ "$(grep respect <<< "$first_normal")" = "" ]; then
 						rep_sign=$(sed 's/[^-+].*//' <<< "$first_normal")
 						rep_n=$(sed 's/[+-]//' <<< "$first_normal")
+						[ "$rep_n" = "1" ] && rep_n=""
 					else
 						rep_sign=$(sed 's/respect//' <<< "$first_normal")
 					fi
@@ -269,10 +270,6 @@ function get_normal_reply() {
 						[ "$rep_n" -eq "$rep_n" ] || return
 						sed -i "s/rep: .*/rep: $(bc <<< "$prevrep $rep_sign $rep_n")/" neekshell_db/users/"$reply_to_user_id"
 					else
-						[ "$rep_n" -eq "$rep_n" ] || return
-						text_id="<code>Access denied</code>"
-						reply_id=$message_id
-						send_message
 						return
 					fi
 					newrep=$(sed -n 5p neekshell_db/users/"$reply_to_user_id" | sed 's/rep: //')
