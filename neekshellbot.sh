@@ -2,8 +2,7 @@
 set -a
 TOKEN=$(cat ./token)
 TELEAPI="https://api.telegram.org/bot${TOKEN}"
-exec 1>>neekshellbot.log
-exec 2>>neekshellbot-errors.log
+exec 1>>neekshellbot.log 2>&1
 function jshon_n() {
 	jshon "$@" 2>/dev/null
 }
@@ -48,51 +47,40 @@ function inline_keyboard_buttons() {
 	}
 EOF
 }
-function inline_booru() {
-    for rig in $(seq "$picnumber"); do
-        pic=$(echo "$piclist" | tr " " "\n" | sed -n "${rig}p")
-        thumb=$(echo "$thumblist" | tr " " "\n" | sed -n "${rig}p")
-        file=$(echo "$filelist" | tr " " "\n" | sed -n "${rig}p")
-        obj[$rig]="{
-        \"type\":\"photo\",
-        \"id\":\"$RANDOM\",
-        \"photo_url\":\"${pic}\",
-        \"thumb_url\":\"${thumb}\",
-        \"caption\":\"tag: ${tags}\\nsource: ${file}\"
-        },"
-    done
-    cat <<EOF
-    [ $(echo ${obj[@]} | sed -E 's/(.*)},/\1}/') ]
+function inline_photo_array() {
+    for x in $(seq 0 $j); do
+		obj[$x]="{
+		\"type\":\"photo\",
+		\"id\":\"$RANDOM\",
+		\"photo_url\":\"${photo_url[$x]}\",
+		\"thumb_url\":\"${thumb_url[$x]}\",
+		\"caption\":\"${caption[$x]}\"},"
+	done
+	cat <<EOF
+[ $(echo ${obj[@]} | sed -E 's/(.*)},/\1}/') ]
 EOF
 }
-function inline_boorugif() {
-    for rig in $(seq "$gifnumber"); do
-        gif=$(echo "$giflist" | tr " " "\n" | sed -n "${rig}p")
-        file=$(echo "$filelist" | tr " " "\n" | sed -n "${rig}p")
-        obj[$rig]="{
+function inline_gif_array() {
+    for x in $(seq 0 $j); do
+        obj[$x]="{
         \"type\":\"gif\",
         \"id\":\"$RANDOM\",
-        \"gif_url\":\"${gif}\",
-        \"thumb_url\":\"${gif}\",
-        \"caption\":\"tag: ${tags}\\nsource: ${file}\"
-        },"
+        \"gif_url\":\"${gif_url[$x]}\",
+        \"thumb_url\":\"${thumb_url[$x]}\",
+        \"caption\":\"${caption[$x]}\"},"
     done
     cat <<EOF
     [ $(echo ${obj[@]} | sed -E 's/(.*)},/\1}/') ]
 EOF
 }
-function inline_searx() {
-    for x in $(seq 0 $(($(jshon_n -e results -l <<< "$searx_results")-1))); do
-        title=$(jshon_n -e results -e "$x" -e title -u <<< "$searx_results" | sed 's/"/\\"/g')
-        url=$(jshon_n -e results -e "$x" -e url -u <<< "$searx_results" | sed 's/"/\\"/g')
-        description=$(jshon_n -e results -e "$x" -e content -u <<< "$searx_results" | sed 's/"/\\"/g')
+function inline_article_array() {
+    for x in $(seq 0 $j); do
         obj[$x]="{
         \"type\":\"article\",
         \"id\":\"$RANDOM\",
-        \"title\":\"${title}\",
-        \"input_message_content\":{\"message_text\":\"${title}\n${url}\"},
-        \"description\":\"${description}\"
-        },"
+        \"title\":\"${title[$x]}\",
+        \"input_message_content\":{\"message_text\":\"${message_text[$x]}\"},
+        \"description\":\"${description[$x]}\"},"
     done
     cat <<EOF
     [ $(echo ${obj[@]} | sed -E 's/(.*)},/\1}/') ]
@@ -103,8 +91,7 @@ function mediagroup_nhentai() {
         nhentai_pic=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/$x/" | grep 'img src' | sed -e 's/.*<img src="//' -e 's/".*//')
         obj[$x]="{
         \"type\":\"photo\",
-        \"media\":\"$nhentai_pic\"
-        },"
+        \"media\":\"$nhentai_pic\"},"
     done
     cat <<EOF
     [ $(echo ${obj[@]} | sed -E 's/(.*)},/\1}/') ]
@@ -1276,38 +1263,70 @@ function get_inline_reply() {
 			send_inline
 			return
 		;;
-		'search '*)
+		"search "*)
 			offset=$(($(jshon_n -e offset -u <<< "$inline")+1))
 			search=$(sed 's/search //' <<< "$results" | sed 's/\s/%20/g')
 			searx_results=$(curl -s "https://archneek.zapto.org/searx/?q=$search&pageno=$offset&categories=general&format=json")
-			return_query=$(inline_searx)
+			for j in $(seq 0 $(($(jshon_n -e results -l <<< "$searx_results")-1)) ); do
+				title[$j]=$(jshon_n -e results -e "$j" -e title -u <<< "$searx_results" | sed 's/"/\\"/g')
+				url[$j]=$(jshon_n -e results -e "$j" -e url -u <<< "$searx_results" | sed 's/"/\\"/g')
+				message_text[$j]="${title[$j]}\\n${url[$j]}"
+				description[$j]=$(jshon_n -e results -e "$j" -e content -u <<< "$searx_results" | sed 's/"/\\"/g')
+			done
+			return_query=$(inline_article_array)
 			send_inline
 			return
 		;;
-		"${ilb}b "*)
+		"ud "*|"urbandictionary "*)
+			ud=$(sed 's/ud \|urbandictionary //' <<< "$results")
+			ud_results=$(curl -s "https://api.urbandictionary.com/v0/define?term=$ud")
+			for j in $(seq 0 $(($(jshon_n -e list -l <<< "$ud_results")-1)) ); do
+				title[$j]=$(jshon_n -e list -e "$j" -e word -u <<< "$ud_results")
+				description[$j]=$(jshon_n -e list -e "$j" -e definition -u <<< "$ud_results")
+				example[$j]=$(jshon_n -e list -e "$j" -e example -u <<< "$ud_results")
+				message_text[$j]="${description[$j]}\\n\\n${example[$j]}"
+			done
+			return_query=$(inline_article_array)
+			send_inline
+			return
+		;;
+		"${ilb}b "*|"${ilb}booru "*)
 			offset=$(($(jshon_n -e offset -u <<< "$inline")+1))
-			tags=$(sed "s/${ilb}b //" <<< "$results")
-			getbooru=$(curl -A 'Mozilla/5.0' -s "https://$booru/index.php?page=dapi&s=post&pid=$offset&tags=$tags&q=index&limit=5")
+			tags=$(sed "s/${ilb}b \|${ilb}booru //" <<< "$results")
+			getbooru=$(curl -A 'Mozilla/5.0' -s "https://$booru/index.php?page=dapi&s=post&pid=$offset&tags=$tags&q=index&limit=10")
 			thumblist=$(sed -n 's/.*preview_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'jpg|jpeg|png')
 			piclist=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'jpg|jpeg|png')
 			filelist=$(sed -n 's/.*file_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'jpg|jpeg|png')
-			picnumber=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E -c 'jpg|jpeg|png')
-			return_query=$(inline_booru)
+			picnumber=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'jpg|jpeg|png' | wc -l)
+			for j in $(seq 0 $((picnumber - 1))); do
+				photo_url[$j]=$(echo "$filelist" | tr " " "\n" | sed -n "$((j+1))p")
+				thumb_url[$j]=${photo_url[$j]}
+				caption[$j]="tag: ${tags}\\nsource: ${photo_url[$j]}"
+			done
+			return_query=$(inline_photo_array)
 			send_inline
 			return
 		;;
-		"${ilb}bgif "*)
+		"${ilb}bgif "*|"${ilb}boorugif "*)
 			offset=$(($(jshon_n -e offset -u <<< "$inline")+1))
-			tags=$(sed "s/${ilb}bgif //" <<< "$results")
-			if [ "$ilb" != "g" ]; then
-				getbooru=$(curl -A 'Mozilla/5.0' -s "https://$booru/index.php?page=dapi&s=post&pid=$offset&tags=gif+$tags&q=index&limit=20")
-			else
-				getbooru=$(curl -A 'Mozilla/5.0' -s "https://$booru/index.php?page=dapi&s=post&pid=$offset&tags=animated+$tags&q=index&limit=20")
-			fi
+			case "$ilb" in 
+				"g")
+					tags="animated+$(sed "s/${ilb}bgif \|${ilb}boorugif //" <<< "$results")"
+				;;
+				*)
+					tags="gif+$(sed "s/${ilb}bgif \|${ilb}boorugif //" <<< "$results")"
+				;;
+			esac
+			getbooru=$(curl -A 'Mozilla/5.0' -s "https://$booru/index.php?page=dapi&s=post&pid=$offset&tags=$tags&q=index&limit=20")
 			giflist=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'gif')
 			filelist=$(sed -n 's/.*file_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'gif')
-			gifnumber=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E -c 'gif')
-			return_query=$(inline_boorugif)
+			gifnumber=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'gif' | wc -l)
+			for j in $(seq 0 $gifnumber); do
+				gif_url[$j]=$(echo "$filelist" | tr " " "\n" | sed -n "$((j+1))p")
+				thumb_url[$j]=${gif_url[$j]}
+				caption[$j]="tag: ${tags}\\nsource: ${gif[$j]}"
+			done
+			return_query=$(inline_gif_array)
 			send_inline
 			return
 		;;
