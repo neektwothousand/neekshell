@@ -1,10 +1,23 @@
-#!/bin/bash
+#!/bin/bash -x
 set -a
 TOKEN=$(cat ./token)
 TELEAPI="https://api.telegram.org/bot${TOKEN}"
 exec 1>>neekshellbot.log 2>&1
 function jshon_n() {
 	jshon "$@" 2>/dev/null
+}
+function botchats_buttons() {
+	for j in $(seq "$num_bot_chat"); do
+		button_text[$j]=$(sed -n "${j}"p <<< "$list_bot_chat")
+		obj[$j]="[{\"text\":\"${button_text[$j]}\",\"callback_data\":\"${button_text[$j]}\"}],"
+	done
+	cat <<EOF
+	{
+		"inline_keyboard": [
+				$(sed -E 's/(.*)],/\1]/' <<< ${obj[@]})
+		]
+	}
+EOF
 }
 function inline_article() {
     cat <<EOF
@@ -34,10 +47,9 @@ function inline_joinchat() {
     [ $(echo ${obj[@]} | sed -E 's/(.*)},/\1}/') ]
 EOF
 }
-function inline_keyboard_buttons() {
-	for j in $(seq "$num_bot_chat"); do
-		button_text[$j]=$(sed -n "${j}"p <<< "$list_bot_chat")
-		obj[$j]="[{\"text\":\"${button_text[$j]}\",\"callback_data\":\"${button_text[$j]}\"}],"
+function inline_button_array() {
+	for x in $(seq 0 $j); do
+		obj[$x]="[{\"text\":\"${button_text[$x]}\",\"callback_data\":\"${callback_data[$x]}\"}],"
 	done
 	cat <<EOF
 	{
@@ -458,9 +470,30 @@ function get_normal_reply() {
 			"${pf}button "*)
 				text_id=$(sed -e 's/[/!]button //' <<< "$first_normal")
 				reply_id=$message_id
-				markup_id=$(inline_keyboard_buttons)
+				button_text=$text_id callback_data="some data" j=0
+				markup_id=$(inline_button_array)
 				send_message
 				return
+			;;
+			"${pf}explorer "*)
+				admin=$(grep -v "#" neekshelladmins | grep -w "$username_id")
+				if [ "$admin" != "" ] && [ "$type" = "private" ]; then
+					reply_id=$message_id
+					selected_dir=$(sed -e 's/[/!]explorer //' -e 's|/$||' <<< "$first_normal")
+					files_selected_dir=$(find "$selected_dir/" -maxdepth 1 -type f | sed "s:^./\|$selected_dir/::")
+					if [ "$files_selected_dir" != "" ]; then
+						text_id=$(echo "selected directory: $selected_dir" ; echo -e "select a file to download\nsubdirs:" ; find "$selected_dir/" -maxdepth 1 -type d | sed "s:^./\|$selected_dir/::" | sed -e 1d | sed -e 's/^/-> /' -e 's|$|/|')
+						for j in $(seq 0 $(( $(wc -l <<< "$files_selected_dir") -1 )) ); do
+							button_text[$j]=$(sed -n $((j+1))p <<< "$files_selected_dir")
+							callback_data[$j]=${button_text[$j]}
+						done
+						markup_id=$(inline_button_array)
+					else
+						text_id=$(echo "selected directory: $selected_dir" ; echo "subdirs:" ; find "$selected_dir/" -maxdepth 1 -type d | sed "s:^./\|$selected_dir/::" | sed -e 1d | sed -e 's/^/-> /' -e 's|$|/|')
+					fi
+					send_message
+					return
+				fi
 			;;
 			"${pf}jpg")
 				photo_id=$(jshon_n -e reply_to_message -e photo -e 0 -e file_id -u <<< "$message")
@@ -1133,7 +1166,7 @@ function get_normal_reply() {
 								text_id="Select chat to join:"
 								num_bot_chat=$(ls -1 "$bot_chat_dir" | wc -l)
 								list_bot_chat=$(ls -1 "$bot_chat_dir")
-								markup_id=$(inline_keyboard_buttons)
+								markup_id=$(botchats_buttons)
 							elif [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" = "" ] && [ "$type" != "private" ] ; then
 								text_id="Attention: you're in a group, send !start joinchat[bot_chat_id] to join a group chat, e.g.: /start joinchat-1234567890. Use !chat list for a list of available group chats"
 							else
@@ -1146,7 +1179,7 @@ function get_normal_reply() {
 								text_id="Select chat to leave:"
 								num_bot_chat=$(ls -1 $bot_chat_dir | wc -l)
 								list_bot_chat=$(ls -1 $bot_chat_dir)
-								markup_id=$(inline_keyboard_buttons)
+								markup_id=$(botchats_buttons)
 							else
 								text_id="you are not in an any chat yet"
 							fi
@@ -1363,6 +1396,14 @@ function get_button_reply() {
 			chat_id=$callback_user_id
 			text_id="$callback_data is no more"
 			send_message
+			return
+		;;
+		"selected directory: "*)
+			button_text_reply="ok"
+			button_reply
+			document_id="@$(sed -n 1p <<< "$callback_message_text" | sed 's/^selected directory: //')/$callback_data"
+			chat_id=$callback_user_id
+			send_document
 			return
 		;;
 		*)
