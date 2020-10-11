@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 set -a
 TOKEN=$(cat ./token)
 TELEAPI="https://api.telegram.org/bot${TOKEN}"
@@ -1236,19 +1236,29 @@ function get_normal_reply() {
 function get_inline_reply() {
 	inlinedice=$(echo "$results" | tr -d '[:alpha:]')
 	
-	if [ "$(grep -w "gb\|gbgif" <<< "$results")" != "" ]; then
-		booru="gelbooru.com"
-		ilb="g"
-	elif [ "$(grep -w "xb\|xbgif" <<< "$results")" != "" ]; then
-		booru="xbooru.com"
-		ilb="x"
-	elif [ "$(grep -w "realb\|realbgif" <<< "$results")" != "" ]; then
-		booru="realbooru.com"
-		ilb="real"
-	elif [ "$(grep -w "r34b\|r34bgif" <<< "$results")" != "" ]; then
-		booru="rule34.xxx"
-		ilb="r34"
-	fi
+	booru_prefix=$(grep -o '^.*b\|^.*gif' <<< "$results")
+	case "$booru_prefix" in
+		'gb'|'gbgif')
+			booru="gelbooru.com"
+			ilb="g"
+		;;
+		'xb'|'xbgif')
+			booru="xbooru.com"
+			ilb="x"
+		;;
+		'realb'|'realbgif')
+			booru="realbooru.com"
+			ilb="real"
+		;;
+		'r34b'|'r34bgif')
+			booru="rule34.xxx"
+			ilb="r34"
+		;;
+		'e621b'|'e621bgif')
+			booru="e621.net"
+			ilb="e621"
+		;;
+	esac
 	
 	case $results in
 		"help")
@@ -1326,16 +1336,27 @@ function get_inline_reply() {
 		"${ilb}b "*|"${ilb}booru "*)
 			offset=$(($(jshon_n -e offset -u <<< "$inline")+1))
 			tags=$(sed "s/${ilb}b \|${ilb}booru //" <<< "$results")
-			getbooru=$(curl -A 'Mozilla/5.0' -s "https://$booru/index.php?page=dapi&s=post&pid=$offset&tags=$tags&q=index&limit=10")
-			thumblist=$(sed -n 's/.*preview_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'jpg|jpeg|png')
-			piclist=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'jpg|jpeg|png')
-			filelist=$(sed -n 's/.*file_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'jpg|jpeg|png')
-			picnumber=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'jpg|jpeg|png' | wc -l)
-			for j in $(seq 0 $((picnumber - 1))); do
-				photo_url[$j]=$(echo "$filelist" | tr " " "\n" | sed -n "$((j+1))p")
-				thumb_url[$j]=${photo_url[$j]}
-				caption[$j]="tag: ${tags}\\nsource: ${photo_url[$j]}"
-			done
+			case "$ilb" in 
+				"e621")
+					apikey=$(cat e621_api_key)
+					getbooru=$(curl -A 'neekshellbot/1.0 (by neek)' -s "https://e621.net/posts.json?tags=$tags&limit=10&$apikey")
+					for j in $(seq 0 9); do
+						photo_url[$j]=$(jshon_n -e posts -e $j -e file -e url -u <<< "$getbooru")
+						thumb_url[$j]=${photo_url[$j]}
+						caption[$j]="tag: $tags\\nsource: ${photo_url[$j]}"
+					done
+				;;
+				*)
+					getbooru=$(curl -A 'Mozilla/5.0' -s "https://$booru/index.php?page=dapi&s=post&pid=$offset&tags=$tags&q=index&limit=10")
+					filelist=$(sed -n 's/.*file_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'jpg|jpeg|png')
+					picnumber=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'jpg|jpeg|png' | wc -l)
+					for j in $(seq 0 $((picnumber - 1))); do
+						photo_url[$j]=$(echo "$filelist" | tr " " "\n" | sed -n "$((j+1))p")
+						thumb_url[$j]=${photo_url[$j]}
+						caption[$j]="tag: $tags\\nsource: ${photo_url[$j]}"
+					done
+				;;
+			esac
 			return_query=$(inline_photo_array)
 			send_inline
 			return
@@ -1345,20 +1366,39 @@ function get_inline_reply() {
 			case "$ilb" in 
 				"g")
 					tags="animated+$(sed "s/${ilb}bgif \|${ilb}boorugif //" <<< "$results")"
+					getbooru=$(curl -A 'Mozilla/5.0' -s "https://$booru/index.php?page=dapi&s=post&pid=$offset&tags=$tags&q=index&limit=10")
+					giflist=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'gif')
+					filelist=$(sed -n 's/.*file_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'gif')
+					gifnumber=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'gif' | wc -l)
+					for j in $(seq 0 $gifnumber); do
+						gif_url[$j]=$(echo "$filelist" | tr " " "\n" | sed -n "$((j+1))p")
+						thumb_url[$j]=${gif_url[$j]}
+						caption[$j]="tag: ${tags}\\nsource: ${gif[$j]}"
+					done
+				;;
+				"e621")
+					apikey=$(cat e621_api_key)
+					tags="gif+$(sed "s/${ilb}bgif \|${ilb}boorugif //" <<< "$results")"
+					getbooru=$(curl -A 'neekshellbot/1.0 (by neek)' -s "https://e621.net/posts.json?tags=$tags&page=$offset&limit=10&$apikey")
+					for j in $(seq 0 9); do
+						gif_url[$j]=$(jshon_n -e posts -e $j -e file -e url -u <<< "$getbooru")
+						thumb_url[$j]=${gif_url[$j]}
+						caption[$j]="tag: $tags\\nsource: ${gif_url[$j]}"
+					done
 				;;
 				*)
 					tags="gif+$(sed "s/${ilb}bgif \|${ilb}boorugif //" <<< "$results")"
+					getbooru=$(curl -A 'Mozilla/5.0' -s "https://$booru/index.php?page=dapi&s=post&pid=$offset&tags=$tags&q=index&limit=10")
+					giflist=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'gif')
+					filelist=$(sed -n 's/.*file_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'gif')
+					gifnumber=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'gif' | wc -l)
+					for j in $(seq 0 $gifnumber); do
+						gif_url[$j]=$(echo "$filelist" | tr " " "\n" | sed -n "$((j+1))p")
+						thumb_url[$j]=${gif_url[$j]}
+						caption[$j]="tag: ${tags}\\nsource: ${gif[$j]}"
+					done
 				;;
 			esac
-			getbooru=$(curl -A 'Mozilla/5.0' -s "https://$booru/index.php?page=dapi&s=post&pid=$offset&tags=$tags&q=index&limit=20")
-			giflist=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'gif')
-			filelist=$(sed -n 's/.*file_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'gif')
-			gifnumber=$(sed -n 's/.*sample_url="\([^"]*\)".*/\1/p' <<< "$getbooru" | grep -E 'gif' | wc -l)
-			for j in $(seq 0 $gifnumber); do
-				gif_url[$j]=$(echo "$filelist" | tr " " "\n" | sed -n "$((j+1))p")
-				thumb_url[$j]=${gif_url[$j]}
-				caption[$j]="tag: ${tags}\\nsource: ${gif[$j]}"
-			done
 			return_query=$(inline_gif_array)
 			send_inline
 			return

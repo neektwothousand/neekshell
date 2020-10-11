@@ -33,6 +33,7 @@ respect+ (on reply to give a point with audio)<br />
 administrative commands:
 
 !bin [system command]<br />
+!explorer [directory] (browse directories and download files)<br />
 !setadmin @username<br />
 !deladmin @username<br />
 !denylist @username<br />
@@ -49,8 +50,8 @@ d[number] (dice)<br />
 [system command] bin (administrative)<br />
 tag [[@username] (new tag text)]<br />
 search [text to search on searx]<br />
-[g/x/r34/real]b [booru pic tag]<br />
-[g/x/r34/real]bgif [booru gif tag]<br />
+[g/x/r34/real/e621]b [booru pic tag]<br />
+[g/x/r34/real/e621]bgif [booru gif tag]<br />
 joinchat (sends an invite button to a botchat)
 
 chat mode (in private):
