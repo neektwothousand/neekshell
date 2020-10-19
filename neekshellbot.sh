@@ -988,7 +988,21 @@ function get_normal_reply() {
 				send_message
 				return
 			;;
+			"${pf}naboli")
+				reply=$(jshon_n -e reply_to_message -e text -u <<< "$message" | sed 's/ /%20/g')
+				if [ "$reply" != "" ]; then
+					text_id=$(wget -q -O- --post-data "testo=$reply" 'http://www.napoletano.info/italiano-napoletano.asp' | iconv -f WINDOWS-1252 -t UTF-8 | sed -n '/<td><span class="Stile3">/,/<\/span><\/td>/p' | sed 1d | head -n -1 | tr -s ' ' | sed -e 's/Ã¬/ì/g' -e 's/Ã²/ò/g' -e 's/Ã¨/è/g')
+					reply_id=$reply_to_id
+				else
+					text_id="reply to a text message"
+					reply_id=$message_id
+				fi
+				send_message
+				return
+			;;
 			"${pf}sed "*)
+				reply_to_caption=$(jshon_n -e caption -u <<< "$reply_to_message")
+				[ "$reply_to_caption" != "" ] && reply_to_text=$reply_to_caption
 				if [ "$reply_to_text" != "" ]; then
 					regex=$(sed -e 's/[/!]sed //' <<< "$first_normal")
 					case "$regex" in 
