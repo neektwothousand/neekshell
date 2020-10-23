@@ -6,6 +6,14 @@ exec 1>>neekshellbot.log 2>&1
 function jshon_n() {
 	jshon "$@" 2>/dev/null
 }
+function cpustat() {
+cpu_perc=$(awk -v a="$(awk '/cpu /{print $2+$4,$2+$4+$5}' /proc/stat; sleep 1)" '/cpu /{split(a,b," "); print 100*($2+$4-b[1])/($2+$4+$5-b[2])}' /proc/stat)
+	if [ "$cpu_perc" != "100" ]; then 
+		sed -E 's/(.*)\..*/\1%/' <<< "$cpu_perc"
+	else
+		sed 's/$/%/' <<< "$cpu_perc"
+	fi
+}
 function botchats_buttons() {
 	for j in $(seq "$num_bot_chat"); do
 		button_text[$j]=$(sed -n "${j}"p <<< "$list_bot_chat")
@@ -868,12 +876,7 @@ function get_normal_reply() {
 				return
 			;;
 			"${pf}cpustat")
-				text_id=$(cpu_perc=$(awk -v a="$(awk '/cpu /{print $2+$4,$2+$4+$5}' /proc/stat; sleep 1)" '/cpu /{split(a,b," "); print 100*($2+$4-b[1])/($2+$4+$5-b[2])}' /proc/stat)
-					if [ "$cpu_perc" != "100" ]; then 
-						sed -E 's/(.*)\..*/\1%/' <<< "$cpu_perc"
-					else
-						sed 's/$/%/' <<< "$cpu_perc"
-					fi)
+				text_id=$(cpustat)
 				reply_id=$message_id
 				send_message
 			;;
@@ -1243,6 +1246,12 @@ function get_normal_reply() {
 					text_id="<code>$neofetch</code>"
 				fi
 				send_message
+			;;
+			"${pf}stats")
+				reply_id=$message_id
+				text_id=$(echo "users: $(wc -l <<< $(ls -1 neekshell_db/users/))" ; echo "groups: $(wc -l <<< $(ls -1 neekshell_db/chats/))" ; echo "cpu: $(cpustat)")
+				send_message
+				return
 			;;
 		esac
 	fi
