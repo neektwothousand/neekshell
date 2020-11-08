@@ -35,6 +35,7 @@ endadmin
 
 inline
 d[number] (dice)
+fortune (fortune cookie)
 [system command] bin
 tag [[@username] (new tag text)]
 search [text to search on searx]

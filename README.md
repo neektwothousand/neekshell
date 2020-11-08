@@ -48,6 +48,7 @@ administrative commands:
 inline mode:
 
 d[number] (dice)<br />
+fortune (fortune cookie)<br />
 [system command] bin (administrative)<br />
 tag [[@username] (new tag text)]<br />
 search [text to search on searx]<br />
