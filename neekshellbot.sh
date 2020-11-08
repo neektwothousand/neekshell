@@ -888,11 +888,12 @@ function get_normal_reply() {
 					listchats=$(echo -e -- "$group_broadcast_chats\n$private_broadcast_chats" | grep -vw -- "$chat_id")
 					numchats=$(wc -l <<< "$listchats")
 					text_id=$(sed "s/[!/]broadcast//" <<< "$first_normal")
+					br_delay=1
 					if [ "$text_id" != "" ]; then
 						for x in $(seq "$numchats"); do
 							chat_id=$(sed -n ${x}p <<< "$listchats")
 							send_message
-							sleep 2
+							sleep $br_delay
 						done
 					elif [ "$reply_to_message" != "" ]; then
 						get_file_type reply
@@ -901,48 +902,56 @@ function get_normal_reply() {
 								for x in $(seq "$numchats"); do
 									chat_id=$(sed -n ${x}p <<< "$listchats")
 									send_message
+									sleep $br_delay
 								done
 							;;
 							photo)
 								for x in $(seq "$numchats"); do
 									chat_id=$(sed -n ${x}p <<< "$listchats")
 									send_photo
+									sleep $br_delay
 								done
 							;;
 							animation)
 								for x in $(seq "$numchats"); do
 									chat_id=$(sed -n ${x}p <<< "$listchats")
 									send_animation
+									sleep $br_delay
 								done
 							;;
 							video)
 								for x in $(seq "$numchats"); do
 									chat_id=$(sed -n ${x}p <<< "$listchats")
 									send_video
+									sleep $br_delay
 								done
 							;;
 							sticker)
 								for x in $(seq "$numchats"); do
 									chat_id=$(sed -n ${x}p <<< "$listchats")
 									send_sticker
+									sleep $br_delay
 								done
 							;;
 							audio)
 								for x in $(seq "$numchats"); do
 									chat_id=$(sed -n ${x}p <<< "$listchats")
 									send_audio
+									sleep $br_delay
 								done
 							;;
 							voice)
 								for x in $(seq "$numchats"); do
 									chat_id=$(sed -n ${x}p <<< "$listchats")
 									send_voice
+									sleep $br_delay
 								done
 							;;
 							document)
 								for x in $(seq "$numchats"); do
 									chat_id=$(sed -n ${x}p <<< "$listchats")
 									send_document
+									sleep $br_delay
 								done
 							;;
 						esac
@@ -1259,7 +1268,7 @@ function get_normal_reply() {
 function get_inline_reply() {
 	inlinedice=$(echo "$results" | tr -d '[:alpha:]')
 	
-	booru_prefix=$(grep -o '^.*b\|^.*gif' <<< "$results")
+	booru_prefix=$(grep -o '^.*b\s\|^.*gif\s' <<< "$results" | sed 's/\s$//')
 	case "$booru_prefix" in
 		'gb'|'gbgif')
 			booru="gelbooru.com"
@@ -1288,6 +1297,15 @@ function get_inline_reply() {
 			title="Ok"
 			message_text="Ok"
 			description=",\"description\":\"Alright\""
+			return_query=$(inline_article)
+			send_inline
+			return
+		;;
+		"fortune")
+			fortune=$(/usr/bin/fortune fortunes paradoxum goedel linuxcookie | tr '\n' ' ' | awk '{$2=$2};1')
+			title="Cookie"
+			message_text=$(echo "Your fortune cookie states:" ; echo "<i>$(/usr/bin/fortune fortunes paradoxum goedel linuxcookie | tr '\n' ' ' | awk '{$2=$2};1')</i>")
+			description=",\"description\":\"Open your fortune cookie\""
 			return_query=$(inline_article)
 			send_inline
 			return
