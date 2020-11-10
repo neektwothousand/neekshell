@@ -12,6 +12,8 @@ normal
 !cpustat (displays % of current cpu usage)
 !stats (displays number of groups and users)
 !neofetch (displays general system info)
+!rrandom (gets a random reddit post)
+!meme (gets a random meme)
 !ping
 !top+ (gets a top 10 highscores)
 !my+ (gets your score)

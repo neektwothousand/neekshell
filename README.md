@@ -25,6 +25,8 @@ Utilities used:
 !cpustat (displays % of current cpu usage)<br />
 !stats (displays number of groups and users)<br />
 !neofetch (displays general system info)<br />
+!rrandom (gets a random reddit post)<br />
+!meme (gets a random meme)<br />
 !ping<br />
 !top+ (gets a top 10 highscores)<br />
 !my+ (gets your score)<br />
