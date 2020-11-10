@@ -14,6 +14,58 @@ cpu_perc=$(awk -v a="$(awk '/cpu /{print $2+$4,$2+$4+$5}' /proc/stat; sleep 1)" 
 		sed 's/$/%/' <<< "$cpu_perc"
 	fi
 }
+function r_subreddit(){
+	[ "$1" = "" ] && exit
+	subreddit=$1
+	sort=$2
+	case $subreddit in
+		none)
+			case $sort in
+				random)
+					input=$(wget -q -O- "https://reddit.com/random/.json")
+					hot=$(jshon -e 0 -e data -e children -e 0 -e data <<< "$input")
+				;;
+			esac
+		;;
+		*)
+			case $sort in
+				random)
+					input=$(wget -q -O- "https://reddit.com/r/${subreddit}/random/.json")
+					hot=$(jshon -e 0 -e data -e children -e 0 -e data <<< "$input")
+				;;
+				*)
+					amount=5
+					input=$(wget -q -O- "https://reddit.com/r/${subreddit}/.json?sort=top&t=week&limit=$amount")
+					hot=$(jshon -e data -e children -e $((RANDOM % $amount)) -e data <<< "$input")
+				;;
+			esac
+		;;
+	esac
+	media_id=$(jshon -e url -u <<< "$hot" | grep "i.redd.it\|imgur\|gfycat")
+	if [ "$(grep "gfycat" <<< "$media_id")" != "" ]; then
+		media_id=$(curl -s "$media_id" | sed -En 's|.*<source src="(https://thumbs.*mp4)" .*|\1|p')
+	fi
+	permalink=$(jshon -e permalink -u <<< "$hot")
+	title=$(jshon -e title -u <<< "$hot")
+	stickied=$(jshon -e stickied -u <<< "$hot")
+	[ "$title" != "" ] && caption=$(echo -e "$title\nlink: <a href=\"https://reddit.com$permalink\">$permalink</a>")
+	if [ "$media_id" = "" ]; then
+		text_id=$caption
+		send_message
+	elif [ "$(grep "jpg\|png" <<< "$media_id")" != "" ]; then
+		photo_id=$media_id
+		send_photo
+	elif [ "$(grep "gif" <<< "$media_id")" != "" ]; then
+		animation_id=$media_id
+		send_animation
+	elif [ "$(grep "mp4" <<< "$media_id")" != "" ] && [ "$(ffprobe "${pic}" 2>&1 | grep -o 'Audio:')" = "" ]; then
+		animation_id=$media_id
+		send_animation
+	elif [ "$(grep "mp4" <<< "$media_id")" != "" ] && [ "$(ffprobe "${pic}" 2>&1 | grep -o 'Audio:')" != "" ]; then
+		video_id=$media_id
+		send_video
+	fi
+}
 function botchats_buttons() {
 	for j in $(seq "$num_bot_chat"); do
 		button_text[$j]=$(sed -n "${j}"p <<< "$list_bot_chat")
@@ -28,16 +80,16 @@ function botchats_buttons() {
 EOF
 }
 function inline_article() {
-    cat <<EOF
-    [{
-        "type":"article",
-        "id":"$RANDOM",
-        "title":"$title",
-        "input_message_content": {
-            "message_text":"$message_text",
-            "parse_mode":"html"
-        }$description
-    }]
+	cat <<EOF
+	[{
+		"type":"article",
+		"id":"$RANDOM",
+		"title":"$title",
+		"input_message_content": {
+			"message_text":"$message_text",
+			"parse_mode":"html"
+		}$description
+	}]
 EOF
 }
 function inline_joinchat() {
@@ -192,7 +244,7 @@ function send_document() {
 function send_inline() {
 	curl -s "${TELEAPI}/answerInlineQuery" \
 		--form-string "inline_query_id=$inline_id" \
-		--form-string "results=$return_query" \
+		--form-string "results=$(sed 's/\\/\\\\/g' <<< "$return_query")" \
 		--form-string "next_offset=$offset" \
 		--form-string "cache_time=0" \
 		--form-string "is_personal=true"
@@ -657,6 +709,16 @@ function get_normal_reply() {
 				text_id="<code>${result[*]}</code>"
 				reply_id=$message_id
 				send_message
+				return
+			;;
+			"${pf}meme")
+				subs=("meirl" "dankmemes" "anime_irl" "antimeme" "okbuddyretard" "historymemes")
+				x=$((RANDOM % ${#subs[*]}))
+				r_subreddit ${subs[$x]} random
+				return
+			;;
+			"${pf}rrandom")
+				r_subreddit random
 				return
 			;;
 			"${pf}hf")
@@ -1498,6 +1560,10 @@ function get_button_reply() {
 }
 function process_reply() {
 	message=$(jshon_n -e message <<< "$input")
+	type=$(jshon_n -e chat -e type -u <<< "$message")
+	if [ "$(jshon_n -e text -u <<< "$message" | grep '^!\|^/\|+')" = "" ] && [ "$type" != "private" ]; then
+		exit
+	fi
 	inline=$(jshon_n -e inline_query <<< "$input")
 	
 	# user database
@@ -1536,7 +1602,7 @@ function process_reply() {
 		fi
 	fi
 	# chat database
-	chat_title=$(jshon_n -e chat -e title -u <<< "$message") chat_id=$(jshon_n -e chat -e id -u <<< "$message") type=$(jshon_n -e chat -e type -u <<< "$message")
+	chat_title=$(jshon_n -e chat -e title -u <<< "$message") chat_id=$(jshon_n -e chat -e id -u <<< "$message")
 	if [ "$chat_title" != "" ]; then
 		[ ! -d neekshell_db/chats/ ] && mkdir -p neekshell_db/chats/
 		file_chat=neekshell_db/chats/"$chat_id"
