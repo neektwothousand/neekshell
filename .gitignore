@@ -1,0 +1,7 @@
+*.log
+.lock+/
+token
+botinfo
+admins
+db/
+misc-shell/
