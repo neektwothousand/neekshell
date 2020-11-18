@@ -9,7 +9,7 @@ jshon_n() {
 	jshon "$@" 2>/dev/null
 }
 is_admin() {
-	grep -v "#" admins | grep -w "$username_id"
+	grep -v "#" admins | grep -w "$username_id\|$inline_user_id"
 }
 loading() {
 	case $1 in
@@ -330,7 +330,7 @@ get_normal_reply() {
 		"${pf}source")
 			source_id=$RANDOM
 			zip -r source-"$source_id".zip neekshellbot.sh custom_commands LICENSE webhook.php
-			document_id="@source-$source_id.zip" 
+			document_id="@source-$source_id.zip"
 			reply_id=$message_id
 			tg_method send_document > /dev/null
 			rm source-"$source_id".zip

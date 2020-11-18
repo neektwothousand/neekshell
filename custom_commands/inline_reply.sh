@@ -78,11 +78,10 @@ case $results in
 		tg_method send_inline > /dev/null
 	;;
 	*" bin")
-		admin=$(grep -v "#" admins | grep -w "$inline_user_id")
-		if [ "$admin" != "" ]; then
+		if [ $(is_admin) ]; then
 			command=$(sed 's/ bin$//' <<< "$results")
 			markdown=("<code>" "</code>")
-			message_text=$(printf '%s\n' "mksh@gentoo:~ $ $command" ; mksh -c "$command" 2>&1 )
+			message_text=$(mksh -c "$command" 2>&1)
 			title="$~> $command"
 			return_query=$(inline_array article)
 			tg_method send_inline
