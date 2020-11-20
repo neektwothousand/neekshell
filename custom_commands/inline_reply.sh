@@ -77,6 +77,19 @@ case $results in
 		return_query=$(inline_array photo)
 		tg_method send_inline > /dev/null
 	;;
+	"search "*)
+		offset=$(($(jshon_n -e offset -u <<< "$inline")+1))
+		search=$(sed 's/search //' <<< "$results" | sed 's/\s/%20/g')
+		searx_results=$(curl -s "https://archneek.zapto.org/searx/?q=$search&pageno=$offset&categories=general&format=json")
+		for j in $(seq 0 $(($(jshon_n -e results -l <<< "$searx_results")-1)) ); do
+			title[$j]=$(jshon_n -e results -e "$j" -e title -u <<< "$searx_results" | sed 's/"/\\"/g')
+			url[$j]=$(jshon_n -e results -e "$j" -e url -u <<< "$searx_results" | sed 's/"/\\"/g')
+			message_text[$j]="${title[$j]}\\n${url[$j]}"
+			description[$j]=$(jshon_n -e results -e "$j" -e content -u <<< "$searx_results" | sed 's/"/\\"/g')
+		done
+		return_query=$(inline_array article)
+		tg_method send_inline > /dev/null
+	;;
 	*" bin")
 		if [ $(is_admin) ]; then
 			command=$(sed 's/ bin$//' <<< "$results")
@@ -84,7 +97,7 @@ case $results in
 			message_text=$(mksh -c "$command" 2>&1)
 			title="$~> $command"
 			return_query=$(inline_array article)
-			tg_method send_inline
+			tg_method send_inline > /dev/null
 		fi
 	;;
 esac

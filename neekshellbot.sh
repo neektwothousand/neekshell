@@ -370,7 +370,7 @@ process_reply() {
 	inline=$(jshon_n -e inline_query <<< "$input")
 	callback=$(jshon_n -e callback_query <<< "$input")
 	type=$(jshon_n -e chat -e type -u <<< "$message")
-	if [ "$(jshon_n -e text -u <<< "$message" | grep '^!\|^/\|+')" = "" ] \
+	if [ "$(jshon_n -e text -u <<< "$message" | grep '^!\|^/\|^+\|^-')" = "" ] \
 		&& [ "$type" != "private" ] \
 		&& [ "$inline" = "" ] \
 		&& [ "$callback" = "" ]; then

@@ -22,6 +22,7 @@ Utilities used:
 !stats (displays number of groups and users)<br />
 !neofetch (displays general system info)<br />
 !rrandom (gets a random reddit post)<br />
+!deemix (downloads a song from deezer)<br />
 !ping<br />
 !top+ (gets a top 10 highscores)<br />
 !my+ (gets your score)<br />
@@ -35,7 +36,8 @@ administrative commands:
 !deladmin @username<br />
 !nomedia (disable media messages)<br />
 !silence (disable messages)<br />
-!broadcast [message or reply] (broadcast to all groups)<br >
+!broadcast [message or reply] (broadcast to all groups)<br />
+!delete (delete messages on reply)<br />
 !exit (leave chat)
 
 inline mode:

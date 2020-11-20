@@ -32,15 +32,15 @@ if [ "${pf}" = "" ]; then
 					case "$rep_sign" in 
 						"+")
 							text_id="respect + to $reply_to_user_fname ($newrep)"
-							tg_method send_message
+							tg_method send_message > /dev/null
 						;;
 						"-")
 							text_id="respect - to $reply_to_user_fname ($newrep)"
-							tg_method send_message
+							tg_method send_message > /dev/null
 					esac
 				else
 					caption="respect + to $reply_to_user_fname ($newrep)"
-					tg_method send_voice
+					tg_method send_voice > /dev/null
 				fi
 				# create lock+
 				touch .lock+/"$username_id"-lock && nohup mksh -c "sleep $((30 + (RANDOM % 30) )) ; rm .lock+/"$username_id"-lock" &
@@ -69,14 +69,14 @@ if [ "${pf}" = "" ]; then
 					fi
 					for c in $(seq "$bc_users_num"); do
 						chat_id=$(sed -n ${c}p <<< "$bc_users")
-						send_message_id[$c]=$(tg_method send_message)
+						send_message_id[$c]=$(tg_method send_message > /dev/null)
 					done
 				else
 					from_chat_id=$chat_id
 					copy_id=$message_id
 					for c in $(seq "$bc_users_num"); do
 						chat_id=$(sed -n ${c}p <<< "$bc_users")
-						send_message_id[$c]=$(tg_method copy_message)
+						send_message_id[$c]=$(tg_method copy_message > /dev/null)
 					done
 				fi
 				for c in $(seq "$bc_users_num"); do
@@ -139,10 +139,10 @@ else
 		;;
 		"${pf}d"[0-9]*|"${pf}d"[0-9]*"*"[0-9]*)
 			if [ "$(grep "*" <<< "$first_normal")" != "" ]; then
-				normaldice=$(sed 's/[/!]d//' <<< "$first_normal" | cut -d "*" -f 1)
-				mul=$(sed 's/[/!]d//' <<< "$first_normal" | cut -d "*" -f 2)
+				normaldice=$(sed "s/[${pf}]d//" <<< "$first_normal" | cut -d "*" -f 1)
+				mul=$(sed "s/[${pf}]d//" <<< "$first_normal" | cut -d "*" -f 2)
 			else
-				normaldice=$(sed 's/[/!]d//' <<< "$first_normal")
+				normaldice=$(sed "s/[${pf}]d//" <<< "$first_normal")
 				mul=1
 			fi
 			for x in $(seq "$mul"); do
@@ -156,7 +156,7 @@ else
 		;;
 		"${pf}wenit "*|"${pf}witen "*)
 			trad=$(sed -e 's/[!/]w//' -e 's/\s.*//' <<< "$first_normal")
-			search=$(sed -e "s/[/!]w$trad //" -e 's/\s/%20/g' <<< "$first_normal")
+			search=$(sed -e "s/[${pf}]w$trad //" -e 's/\s/%20/g' <<< "$first_normal")
 			wordreference=$(curl -A 'neekshellbot/1.0' -s "https://www.wordreference.com/$trad/$search" \
 				| sed -En "s/.*\s>(.*\s)<em.*/\1/p" \
 				| sed -e "s/<a.*//g" -e "s/<span.*'\(.*\)'.*/\1/g" \
@@ -231,7 +231,7 @@ else
 						loading 2
 					
 					video_id="@video-low-$request_id.mp4"
-					send_video
+					tg_method send_video > /dev/null
 					
 						loading 3
 					
@@ -313,9 +313,50 @@ else
 				;;
 			esac
 		;;
+		"${pf}deemix "*|"${pf}deemix")
+			reply_id=$message_id
+			if [ "$reply_to_text" != "" ]; then
+				deemix_link=$(sed -E 's/.*(https.*)\s.*/\1/' <<< "$reply_to_text" | cut -d ' ' -f 1 | grep 'deezer')
+			else
+				deemix_link=$(sed -e "s/[${pf}]deemix //" -e "s/.*\s//" <<< "$first_normal")
+				[ "$deemix_link" = "" ] && return
+			fi
+			
+			if [ "$(grep 'track' <<< "$deemix_link")" = "" ]; then
+				exit
+			fi
+			
+			deemix_id=$RANDOM
+			
+				loading 1
+			
+			export LC_ALL=C.UTF-8
+			export LANG=C.UTF-8
+			
+			song_title=$(~/.local/bin/deemix -p ./ "$deemix_link" 2>&1 | tail -n 4 | sed -n 1p)
+			song_file="$(basename -s .mp3 -- "$song_title")-$deemix_id.mp3"
+			mv -- "$song_title" "$song_file"
+			
+			if [ "$(du -m -- "$song_file" | cut -f 1)" -ge 50 ]; then
+				loading error
+				rm -- "$song_file"
+				text_id="file size exceeded"
+				tg_method send_message > /dev/null
+				return
+			fi
+			
+				loading 2
+			
+			audio_id="@$song_file"
+			tg_method send_audio > /dev/null
+			
+				loading 3
+			
+			rm -- "$song_file"
+		;;
 		"${pf}chat "*)
 			if [ "$type" = "private" ] || [ $(is_admin) ] ; then
-				action=$(printf '%s' "$first_normal" | sed -e 's/[/!]chat //')
+				action=$(printf '%s' "$first_normal" | sed -e "s/[${pf}]chat //")
 				reply_id=$message_id
 				case $action in
 					"create")
@@ -392,11 +433,11 @@ else
 		;;
 		"${pf}tag"|"${pf}tag "*)
 			if [ "$reply_to_text" = "" ]; then
-				text_id=$(sed -e 's/[/!]tag //' -e 's/\s/\n/' <<< "$first_normal" | sed -n 2p)
+				text_id=$(sed -e "s/[${pf}]tag //" -e 's/\s/\n/' <<< "$first_normal" | sed -n 2p)
 			else
 				text_id=$reply_to_text
 			fi
-			username=$(sed -e 's/[/!]tag //' -e 's/\s/\n/' <<< "$first_normal" | sed -n 1p)
+			username=$(sed -e "s/[${pf}]tag //" -e 's/\s/\n/' <<< "$first_normal" | sed -n 1p)
 			userid=$(sed -n 2p $(grep -r -- "$(sed 's/@//' <<< "$username")" db/users/ | cut -d : -f 1) | sed 's/id: //')
 			if [ "$userid" != "" ] && [ "$text_id" != "" ]; then
 				markdown=("<a href=\"tg://user?id=$userid\">" "</a>")
@@ -456,7 +497,7 @@ else
 			reply_id=$reply_to_id
 			[ "$reply_to_caption" != "" ] && reply_to_text=$reply_to_caption
 			if [ "$reply_to_text" != "" ]; then
-				regex=$(sed -e 's/[/!]sed //' <<< "$first_normal")
+				regex=$(sed -e "s/[${pf}]sed //" <<< "$first_normal")
 				case "$regex" in 
 					"$(grep /g$ <<< "$regex")")
 						regex=$(sed 's|/g$||' <<< "$regex")
@@ -491,7 +532,7 @@ else
 		"${pf}setadmin "*)
 			reply_id=$message_id
 			if [ $(is_admin) ]; then
-				username=$(sed -e 's/[/!]setadmin @//' <<< "$first_normal")
+				username=$(sed -e "s/[${pf}]setadmin @//" <<< "$first_normal")
 				setadmin_id=$(cat "$(grep -r -- "$username" db/users/ \
 					| cut -d : -f 1)" | sed -n 2p | sed 's/id: //')
 				admin_check=$(grep -v "#" admins | grep -w "$setadmin_id")
@@ -512,7 +553,7 @@ else
 		"${pf}deladmin "*)
 			reply_id=$message_id
 			if [ $(is_admin) ]; then
-				username=$(sed -e 's/[/!]deladmin @//' <<< "$first_normal")
+				username=$(sed -e "s/[${pf}]deladmin @//" <<< "$first_normal")
 				deladmin_id=$(cat "$(grep -r -- "$username" db/users/ \
 					| cut -d : -f 1)" | sed -n 2p | sed 's/id: //')
 				admin_check=$(grep -v "#" admins | grep -w "$deladmin_id")
@@ -535,7 +576,7 @@ else
 			reply_id=$message_id
 			markdown=("<code>" "</code>")
 			if [ $(is_admin) ]; then
-				command=$(sed 's/[/!]bin //' <<< "$first_normal")
+				command=$(sed "s/[${pf}]bin //" <<< "$first_normal")
 				text_id=$(mksh -c "$command" 2>&1)
 				if [ "$text_id" = "" ]; then
 					text_id="[no output]"
@@ -587,7 +628,7 @@ else
 		"${pf}nh "*)
 			reply_id=$message_id
 			if [ $(is_admin) ]; then
-				nhentai_id=$(sed "s/[/!]nh //" <<< "$first_normal" | cut -d / -f 5)
+				nhentai_id=$(sed "s/[${pf}]nh //" <<< "$first_normal" | cut -d / -f 5)
 				nhentai_check=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/1/")
 				if [ "$nhentai_check" != "" ]; then
 					h_delay=0.5 maxpages=10 p_offset=1
@@ -638,7 +679,7 @@ else
 		"${pf}nhzip "*)
 			reply_id=$message_id
 			if [ $(is_admin) ]; then
-				nhentai_id=$(sed "s/[/!]nhzip //" <<< "$first_normal" | cut -d / -f 5)
+				nhentai_id=$(sed "s/[${pf}]nhzip //" <<< "$first_normal" | cut -d / -f 5)
 				nhentai_check=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/1/")
 				if [ "$nhentai_check" != "" ]; then
 					maxpages=200
@@ -710,7 +751,7 @@ else
 		"${pf}explorer "*)
 			if [ $(is_admin) ] && [ "$type" = "private" ]; then
 				reply_id=$message_id
-				selected_dir=$(sed -e 's/[/!]explorer //' -e 's|/$||' <<< "$first_normal")
+				selected_dir=$(sed -e "s/[${pf}]explorer //" -e 's|/$||' <<< "$first_normal")
 				files_selected_dir=$(find "$selected_dir/" -maxdepth 1 -type f | sed "s:^./\|$selected_dir/::")
 				if [ "$files_selected_dir" != "" ]; then
 					text_id=$(printf '%s\n' "selected directory: $selected_dir" "select a file to download" "subdirs:" ; find "$selected_dir/" -maxdepth 1 -type d | sed "s:^./\|$selected_dir/::" | sed -e 1d | sed -e 's/^/-> /' -e 's|$|/|')
@@ -839,6 +880,12 @@ else
 				markdown=("<code>" "</code>")
 				text_id="Access denied"
 				tg_method send_message > /dev/null
+			fi
+		;;
+		"${pf}del"|"${pf}delete")
+			if [ $(is_admin) ]; then
+				to_delete_id=$reply_to_id
+				tg_method delete_message > /dev/null
 			fi
 		;;
 		"${pf}exit")
