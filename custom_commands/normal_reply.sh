@@ -57,12 +57,23 @@ if [ "${pf}" = "" ]; then
 				fi
 				if [ "$file_type" = "text" ]; then
 					if [ "$reply_to_text" != "" ]; then
-						if [ "$(wc -c <<< "$reply_to_text")" -gt 20 ]; then
-							quote="$(head -c 17 <<< "$reply_to_text" | sed 's/^/| /g')..."
+						quote_reply=$(sed -n 1p <<< "$reply_to_text" | grep '^|')
+						if [ "$(wc -c <<< "$reply_to_text")" -gt 30 ]; then
+							if [ "$quote_reply" = "" ]; then
+								quote="$(head -c 30 <<< "$reply_to_text" | sed 's/^/| /g')..."
+							else
+								reply_to_text=$(sed '1,2d' <<< "$reply_to_text")
+								quote="$(head -c 30 <<< "$reply_to_text" | sed 's/^/| /g')..."
+							fi
 						else
-							quote=$(grep -v '|' <<< "$reply_to_text" | sed 1d | sed 's/^/| /g')
+							if [ "$quote_reply" = "" ]; then
+								quote="$(head -c 30 <<< "$reply_to_text" | sed 's/^/| /g')"
+							else
+								reply_to_text=$(sed '1,2d' <<< "$reply_to_text")
+								quote="$(head -c 30 <<< "$reply_to_text" | sed 's/^/| /g')"
+							fi
 						fi
-					text_id=$(printf '%s\n' "$quote" "" "$first_normal")
+						text_id=$(printf '%s\n' "$quote" "" "$first_normal")
 					elif [ "$reply_to_message" != "" ] && [ "$reply_to_text" = "" ]; then
 						get_file_type reply
 						text_id=$(printf '%s\n' "| [$file_type]" "" "$first_normal")
@@ -316,7 +327,7 @@ else
 		"${pf}deemix "*|"${pf}deemix")
 			reply_id=$message_id
 			if [ "$reply_to_text" != "" ]; then
-				deemix_link=$(sed -E 's/.*(https.*)\s.*/\1/' <<< "$reply_to_text" | cut -d ' ' -f 1 | grep 'deezer')
+				deemix_link=$(grep -o 'https://www.deezer.*\|https://deezer.*' <<< "$reply_to_text" | cut -f 1 -d ' ')
 			else
 				deemix_link=$(sed -e "s/[${pf}]deemix //" -e "s/.*\s//" <<< "$first_normal")
 				[ "$deemix_link" = "" ] && return
@@ -333,7 +344,7 @@ else
 			export LC_ALL=C.UTF-8
 			export LANG=C.UTF-8
 			
-			song_title=$(~/.local/bin/deemix -p ./ "$deemix_link" 2>&1 | tail -n 4 | sed -n 1p)
+			song_title=$(/usr/local/bin/deemix -p ./ "$deemix_link" 2>&1 | tail -n 4 | sed -n 1p)
 			song_file="$(basename -s .mp3 -- "$song_title")-$deemix_id.mp3"
 			mv -- "$song_title" "$song_file"
 			
@@ -356,7 +367,8 @@ else
 		;;
 		"${pf}chat "*)
 			if [ "$type" = "private" ] || [ $(is_admin) ] ; then
-				action=$(printf '%s' "$first_normal" | sed -e "s/[${pf}]chat //")
+				chat_command=$(sed -e "s/[${pf}]chat //" <<< "$first_normal")
+				action=$(cut -d ' ' -f 1 <<< "$chat_command")
 				reply_id=$message_id
 				case $action in
 					"create")
@@ -380,7 +392,8 @@ else
 						fi
 					;;
 					"join")
-						if [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" = "" ] && [ "$type" = "private" ] ; then
+						if [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" = "" ] \
+						&& [ "$type" = "private" ]; then
 							text_id="Select chat to join:"
 							num_bot_chat=$(ls -1 "$bot_chat_dir" | wc -l)
 							list_bot_chat=$(ls -1 "$bot_chat_dir")
@@ -388,14 +401,25 @@ else
 								button_text[$j]=$(sed -n $((j+1))p <<< "$list_bot_chat")
 							done
 							markup_id=$(inline_array button)
-						elif [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" = "" ] && [ "$type" != "private" ] ; then
-							text_id="Attention: you're in a group, send !start joinchat[bot_chat_id] to join a group chat, e.g.: /start joinchat-1234567890. Use !chat list for a list of available group chats"
+						elif [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" = "" ] \
+						&& [ "$type" != "private" ];then
+							if [ $(is_admin) ]; then
+								join_chat=$(cut -d ' ' -f 2 <<< "$chat_command")
+								sed -i "s/\(users: \)/\1$chat_id /" $bot_chat_dir"$join_chat"
+								text_id="joined $join_chat"
+							else
+								markdown=("<code>" "</code>")
+								text_id="Access denied"
+								tg_method send_message > /dev/null
+								return	
+							fi
 						else
 							text_id="you're already in an existing chat"
 						fi
 					;;
 					"leave")
-						if [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" != "" ]; then
+						if [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" != "" ] \
+						&& [ "$type" = "private" ]; then
 							text_id="Select chat to leave:"
 							num_bot_chat=$(ls -1 "$bot_chat_dir" | wc -l)
 							list_bot_chat=$(ls -1 "$bot_chat_dir")
@@ -403,6 +427,18 @@ else
 								button_text[$j]=$(sed -n $((j+1))p <<< "$list_bot_chat")
 							done
 							markup_id=$(inline_array button)
+						elif [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" != "" ] \
+						&& [ "$type" != "private" ];then
+							if [ $(is_admin) ]; then
+								leave_chat=$(cut -d ' ' -f 2 <<< "$chat_command")
+								sed -i "s/$chat_id //" $bot_chat_dir"$leave_chat"
+								text_id="$leave_chat is no more"
+							else
+								markdown=("<code>" "</code>")
+								text_id="Access denied"
+								tg_method send_message > /dev/null
+								return
+							fi
 						else
 							text_id="you are not in an any chat yet"
 						fi
@@ -533,9 +569,9 @@ else
 			reply_id=$message_id
 			if [ $(is_admin) ]; then
 				username=$(sed -e "s/[${pf}]setadmin @//" <<< "$first_normal")
-				setadmin_id=$(cat "$(grep -r -- "$username" db/users/ \
-					| cut -d : -f 1)" | sed -n 2p | sed 's/id: //')
-				admin_check=$(grep -v "#" admins | grep -w "$setadmin_id")
+				setadmin_id=$(cat -- "$(grep -r -- "$username" db/users/ \
+					| cut -d : -f 1 | sed -n 1p)" | sed -n 2p | sed 's/id: //')
+				admin_check=$(grep -v "#" admins | grep -w -- "$setadmin_id")
 				if [ -z "$setadmin_id" ]; then
 					text_id="user not found"
 				elif [ "$admin_check" != "" ]; then
@@ -554,9 +590,9 @@ else
 			reply_id=$message_id
 			if [ $(is_admin) ]; then
 				username=$(sed -e "s/[${pf}]deladmin @//" <<< "$first_normal")
-				deladmin_id=$(cat "$(grep -r -- "$username" db/users/ \
-					| cut -d : -f 1)" | sed -n 2p | sed 's/id: //')
-				admin_check=$(grep -v "#" admins | grep -w "$deladmin_id")
+				deladmin_id=$(cat -- "$(grep -r -- "$username" db/users/ \
+					| cut -d : -f 1 | sed -n 1p)" | sed -n 2p | sed 's/id: //')
+				admin_check=$(grep -v "#" admins | grep -w -- "$deladmin_id")
 				if [ -z "$deladmin_id" ]; then
 					text_id="user not found"
 				elif [ "$admin_check" != "" ]; then

@@ -370,16 +370,27 @@ process_reply() {
 	inline=$(jshon_n -e inline_query <<< "$input")
 	callback=$(jshon_n -e callback_query <<< "$input")
 	type=$(jshon_n -e chat -e type -u <<< "$message")
+	chat_id=$(jshon_n -e chat -e id -u <<< "$message")
+	username_id=$(jshon_n -e from -e id -u <<< "$message")
+	if [ "$type" = "private" ] || [ "$inline" != "" ] || [ "$callback" != "" ]; then
+		bot_chat_dir="db/bot_chats/"
+		bot_chat_user_id=$username_id
+	else
+		bot_chat_dir="db/bot_group_chats/"
+		bot_chat_user_id=$chat_id
+		in_bgc=$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")
+	fi
 	if [ "$(jshon_n -e text -u <<< "$message" | grep '^!\|^/\|^+\|^-')" = "" ] \
-		&& [ "$type" != "private" ] \
-		&& [ "$inline" = "" ] \
-		&& [ "$callback" = "" ]; then
-		exit
+	&& [ "$type" != "private" ] \
+	&& [ "$inline" = "" ] \
+	&& [ "$callback" = "" ]; then
+		if [ "$in_bgc" = "" ]; then
+			exit
+		fi
 	fi
 
 	# user database
 	username_tag=$(jshon_n -e from -e username -u <<< "$message")
-	username_id=$(jshon_n -e from -e id -u <<< "$message")
 	username_fname=$(jshon_n -e from -e first_name -u <<< "$message")
 	username_lname=$(jshon_n -e from -e last_name -u <<< "$message")
 	if [ "$username_id" != "" ]; then
@@ -427,7 +438,6 @@ process_reply() {
 	fi
 	# chat database
 	chat_title=$(jshon_n -e chat -e title -u <<< "$message")
-	chat_id=$(jshon_n -e chat -e id -u <<< "$message")
 	if [ "$chat_title" != "" ]; then
 		[ ! -d db/chats/ ] && mkdir -p db/chats/
 		file_chat=db/chats/"$chat_id"
@@ -444,15 +454,6 @@ process_reply() {
 	callback_id=$(jshon_n -e id -u <<< "$callback")
 	callback_data=$(jshon_n -e data -u <<< "$callback")
 	callback_message_text=$(jshon_n -e message -e text -u <<< "$callback")
-
-	if [ "$type" = "private" ] || [ "$inline" != "" ] || [ "$callback" != "" ]
-	then
-		bot_chat_dir="db/bot_chats/"
-		bot_chat_user_id=$username_id
-	else
-		bot_chat_dir="db/bot_group_chats/"
-		bot_chat_user_id=$chat_id
-	fi
 
 	message_id=$(jshon_n -e message_id -u <<< "$message")
 
