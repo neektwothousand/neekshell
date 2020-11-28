@@ -2,6 +2,9 @@ if [ "${pf}" = "" ]; then
 	case $first_normal in	
 		"respect+"|"+"|"-"|"+"*|"-"*)
 			if [ "$username_id" != "$reply_to_user_id" ]; then
+				# check existing lock+
+				[ ! -d .lock+/ ] && mkdir .lock+/
+				[ -e .lock+/"$username_id"-lock ] && return
 				if [ "$(grep respect <<< "$first_normal")" = "" ]; then
 					rep_sign=$(sed 's/[^-+].*//' <<< "$first_normal")
 					rep_n=$(sed 's/[+-]//' <<< "$first_normal")
@@ -25,9 +28,6 @@ if [ "${pf}" = "" ]; then
 				fi
 				newrep=$(sed -n 5p db/users/"$reply_to_user_id" | sed 's/rep: //')
 				voice_id="https://archneek.zapto.org/webaudio/respect.ogg"
-				# check existing lock+
-				[ ! -d .lock+/ ] && mkdir .lock+/
-				[ -e .lock+/"$username_id"-lock ] && return
 				if [ "$(grep respect <<< "$first_normal")" = "" ]; then
 					case "$rep_sign" in 
 						"+")
@@ -194,25 +194,35 @@ else
 				;;
 				photo)
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$photo_id" | jshon_n -e result -e file_path -u)
-					wget -O pic-"$request_id".jpg "https://api.telegram.org/file/bot$TOKEN/$file_path"
-					magick pic-"$request_id".jpg -quality 15 pic-low-"$request_id".jpg
+					wget -O "pic-$request_id-r.jpg" "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					magick "pic-$request_id-r.jpg" -resize 200% "pic-$request_id.jpg"
+					magick "pic-$request_id.jpg" -quality 10 "pic-low-$request_id.jpg"
 					
 					photo_id="@pic-low-$request_id.jpg"
 					tg_method send_photo > /dev/null
 					
-					rm pic-"$request_id".jpg pic-low-"$request_id".jpg
+					rm "pic-$request_id.jpg" \
+						"pic-low-$request_id.jpg" \
+						"pic-$request_id-r.jpg"
 				;;
 				sticker)
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$sticker_id" | jshon_n -e result -e file_path -u)
-					wget -O sticker-"$request_id".webp "https://api.telegram.org/file/bot$TOKEN/$file_path"
-					convert sticker-"$request_id".webp sticker-"$request_id".jpg
-					magick sticker-"$request_id".jpg -quality 1 sticker-low-"$request_id".jpg
-					convert sticker-low-"$request_id".jpg sticker-low-"$request_id".webp
+					wget -O "sticker-$request_id-0.webp" "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					convert "sticker-$request_id-0.webp" "sticker-$request_id-1.jpg"
+					magick "sticker-$request_id-1.jpg" -resize 200% "sticker-$request_id-2.jpg"
+					magick "sticker-$request_id-2.jpg" -quality 10 "sticker-$request_id-3.jpg"
+					magick "sticker-$request_id-3.jpg" -resize 512x512 "sticker-$request_id-4.jpg"
+					convert "sticker-$request_id-4.jpg" "sticker-$request_id-5.webp"
 					
-					sticker_id="@sticker-low-$request_id.webp"
+					sticker_id="@sticker-$request_id-5.webp"
 					tg_method send_sticker > /dev/null
 					
-					rm sticker-"$request_id".webp sticker-"$request_id".jpg sticker-low-"$request_id".jpg sticker-low-"$request_id".webp
+					rm "sticker-$request_id-0.webp" \
+						"sticker-$request_id-1.jpg" \
+						"sticker-$request_id-2.jpg" \
+						"sticker-$request_id-3.jpg" \
+						"sticker-$request_id-4.jpg" \
+						"sticker-$request_id-5.webp"
 				;;
 				animation)
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$animation_id" | jshon_n -e result -e file_path -u)
@@ -220,7 +230,7 @@ else
 					
 						loading 1
 					
-					ffmpeg -i animation-"$request_id".mp4 -crf 48 -an animation-low-"$request_id".mp4
+					ffmpeg -i animation-"$request_id".mp4 -crf 50 -an animation-low-"$request_id".mp4
 					
 						loading 2
 					
@@ -237,7 +247,7 @@ else
 					
 						loading 1
 					
-					ffmpeg -i video-"$request_id".mp4 -crf 48 video-low-"$request_id".mp4
+					ffmpeg -i video-"$request_id".mp4 -crf 50 video-low-"$request_id".mp4
 					
 						loading 2
 					
@@ -500,25 +510,28 @@ else
 		"${pf}owoifer"|"${pf}owo"|"${pf}cringe")
 			reply=$(jshon_n -e reply_to_message -e text -u <<< "$message")
 			if [ "$reply" != "" ]; then
+				numberspace=$(tr -dc ' ' <<< "$reply" | wc -c)
+				
+				[ "$numberspace" = "" ] && return
+				
 				case $first_normal in
-					"${pf}cringe") 
-						owoarray=("🥵" "🙈" "🤣" "😘" "🥺" "💁‍♀️" "OwO" "😳" "🤠" "🤪" "😜" "🤬" "🤧" "🦹‍♂" "🍌")
+					"${pf}cringe")
+						owoarray=("🥵" "🙈" "🤣" "😘" "🥺" "💁‍♀️" "OwO" "😳" "🤠" "🤪" "😜" "🤬" "🤧" "🦹‍♂" "🍌" "😏" "😒" "😎" "🙄" "🧐" "😈" "👐🏻" "👏🏻" "👀" "👅" "🍆" "🤢" "🤮" "🤡" "💯" "👌" "😂" "🅱️" "💦")
 					;;
-					"${pf}owoifer"|"${pf}owoifier"|"${pf}owo") 
+					"${pf}owoifer"|"${pf}owoifier"|"${pf}owo")
 						owoarray=("owo" "ewe" "uwu" ":3" "x3")
 					;;
 				esac
-				numberspace=$(tr -dc ' ' <<< "$reply" | wc -c)
 				
-				for x in $(seq $((numberspace / 8))); do
+				for x in $(seq $(((numberspace / 8)+1))); do
 					reply=$(sed "s/\s/\n/$(((RANDOM % numberspace)+1))" <<< "$reply")
 				done
 				
-				for x in $(seq $(($(wc -l <<< "$reply") - 1))); do 
-					fixed_part[$x]=$(sed -n "${x}"p <<< "$reply" | sed "s/$/ ${owoarray[$((RANDOM % ${#owoarray[@]}))]}/")
+				for x in $(seq $(($(wc -l <<< "$reply") - 1))); do
+					fixed_part[$x]=$(sed -n "${x}"p <<< "$reply" | sed "s/$/ ${owoarray[$((RANDOM % ${#owoarray[@]}))]} /")
 				done
 				
-				fixed_text=$(printf '%s' "${fixed_part[*]}" "$(tail -1 <<< "$reply")")
+				fixed_text=$(printf '%s' "${fixed_part[*]}" "$(tail -1 <<< "$reply")" | tr -s ' ')
 				
 				text_id=$(sed -e 's/[lr]/w/g' -e 's/[LR]/W/g' <<< "$fixed_text")
 				reply_id=$reply_to_id
@@ -526,7 +539,13 @@ else
 				text_id="reply to a text message"
 				reply_id=$message_id
 			fi
-			tg_method send_message > /dev/null
+			if [ "$reply_to_user_id" = "$(jshon_n -e result -e id -u < botinfo)" ]; then
+				to_edit_id=$reply_to_id
+				edit_text=$text_id
+				tg_method edit_message > /dev/null
+			else
+				tg_method send_message > /dev/null
+			fi
 		;;
 		"${pf}sed "*)
 			reply_to_caption=$(jshon_n -e caption -u <<< "$reply_to_message")
@@ -543,7 +562,7 @@ else
 						sed=$(sed -E "s/$regex/" <<< "$reply_to_text")
 					;;
 				esac
-				text_id=$(printf '%s\n' "FTFY:" "$sed")
+				text_id=$(printf '%s\n' "$sed" "FTFY")
 			else
 				text_id="reply to a text message"
 			fi

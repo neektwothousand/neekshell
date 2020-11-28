@@ -44,6 +44,7 @@ inline mode:
 
 d[number] (dice)<br />
 fortune (fortune cookie)<br />
+figlet [text]<br />
 [system command] bin (administrative)<br />
 search [text to search on searx]<br />
 [g/s/e621]b [booru pic tag]

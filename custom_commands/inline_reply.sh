@@ -31,6 +31,14 @@ case $results in
 		return_query=$(inline_array article)
 		tg_method send_inline > /dev/null
 	;;
+	"figlet "*)
+		figtext=$(sed 's/figlet //' <<< "$results")
+		markdown=("<code>" "</code>")
+		message_text=$(figlet "$figtext")
+		title="figlet $figtext"
+		return_query=$(inline_array article)
+		tg_method send_inline > /dev/null
+	;;
 	"${ilb}b "*|"${ilb}booru "*)
 		offset=$(($(jshon_n -e offset -u <<< "$inline")+1))
 		tags=$(sed "s/${ilb}b \|${ilb}booru //" <<< "$results")
