@@ -34,7 +34,7 @@ case $results in
 	"figlet "*)
 		figtext=$(sed 's/figlet //' <<< "$results")
 		markdown=("<code>" "</code>")
-		message_text=$(figlet "$figtext")
+		message_text=$(figlet -- "$figtext")
 		title="figlet $figtext"
 		return_query=$(inline_array article)
 		tg_method send_inline > /dev/null

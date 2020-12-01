@@ -1,10 +1,20 @@
 if [ "${pf}" = "" ]; then
-	case $first_normal in	
+	case $first_normal in
 		"respect+"|"+"|"-"|"+"*|"-"*)
 			if [ "$username_id" != "$reply_to_user_id" ]; then
 				# check existing lock+
-				[ ! -d .lock+/ ] && mkdir .lock+/
-				[ -e .lock+/"$username_id"-lock ] && return
+				[ ! -d .lock+/respect/ ] && mkdir -p .lock+/respect/
+				lockfile=.lock+/respect/"$username_id"-lock
+				if [ -e $lockfile ]; then
+					# if it's younger than one day return
+					lock_age=$(bc <<< "$(date +%s) - $(stat -c "%W" $lockfile)")
+					lock_time=$((60 + (RANDOM % 60)))
+					if [ $lock_age -lt $locktime ]; then
+						return
+					else
+						rm $lockfile
+					fi
+				fi
 				if [ "$(grep respect <<< "$first_normal")" = "" ]; then
 					rep_sign=$(sed 's/[^-+].*//' <<< "$first_normal")
 					rep_n=$(sed 's/[+-]//' <<< "$first_normal")
@@ -43,7 +53,7 @@ if [ "${pf}" = "" ]; then
 					tg_method send_voice > /dev/null
 				fi
 				# create lock+
-				touch .lock+/"$username_id"-lock && nohup mksh -c "sleep $((30 + (RANDOM % 30) )) ; rm .lock+/"$username_id"-lock" &
+				[ ! -e $lockfile ] && touch $lockfile
 			fi
 			return
 		;;
@@ -112,7 +122,7 @@ else
 				enable_markdown=true
 				text_id=$(sort -nr <<< "$(printf '%s\n' "${user_rep[@]}")" | head -n 10)
 			fi
-			reply_id=$message_id
+			get_reply_id self
 			tg_method send_message > /dev/null
 		;;
 		"${pf}my+")
@@ -123,29 +133,32 @@ else
 				enable_markdown=true
 				text_id=$user_rep
 			fi
-			reply_id=$message_id
+			get_reply_id self
 			tg_method send_message > /dev/null
+		;;
+		"${pf}me "*)
+			action=$(sed "s/[${pf}]me //" <<< "$first_normal")
+			text_id="> $username_fname $action"
+			tg_method send_message > /dev/null
+			to_delete_id=$message_id
+			tg_method delete_message > /dev/null
 		;;
 		"${pf}fortune")
 			text_id=$(/usr/bin/fortune fortunes paradoxum goedel linuxcookie | tr '\n' ' ' | awk '{$2=$2};1')
-			reply_id=$message_id
+			get_reply_id any
 			tg_method send_message > /dev/null
 		;;
 		"${pf}decode")
 			update_id="${message_id}${username_id}"
 			printf '%s' "$input" | sed -e 's/{"/{\n"/g' -e 's/,"/,\n"/g' > decode-$update_id.json
 			document_id=@decode-$update_id.json
-			if [ "$reply_to_id" != "" ]; then
-				reply_id=$reply_to_id
-			else
-				reply_id=$message_id
-			fi
+			get_reply_id any
 			tg_method send_document > /dev/null
 			rm decode-$update_id.json
 		;;
 		"${pf}ping")
 			text_id=$(printf '%s\n' "pong" ; ping -c 1 api.telegram.org | grep time= | sed -E "s/(.*time=)(.*)( ms)/\2ms/")
-			reply_id=$message_id
+			get_reply_id self
 			tg_method send_message > /dev/null
 		;;
 		"${pf}d"[0-9]*|"${pf}d"[0-9]*"*"[0-9]*)
@@ -161,9 +174,43 @@ else
 				result[$x]=$(( ($(cat /dev/urandom | tr -dc '[:digit:]' 2>/dev/null | head -c $chars) % $normaldice) + 1 ))
 			done
 			text_id=${result[*]}
-			reply_id=$message_id
 			markdown=("<code>" "</code>")
+			get_reply_id self
 			tg_method send_message > /dev/null
+		;;
+		"${pf}gayscale"|"${pf}gs")
+			if [ "$reply_to_user_id" = "" ]; then
+				gs_id=$username_id
+			else
+				gs_id=$reply_to_user_id
+			fi
+			[ ! -d .lock+/gs/ ] && mkdir -p .lock+/gs/
+			lockfile=.lock+/gs/"$gs_id"-lock
+			if [ -e $lockfile ]; then
+				# if it's younger than one day return
+				lock_age=$(bc <<< "$(date +%s) - $(stat -c "%W" $lockfile)")
+				if [ $lock_age -lt 43200 ]; then
+					text_id=$(cat $lockfile)
+				else
+					rm $lockfile
+				fi
+			elif [ ! -e $lockfile ]; then
+				gs_perc=$((RANDOM % 101))
+				if [ $gs_perc -gt 9 ]; then
+					for x in $(seq $((gs_perc/10))); do
+						rainbow="🏳️‍🌈${rainbow}"
+					done
+				fi
+				if [ "$reply_to_message" != "" ]; then
+					gs_fname=$reply_to_user_fname
+				else
+					gs_fname=$username_fname
+				fi
+				text_id="$gs_fname is ${gs_perc}% gay $rainbow"
+			fi
+			get_reply_id any
+			tg_method send_message > /dev/null
+			[ ! -e $lockfile ] && printf '%s' "$text_id" > $lockfile
 		;;
 		"${pf}wenit "*|"${pf}witen "*)
 			trad=$(sed -e 's/[!/]w//' -e 's/\s.*//' <<< "$first_normal")
@@ -172,20 +219,21 @@ else
 				| sed -En "s/.*\s>(.*\s)<em.*/\1/p" \
 				| sed -e "s/<a.*//g" -e "s/<span.*'\(.*\)'.*/\1/g" \
 				| head | awk '!x[$0]++')
-			reply_id=$message_id
 			if [ "$wordreference" != "" ]; then
 				text_id=$(printf '%s\n' "translations:" "$wordreference")
 			else
 				text_id=$(printf '%s' "$search " "not found" | sed 's/%20/ /g')
 			fi
+			get_reply_id self
 			tg_method send_message > /dev/null
 		;;
 		"${pf}rrandom")
+			get_reply_id self
 			r_subreddit random
 		;;
 		"${pf}jpg")
 			request_id=$RANDOM
-			reply_id=$reply_to_id
+			get_reply_id reply
 			get_file_type reply
 			case $file_type in
 				text|"")
@@ -296,6 +344,7 @@ else
 		;;
 		"${pf}hf")
 			randweb=$(( ( RANDOM % 3 ) ))
+			get_reply_id self
 			case $randweb in
 				0)
 					popfeat=$(wget -q -O- "https://www.hentai-foundry.com/pictures/random/?enterAgree=1" | \
@@ -309,7 +358,6 @@ else
 						grep "pictures.hentai" | \
 						sed "s/^/https:/")
 					caption="https://www.hentai-foundry.com$randh"
-					reply_id=$message_id
 					tg_method send_photo > /dev/null
 				;;
 				1)
@@ -319,7 +367,6 @@ else
 						| sed -En 's/.*content="(.*)"\s.*/\1/p')
 					caption="https://rule34.xxx/index.php?page=post&s=view&$(grep 'action="index.php?' <<< "$randh" \
 						| sed -En 's/.*(id=.*)&.*/\1/p')"
-					reply_id=$message_id
 					tg_method send_photo > /dev/null
 				;;
 				2)
@@ -329,13 +376,11 @@ else
 						| sed -En 's/.*content="(.*)"\s.*/\1/p')
 					caption="https://safebooru.org/index.php?page=post&s=view&$(grep 'action="index.php?' <<< "$randh" \
 						| sed -En 's/.*(id=.*)&.*/\1/p')"
-					reply_id=$message_id
 					tg_method send_photo > /dev/null
 				;;
 			esac
 		;;
 		"${pf}deemix "*|"${pf}deemix")
-			reply_id=$message_id
 			if [ "$reply_to_text" != "" ]; then
 				deemix_link=$(grep -o 'https://www.deezer.*\|https://deezer.*' <<< "$reply_to_text" | cut -f 1 -d ' ')
 			else
@@ -369,6 +414,7 @@ else
 				loading 2
 			
 			audio_id="@$song_file"
+			get_reply_id any
 			tg_method send_audio > /dev/null
 			
 				loading 3
@@ -379,7 +425,7 @@ else
 			if [ "$type" = "private" ] || [ $(is_admin) ] ; then
 				chat_command=$(sed -e "s/[${pf}]chat //" <<< "$first_normal")
 				action=$(cut -d ' ' -f 1 <<< "$chat_command")
-				reply_id=$message_id
+				get_reply_id self
 				case $action in
 					"create")
 						[ ! -d $bot_chat_dir ] && mkdir -p $bot_chat_dir
@@ -500,11 +546,11 @@ else
 			else
 				text2img=$(sed "s/[!/]text2img //" <<< "$first_normal")
 			fi
-			reply_id=$message_id
 			api_key=$(cat api_key | grep deepai | cut -d : -f 2)
 			photo_id=$(curl -s "https://api.deepai.org/api/text2img" \
 				-F "text=$text2img" \
 				-H "api-key:$api_key" | jshon -e output_url -u)
+			get_reply_id self
 			tg_method send_photo > /dev/null
 		;;
 		"${pf}owoifer"|"${pf}owo"|"${pf}cringe")
@@ -534,10 +580,10 @@ else
 				fixed_text=$(printf '%s' "${fixed_part[*]}" "$(tail -1 <<< "$reply")" | tr -s ' ')
 				
 				text_id=$(sed -e 's/[lr]/w/g' -e 's/[LR]/W/g' <<< "$fixed_text")
-				reply_id=$reply_to_id
+				get_reply_id reply
 			else
 				text_id="reply to a text message"
-				reply_id=$message_id
+				get_reply_id self
 			fi
 			if [ "$reply_to_user_id" = "$(jshon_n -e result -e id -u < botinfo)" ]; then
 				to_edit_id=$reply_to_id
@@ -549,7 +595,6 @@ else
 		;;
 		"${pf}sed "*)
 			reply_to_caption=$(jshon_n -e caption -u <<< "$reply_to_message")
-			reply_id=$reply_to_id
 			[ "$reply_to_caption" != "" ] && reply_to_text=$reply_to_caption
 			if [ "$reply_to_text" != "" ]; then
 				regex=$(sed -e "s/[${pf}]sed //" <<< "$first_normal")
@@ -566,26 +611,26 @@ else
 			else
 				text_id="reply to a text message"
 			fi
+			get_reply_id reply
 			tg_method send_message > /dev/null
 		;;
 		"${pf}neofetch")
 			text_id=$(neofetch --stdout)
-			reply_id=$message_id
 			markdown=("<code>" "</code>")
+			get_reply_id self
 			tg_method send_message > /dev/null
 		;;
 		"${pf}stats")
-			reply_id=$message_id
 			text_id=$(printf '%s\n' \
 				"users: $(wc -l <<< $(ls -1 db/users/))" \
 				"groups: $(wc -l <<< $(ls -1 db/chats/))")
+			get_reply_id self
 			tg_method send_message > /dev/null
 		;;
 		
 		## administrative commands below
 		
 		"${pf}setadmin "*)
-			reply_id=$message_id
 			if [ $(is_admin) ]; then
 				username=$(sed -e "s/[${pf}]setadmin @//" <<< "$first_normal")
 				setadmin_id=$(cat -- "$(grep -r -- "$username" db/users/ \
@@ -603,10 +648,10 @@ else
 				markdown=("<code>" "</code>")
 				text_id="Access denied"
 			fi
+			get_reply_id self
 			tg_method send_message > /dev/null
 		;;
 		"${pf}deladmin "*)
-			reply_id=$message_id
 			if [ $(is_admin) ]; then
 				username=$(sed -e "s/[${pf}]deladmin @//" <<< "$first_normal")
 				deladmin_id=$(cat -- "$(grep -r -- "$username" db/users/ \
@@ -625,10 +670,10 @@ else
 				markdown=("<code>" "</code>")
 				text_id="Access denied"
 			fi
+			get_reply_id self
 			tg_method send_message > /dev/null
 		;;
 		"${pf}bin "*)
-			reply_id=$message_id
 			markdown=("<code>" "</code>")
 			if [ $(is_admin) ]; then
 				command=$(sed "s/[${pf}]bin //" <<< "$first_normal")
@@ -639,10 +684,11 @@ else
 			else
 				text_id="Access denied"
 			fi
+			get_reply_id self
 			tg_method send_message > /dev/null
 		;;
 		"${pf}ytdl "*|"${pf}ytdl")
-			reply_id=$message_id
+			get_reply_id self
 			if [ $(is_admin) ]; then
 				if [ "$reply_to_text" != "" ]; then
 					ytdl_link=$(sed -E 's/.*(https.*)\s.*/\1/' <<< "$reply_to_text" | cut -d ' ' -f 1 | grep 'youtube\|youtu.be')
@@ -681,7 +727,7 @@ else
 			fi
 		;;
 		"${pf}nh "*)
-			reply_id=$message_id
+			get_reply_id self
 			if [ $(is_admin) ]; then
 				nhentai_id=$(sed "s/[${pf}]nh //" <<< "$first_normal" | cut -d / -f 5)
 				nhentai_check=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/1/")
@@ -732,7 +778,7 @@ else
 			tg_method send_message > /dev/null
 		;;
 		"${pf}nhzip "*)
-			reply_id=$message_id
+			get_reply_id self
 			if [ $(is_admin) ]; then
 				nhentai_id=$(sed "s/[${pf}]nhzip //" <<< "$first_normal" | cut -d / -f 5)
 				nhentai_check=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/1/")
@@ -805,7 +851,7 @@ else
 		;;
 		"${pf}explorer "*)
 			if [ $(is_admin) ] && [ "$type" = "private" ]; then
-				reply_id=$message_id
+				get_reply_id self
 				selected_dir=$(sed -e "s/[${pf}]explorer //" -e 's|/$||' <<< "$first_normal")
 				files_selected_dir=$(find "$selected_dir/" -maxdepth 1 -type f | sed "s:^./\|$selected_dir/::")
 				if [ "$files_selected_dir" != "" ]; then
@@ -859,7 +905,7 @@ else
 		;;
 		"${pf}nomedia")
 			if [ "$type" != "private" ] && [ $(is_admin) ]; then
-			reply_id=$message_id
+			get_reply_id self
 			current_send_media=$(curl -s "${TELEAPI}/getChat" --form-string "chat_id=$chat_id" | jshon_n -e result -e permissions -e can_send_media_messages -u)
 				if [ "$current_send_media" = "true" ]; then
 					can_send_messages="true"
@@ -899,7 +945,7 @@ else
 		;;
 		"${pf}silence")
 			if [ "$type" != "private" ] && [ $(is_admin) ]; then
-			reply_id=$message_id
+			get_reply_id self
 			current_send_messages=$(curl -s "${TELEAPI}/getChat" --form-string "chat_id=$chat_id" | jshon_n -e result -e permissions -e can_send_messages -u)
 				if [ "$current_send_messages" = "true" ]; then
 					can_send_messages="false"
@@ -944,7 +990,7 @@ else
 			fi
 		;;
 		"${pf}exit")
-			reply_id=$message_id
+			get_reply_id self
 			if [ $(is_admin) ]; then
 				text_id="goodbye"
 				tg_method send_message > /dev/null

@@ -8,6 +8,23 @@ TELEAPI="https://api.telegram.org/bot${TOKEN}"
 jshon_n() {
 	jshon "$@" 2>/dev/null
 }
+get_reply_id() {
+	case $1 in
+		any)
+			if [ "$reply_to_message" != "" ]; then
+				reply_id=$reply_to_id
+			else
+				reply_id=$message_id
+			fi
+		;;
+		self)
+			reply_id=$message_id
+		;;
+		reply)
+			reply_id=$reply_to_id
+		;;
+	esac
+}
 is_admin() {
 	grep -v "#" admins | grep -w "$username_id\|$inline_user_id"
 }

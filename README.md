@@ -24,6 +24,8 @@ Utilities used:
 !rrandom (gets a random reddit post)<br />
 !deemix (downloads a song from deezer)<br />
 !ping<br />
+!me [text]<br />
+!gayscale (on reply too)<br />
 !top+ (gets a top 10 highscores)<br />
 !my+ (gets your score)<br />
 \+ (on reply to give a point)
