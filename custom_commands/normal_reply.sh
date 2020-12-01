@@ -186,15 +186,12 @@ else
 			fi
 			[ ! -d .lock+/gs/ ] && mkdir -p .lock+/gs/
 			lockfile=.lock+/gs/"$gs_id"-lock
-			if [ -e $lockfile ]; then
-				# if it's younger than one day return
-				lock_age=$(bc <<< "$(date +%s) - $(stat -c "%W" $lockfile)")
-				if [ $lock_age -lt 43200 ]; then
-					text_id=$(cat $lockfile)
-				else
-					rm $lockfile
-				fi
-			elif [ ! -e $lockfile ]; then
+			# check if it's younger than one day
+			lock_age=$(bc <<< "$(date +%s) - $(stat -c "%W" $lockfile)")
+			if [ -e $lockfile ] && [ $lock_age -lt 86400 ]; then
+				text_id=$(cat $lockfile)
+			else
+				rm $lockfile
 				gs_perc=$((RANDOM % 101))
 				if [ $gs_perc -gt 9 ]; then
 					for x in $(seq $((gs_perc/10))); do
@@ -207,10 +204,10 @@ else
 					gs_fname=$username_fname
 				fi
 				text_id="$gs_fname is ${gs_perc}% gay $rainbow"
+				printf '%s' "$text_id" > $lockfile
 			fi
 			get_reply_id any
 			tg_method send_message > /dev/null
-			[ ! -e $lockfile ] && printf '%s' "$text_id" > $lockfile
 		;;
 		"${pf}wenit "*|"${pf}witen "*)
 			trad=$(sed -e 's/[!/]w//' -e 's/\s.*//' <<< "$first_normal")
