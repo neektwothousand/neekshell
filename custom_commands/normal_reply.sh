@@ -192,7 +192,13 @@ else
 				text_id=$(cat $lockfile)
 			else
 				rm $lockfile
-				gs_perc=$((RANDOM % 101))
+				get_chat_id=$gs_id
+				gs_info="$username_fname $username_lname $(tg_method get_chat | jshon_n -e result -e bio -u)"
+				if [ "$(grep 'admin\|bi\|gay\|🏳️‍🌈' <<< "$gs_info")" != "" ]; then
+					gs_perc=$(((RANDOM % 51) + 50))
+				else
+					gs_perc=$((RANDOM % 101))
+				fi
 				if [ $gs_perc -gt 9 ]; then
 					for x in $(seq $((gs_perc/10))); do
 						rainbow="🏳️‍🌈${rainbow}"
@@ -543,7 +549,7 @@ else
 			else
 				text2img=$(sed "s/[!/]text2img //" <<< "$first_normal")
 			fi
-			api_key=$(cat api_key | grep deepai | cut -d : -f 2)
+			api_key=$(cat deepai_key)
 			photo_id=$(curl -s "https://api.deepai.org/api/text2img" \
 				-F "text=$text2img" \
 				-H "api-key:$api_key" | jshon -e output_url -u)

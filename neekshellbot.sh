@@ -300,6 +300,10 @@ tg_method() {
 			curl -s "$TELEAPI/leaveChat" \
 				--form-string "chat_id=$chat_id"
 		;;
+		get_chat)
+			curl -s "$TELEAPI/getChat" \
+				--form-string "chat_id=$get_chat_id"
+		;;
 		get_me)
 			curl -s "$TELEAPI/getMe"
 		;;
