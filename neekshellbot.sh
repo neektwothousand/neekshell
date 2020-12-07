@@ -387,7 +387,15 @@ get_button_reply() {
 	esac
 }
 process_reply() {
-	message=$(jshon_n -e message <<< "$input")
+	message_type=$(jshon_n <<< "$input" | sed -n 3p | sed -e 's/^\s"//' -e 's/".*//')
+	case "$message_type" in
+		message)
+			message=$(jshon_n -e message <<< "$input")
+		;;
+		channel_post)
+			message=$(jshon_n -e channel_post <<< "$input")
+		;;
+	esac
 	inline=$(jshon_n -e inline_query <<< "$input")
 	callback=$(jshon_n -e callback_query <<< "$input")
 	type=$(jshon_n -e chat -e type -u <<< "$message")
