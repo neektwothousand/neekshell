@@ -342,7 +342,7 @@ get_file_type() {
 	fi
 }
 get_normal_reply() {
-	case $first_normal in
+	case $normal_message in
 		"${pf}start")
 			text_id="this is a mksh bot, use /source to download"
 			reply_id=$message_id
@@ -366,7 +366,7 @@ get_normal_reply() {
 	esac
 }
 get_inline_reply() {
-	case $results in
+	case $inline_message in
 		"ok")
 			title="Ok"
 			message_text="Ok"
@@ -480,46 +480,42 @@ process_reply() {
 	inline_user=$(jshon_n -e from -e username -u <<< "$inline")
 	inline_user_id=$(jshon_n -e from -e id -u <<< "$inline")
 	inline_id=$(jshon_n -e id -u <<< "$inline")
-	results=$(jshon_n -e query -u <<< "$inline")
+	inline_message=$(jshon_n -e query -u <<< "$inline")
 
 	get_file_type
 
 	case "$file_type" in
 		text)
-			first_normal=$text_id
+			normal_message=$text_id
+			fn_arg=$(cut -f 2- -d ' ' <<< "$normal_message")
 		;;
 		photo)
-			first_normal=$photo_id
+			normal_message=$photo_id
 		;;
 		animation)
-			first_normal=$animation_id
+			normal_message=$animation_id
 		;;
 		video)
-			first_normal=$video_id
+			normal_message=$video_id
 		;;
 		sticker)
-			first_normal=$sticker_id
+			normal_message=$sticker_id
 		;;
 		audio)
-			first_normal=$audio_id
+			normal_message=$audio_id
 		;;
 		voice)
-			first_normal=$voice_id
+			normal_message=$voice_id
 		;;
 		document)
-			first_normal=$document_id
+			normal_message=$document_id
 		;;
 	esac
 
-	pf=$(grep -o -- '^.' <<< "$text_id")
-	if [ "$pf" != '!' ] && [ "$pf" != '/' ]; then
-		pf=""
-	fi
-
-	if [ "$first_normal" != "" ]; then
+	if [ "$normal_message" != "" ]; then
 		get_normal_reply
 		source custom_commands/normal_reply.sh
-	elif [ "$results" != "" ]; then
+	elif [ "$inline_message" != "" ]; then
 		get_inline_reply
 		source custom_commands/inline_reply.sh
 	elif [ "$callback_data" != "" ]; then

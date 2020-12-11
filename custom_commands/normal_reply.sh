@@ -1,5 +1,5 @@
-case $first_normal in
-	"${pf}top+")
+case $normal_message in
+	"!top+")
 		list_rep=$(grep -r "rep: " db/users/ | cut -d : -f 1)
 		for x in $(seq $(wc -l <<< "$list_rep")); do
 			user_file[$x]=$(sed -n ${x}p <<< "$list_rep")
@@ -14,7 +14,7 @@ case $first_normal in
 		get_reply_id self
 		tg_method send_message > /dev/null
 	;;
-	"${pf}my+")
+	"!my+")
 		user_rep=$(sed -e 1,2d "$file_user" | sed -e 's/fname: //' -e 's/lname: //' -e 's/rep: //' | tr '\n' ' ' | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' | sed -e "s|(.*)\s(.*)\s|\2 ☆ <b>\1</b>|")
 		if [ "$user_rep" = "" ]; then
 			text_id="oops, respect not found"
@@ -25,19 +25,18 @@ case $first_normal in
 		get_reply_id self
 		tg_method send_message > /dev/null
 	;;
-	"${pf}me "*)
-		action=$(sed "s/[${pf}]me //" <<< "$first_normal")
-		text_id="> $username_fname $action"
+	"!me "*)
+		text_id="> $username_fname $fn_arg"
 		tg_method send_message > /dev/null
 		to_delete_id=$message_id
 		tg_method delete_message > /dev/null
 	;;
-	"${pf}fortune")
+	"!fortune")
 		text_id=$(/usr/bin/fortune fortunes paradoxum goedel linuxcookie | tr '\n' ' ' | awk '{$2=$2};1')
 		get_reply_id any
 		tg_method send_message > /dev/null
 	;;
-	"${pf}decode")
+	"!decode")
 		update_id="${message_id}${username_id}"
 		printf '%s' "$input" | sed -e 's/{"/{\n"/g' -e 's/,"/,\n"/g' > decode-$update_id.json
 		document_id=@decode-$update_id.json
@@ -45,17 +44,17 @@ case $first_normal in
 		tg_method send_document > /dev/null
 		rm decode-$update_id.json
 	;;
-	"${pf}ping")
+	"!ping")
 		text_id=$(printf '%s\n' "pong" ; ping -c 1 api.telegram.org | grep time= | sed 's/.*time=//')
 		get_reply_id self
 		tg_method send_message > /dev/null
 	;;
-	"${pf}d"[0-9]*|"${pf}d"[0-9]*"*"[0-9]*)
-		if [ "$(grep "*" <<< "$first_normal")" != "" ]; then
-			normaldice=$(sed "s/[${pf}]d//" <<< "$first_normal" | cut -d "*" -f 1)
-			mul=$(sed "s/[${pf}]d//" <<< "$first_normal" | cut -d "*" -f 2)
+	"!d"[0-9]*|"!d"[0-9]*"*"[0-9]*)
+		if [ "$(grep "*" <<< "$normal_message")" != "" ]; then
+			normaldice=$(sed "s/!d//" <<< "$normal_message" | cut -d "*" -f 1)
+			mul=$(sed "s/!d//" <<< "$normal_message" | cut -d "*" -f 2)
 		else
-			normaldice=$(sed "s/[${pf}]d//" <<< "$first_normal")
+			normaldice=$(sed "s/!d//" <<< "$normal_message")
 			mul=1
 		fi
 		for x in $(seq "$mul"); do
@@ -67,7 +66,7 @@ case $first_normal in
 		get_reply_id self
 		tg_method send_message > /dev/null
 	;;
-	"${pf}gayscale"|"${pf}gs")
+	"!gayscale"|"!gs")
 		if [ "$reply_to_user_id" = "" ]; then
 			gs_id=$username_id
 		else
@@ -104,9 +103,9 @@ case $first_normal in
 		get_reply_id any
 		tg_method send_message > /dev/null
 	;;
-	"${pf}wenit "*|"${pf}witen "*)
-		trad=$(sed -e 's/[!/]w//' -e 's/\s.*//' <<< "$first_normal")
-		search=$(sed -e "s/[${pf}]w$trad //" -e 's/\s/%20/g' <<< "$first_normal")
+	"!wenit "*|"!witen "*)
+		trad=$(sed -e 's/!w//' -e 's/\s.*//' <<< "$normal_message")
+		search=$(sed 's/\s/%20/g' <<< "$fn_arg")
 		wordreference=$(curl -A 'neekshellbot/1.0' -s "https://www.wordreference.com/$trad/$search" \
 			| sed -en "s/.*\s>(.*\s)<em.*/\1/p" \
 			| sed -e "s/<a.*//g" -e "s/<span.*'\(.*\)'.*/\1/g" \
@@ -119,11 +118,11 @@ case $first_normal in
 		get_reply_id self
 		tg_method send_message > /dev/null
 	;;
-	"${pf}rrandom")
+	"!rrandom")
 		get_reply_id self
 		r_subreddit random
 	;;
-	"${pf}jpg")
+	"!jpg")
 		request_id=$RANDOM
 		get_reply_id reply
 		get_file_type reply
@@ -234,7 +233,7 @@ case $first_normal in
 			;;
 		esac
 	;;
-	"${pf}hf")
+	"!hf")
 		randweb=$(( ( RANDOM % 3 ) ))
 		get_reply_id self
 		case $randweb in
@@ -272,13 +271,14 @@ case $first_normal in
 			;;
 		esac
 	;;
-	"${pf}deemix "*|"${pf}deemix")
+	"!deemix "*|"!deemix")
 		if [ "$reply_to_text" != "" ]; then
 			deemix_link=$(grep -o 'https://www.deezer.*\|https://deezer.*' <<< "$reply_to_text" | cut -f 1 -d ' ')
 		else
-			deemix_link=$(sed -e "s/[${pf}]deemix //" -e "s/.*\s//" <<< "$first_normal")
-			[ "$deemix_link" = "" ] && return
+			deemix_link=$fn_arg
 		fi
+		
+		[ "$deemix_link" = "" ] && return
 		
 		if [ "$(grep 'track' <<< "$deemix_link")" = "" ]; then
 			exit
@@ -313,9 +313,9 @@ case $first_normal in
 		
 		rm -- "$song_file"
 	;;
-	"${pf}chat "*)
+	"!chat "*)
 		if [ "$type" = "private" ] || [ $(is_admin) ] ; then
-			chat_command=$(sed -e "s/[${pf}]chat //" <<< "$first_normal")
+			chat_command=$fn_arg
 			action=$(cut -d ' ' -f 1 <<< "$chat_command")
 			get_reply_id self
 			case $action in
@@ -415,13 +415,13 @@ case $first_normal in
 			tg_method send_message > /dev/null
 		fi
 	;;
-	"${pf}tag"|"${pf}tag "*)
+	"!tag"|"!tag "*)
 		if [ "$reply_to_text" = "" ]; then
-			text_id=$(sed -e "s/[${pf}]tag //" -e 's/\s/\n/' <<< "$first_normal" | sed -n 2p)
+			text_id=$(cut -f 2- -d ' ' <<< "$fn_arg")
 		else
 			text_id=$reply_to_text
 		fi
-		username=$(sed -e "s/[${pf}]tag //" -e 's/\s/\n/' <<< "$first_normal" | sed -n 1p)
+		username=$(cut -f 1 -d ' ' <<< "$fn_arg")
 		userid=$(sed -n 2p $(grep -r -- "$(sed 's/@//' <<< "$username")" db/users/ | cut -d : -f 1) | sed 's/id: //')
 		if [ "$userid" != "" ] && [ "$text_id" != "" ]; then
 			markdown=("<a href=\"tg://user?id=$userid\">" "</a>")
@@ -432,11 +432,11 @@ case $first_normal in
 		fi
 		tg_method send_message > /dev/null
 	;;
-	"${pf}text2img"|"${pf}text2img "*)
+	"!text2img"|"!text2img "*)
 		if [ "$reply_to_text" != "" ]; then
 			text2img=$reply_to_text
 		else
-			text2img=$(sed "s/[!/]text2img //" <<< "$first_normal")
+			text2img=$fn_arg
 		fi
 		api_key=$(cat deepai_key)
 		photo_id=$(curl -s "https://api.deepai.org/api/text2img" \
@@ -445,18 +445,18 @@ case $first_normal in
 		get_reply_id self
 		tg_method send_photo > /dev/null
 	;;
-	"${pf}owoifer"|"${pf}owo"|"${pf}cringe")
+	"!owoifer"|"!owo"|"!cringe")
 		reply=$(jshon_n -e reply_to_message -e text -u <<< "$message")
 		if [ "$reply" != "" ]; then
 			numberspace=$(tr -dc ' ' <<< "$reply" | wc -c)
 			
 			[ "$numberspace" = "" ] && return
 			
-			case $first_normal in
-				"${pf}cringe")
+			case $normal_message in
+				"!cringe")
 					owoarray=("🥵" "🙈" "🤣" "😘" "🥺" "💁‍♀️" "OwO" "😳" "🤠" "🤪" "😜" "🤬" "🤧" "🦹‍♂" "🍌" "😏" "😒" "😎" "🙄" "🧐" "😈" "👐🏻" "👏🏻" "👀" "👅" "🍆" "🤢" "🤮" "🤡" "💯" "👌" "😂" "🅱️" "💦")
 				;;
-				"${pf}owoifer"|"${pf}owoifier"|"${pf}owo")
+				"!owoifer"|"!owoifier"|"!owo")
 					owoarray=("owo" "ewe" "uwu" ":3" "x3")
 				;;
 			esac
@@ -485,11 +485,11 @@ case $first_normal in
 			tg_method send_message > /dev/null
 		fi
 	;;
-	"${pf}sed "*)
+	"!sed "*)
 		reply_to_caption=$(jshon_n -e caption -u <<< "$reply_to_message")
 		[ "$reply_to_caption" != "" ] && reply_to_text=$reply_to_caption
 		if [ "$reply_to_text" != "" ]; then
-			regex=$(sed -e "s/[${pf}]sed //" <<< "$first_normal")
+			regex=$fn_arg
 			case "$regex" in 
 				"$(grep /g$ <<< "$regex")")
 					regex=$(sed 's|/g$||' <<< "$regex")
@@ -506,13 +506,13 @@ case $first_normal in
 		get_reply_id reply
 		tg_method send_message > /dev/null
 	;;
-	"${pf}neofetch")
+	"!neofetch")
 		text_id=$(neofetch --stdout)
 		markdown=("<code>" "</code>")
 		get_reply_id self
 		tg_method send_message > /dev/null
 	;;
-	"${pf}stats")
+	"!stats")
 		text_id=$(printf '%s\n' \
 			"users: $(wc -l <<< $(ls -1 db/users/))" \
 			"groups: $(wc -l <<< $(ls -1 db/chats/))")
@@ -522,9 +522,9 @@ case $first_normal in
 	
 	## administrative commands
 	
-	"${pf}setadmin "*)
+	"!setadmin "*)
 		if [ $(is_admin) ]; then
-			username=$(sed -e "s/[${pf}]setadmin @//" <<< "$first_normal")
+			username=$(tr -d '@' <<< "$fn_arg")
 			setadmin_id=$(cat -- "$(grep -r -- "$username" db/users/ \
 				| cut -d : -f 1 | sed -n 1p)" | sed -n 2p | sed 's/id: //')
 			admin_check=$(grep -v "#" admins | grep -w -- "$setadmin_id")
@@ -543,9 +543,9 @@ case $first_normal in
 		get_reply_id self
 		tg_method send_message > /dev/null
 	;;
-	"${pf}deladmin "*)
+	"!deladmin "*)
 		if [ $(is_admin) ]; then
-			username=$(sed -e "s/[${pf}]deladmin @//" <<< "$first_normal")
+			username=$(tr -d '@' <<< "$fn_arg")
 			deladmin_id=$(cat -- "$(grep -r -- "$username" db/users/ \
 				| cut -d : -f 1 | sed -n 1p)" | sed -n 2p | sed 's/id: //')
 			admin_check=$(grep -v "#" admins | grep -w -- "$deladmin_id")
@@ -565,10 +565,10 @@ case $first_normal in
 		get_reply_id self
 		tg_method send_message > /dev/null
 	;;
-	"${pf}bin "*)
+	"!bin "*)
 		markdown=("<code>" "</code>")
 		if [ $(is_admin) ]; then
-			command=$(sed "s/[${pf}]bin //" <<< "$first_normal")
+			command=$fn_arg
 			text_id=$(mksh -c "$command" 2>&1)
 			if [ "$text_id" = "" ]; then
 				text_id="[no output]"
@@ -579,13 +579,13 @@ case $first_normal in
 		get_reply_id self
 		tg_method send_message > /dev/null
 	;;
-	"${pf}ytdl "*|"${pf}ytdl")
+	"!ytdl "*|"!ytdl")
 		get_reply_id self
 		if [ $(is_admin) ]; then
 			if [ "$reply_to_text" != "" ]; then
 				ytdl_link=$(sed -e 's/.*(https.*)\s.*/\1/' <<< "$reply_to_text" | cut -d ' ' -f 1 | grep 'youtube\|youtu.be')
 			else
-				ytdl_link=$(sed "s/[!/]ytdl //" <<< "$first_normal")
+				ytdl_link=$fn_arg
 				[ "$ytdl_link" = "" ] && return
 			fi
 			ytdl_id=$RANDOM
@@ -618,10 +618,10 @@ case $first_normal in
 			tg_method send_message > /dev/null
 		fi
 	;;
-	"${pf}nh "*)
+	"!nh "*)
 		get_reply_id self
 		if [ $(is_admin) ]; then
-			nhentai_id=$(sed "s/[${pf}]nh //" <<< "$first_normal" | cut -d / -f 5)
+			nhentai_id=$(cut -d / -f 5 <<< "$fn_arg")
 			nhentai_check=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/1/")
 			if [ "$nhentai_check" != "" ]; then
 				h_delay=0.5 maxpages=10 p_offset=1
@@ -669,10 +669,10 @@ case $first_normal in
 		fi
 		tg_method send_message > /dev/null
 	;;
-	"${pf}nhzip "*)
+	"!nhzip "*)
 		get_reply_id self
 		if [ $(is_admin) ]; then
-			nhentai_id=$(sed "s/[${pf}]nhzip //" <<< "$first_normal" | cut -d / -f 5)
+			nhentai_id=$(cut -d / -f 5 <<< "$fn_arg")
 			nhentai_check=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/1/")
 			if [ "$nhentai_check" != "" ]; then
 				maxpages=200
@@ -741,10 +741,10 @@ case $first_normal in
 			tg_method send_message > /dev/null
 		fi
 	;;
-	"${pf}explorer "*)
+	"!explorer "*)
 		if [ $(is_admin) ] && [ "$type" = "private" ]; then
 			get_reply_id self
-			selected_dir=$(sed -e "s/[${pf}]explorer //" -e 's|/$||' <<< "$first_normal")
+			selected_dir=$(sed 's|/$||' <<< "$fn_arg")
 			files_selected_dir=$(find "$selected_dir/" -maxdepth 1 -type f | sed "s:^./\|$selected_dir/::")
 			if [ "$files_selected_dir" != "" ]; then
 				text_id=$(printf '%s\n' "selected directory: $selected_dir" "select a file to download" "subdirs:" ; find "$selected_dir/" -maxdepth 1 -type d | sed "s:^./\|$selected_dir/::" | sed -e 1d | sed -e 's/^/-> /' -e 's|$|/|')
@@ -763,13 +763,13 @@ case $first_normal in
 		fi
 		tg_method send_message > /dev/null
 	;;
-	"${pf}broadcast "*|"${pf}broadcast")
+	"!broadcast "*|"!broadcast")
 		if [ $(is_admin) ]; then
 			group_broadcast_chats=$(grep -rnw db/chats/ -e 'supergroup' | cut -d ':' -f 1 | sed 's|db/chats/||')
 			private_broadcast_chats=$(grep -r users db/bot_chats/ | sed 's/.*: //' | tr ' ' '\n' | sed '/^$/d')
 			listchats=$(printf '%s\n' "$group_broadcast_chats" "$private_broadcast_chats" | grep -vw -- "$chat_id")
 			numchats=$(wc -l <<< "$listchats")
-			text_id=$(sed "s/[!/]broadcast//" <<< "$first_normal")
+			text_id=$fn_arg
 			br_delay=1
 			if [ "$text_id" != "" ]; then
 				for x in $(seq "$numchats"); do
@@ -795,7 +795,7 @@ case $first_normal in
 			send_message
 		fi
 	;;
-	"${pf}nomedia")
+	"!nomedia")
 		if [ "$type" != "private" ] && [ $(is_admin) ]; then
 		get_reply_id self
 		current_send_media=$(curl -s "${TELEAPI}/getChat" --form-string "chat_id=$chat_id" | jshon_n -e result -e permissions -e can_send_media_messages -u)
@@ -835,7 +835,7 @@ case $first_normal in
 			tg_method send_message > /dev/null
 		fi
 	;;
-	"${pf}silence")
+	"!silence")
 		if [ "$type" != "private" ] && [ $(is_admin) ]; then
 		get_reply_id self
 		current_send_messages=$(curl -s "${TELEAPI}/getChat" --form-string "chat_id=$chat_id" | jshon_n -e result -e permissions -e can_send_messages -u)
@@ -863,7 +863,7 @@ case $first_normal in
 				set_chat_permissions=$(tg_method set_chat_permissions | jshon_n -e ok -u)
 				
 				if [ "$set_chat_permissions" = "true" ]; then
-					text_id=" mode deactivated"
+					text_id="read-only mode deactivated"
 				else
 					text_id="error: bot is not admin"
 				fi
@@ -875,13 +875,13 @@ case $first_normal in
 			tg_method send_message > /dev/null
 		fi
 	;;
-	"${pf}del"|"${pf}delete")
+	"!del"|"!delete")
 		if [ $(is_admin) ]; then
 			to_delete_id=$reply_to_id
 			tg_method delete_message > /dev/null
 		fi
 	;;
-	"${pf}exit")
+	"!exit")
 		get_reply_id self
 		if [ $(is_admin) ]; then
 			text_id="goodbye"
@@ -911,12 +911,12 @@ case $first_normal in
 					rm $lockfile
 				fi
 			fi
-			if [ "$(grep respect <<< "$first_normal")" = "" ]; then
-				rep_sign=$(sed 's/[^-+].*//' <<< "$first_normal")
-				rep_n=$(sed 's/[+-]//' <<< "$first_normal")
+			if [ "$(grep respect <<< "$normal_message")" = "" ]; then
+				rep_sign=$(sed 's/[^-+].*//' <<< "$normal_message")
+				rep_n=$(sed 's/[+-]//' <<< "$normal_message")
 				[ "$rep_n" = "1" ] && rep_n=""
 			else
-				rep_sign=$(sed 's/respect//' <<< "$first_normal")
+				rep_sign=$(sed 's/respect//' <<< "$normal_message")
 			fi
 			prevrep=$(sed -n 5p db/users/"$reply_to_user_id" | sed 's/rep: //')
 			if [ "$prevrep" = "" ]; then
@@ -934,7 +934,7 @@ case $first_normal in
 			fi
 			newrep=$(sed -n 5p db/users/"$reply_to_user_id" | sed 's/rep: //')
 			voice_id="https://archneek.zapto.org/webaudio/respect.ogg"
-			if [ "$(grep respect <<< "$first_normal")" = "" ]; then
+			if [ "$(grep respect <<< "$normal_message")" = "" ]; then
 				case "$rep_sign" in 
 					"+")
 						text_id="respect + to $reply_to_user_fname ($newrep)"
@@ -952,6 +952,10 @@ case $first_normal in
 			[ ! -e $lockfile ] && touch $lockfile
 		fi
 		return
+	;;
+	ok|Ok|OK|oK)
+		get_reply_id self
+		tg_method send_message > /dev/null
 	;;
 	*)
 		if [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" != "" ]; then
@@ -979,10 +983,10 @@ case $first_normal in
 							quote="$(head -c 30 <<< "$reply_to_text" | sed 's/^/| /g')"
 						fi
 					fi
-					text_id=$(printf '%s\n' "$quote" "" "$first_normal")
+					text_id=$(printf '%s\n' "$quote" "" "$normal_message")
 				elif [ "$reply_to_message" != "" ] && [ "$reply_to_text" = "" ]; then
 					get_file_type reply
-					text_id=$(printf '%s\n' "| [$file_type]" "" "$first_normal")
+					text_id=$(printf '%s\n' "| [$file_type]" "" "$normal_message")
 				fi
 				for c in $(seq "$bc_users_num"); do
 					chat_id=$(sed -n ${c}p <<< "$bc_users")
