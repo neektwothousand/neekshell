@@ -407,15 +407,6 @@ process_reply() {
 	else
 		bot_chat_dir="db/bot_group_chats/"
 		bot_chat_user_id=$chat_id
-		in_bgc=$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")
-	fi
-	if [ "$(jshon_n -e text -u <<< "$message" | grep '^!\|^/\|^+\|^-')" = "" ] \
-	&& [ "$type" != "private" ] \
-	&& [ "$inline" = "" ] \
-	&& [ "$callback" = "" ]; then
-		if [ "$in_bgc" = "" ]; then
-			exit
-		fi
 	fi
 
 	# user database

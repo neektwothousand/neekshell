@@ -5,9 +5,7 @@ This bot needs a web server to set a webhook pointing on webhook.php, to execute
 Utilities used:
   - GNU sed, and various coreutils<br />
   - cURL<br />
-  - fortune-mod (https://github.com/shlomif/fortune-mod)<br />
-  - jshon (http://kmkeen.com/jshon/index.html)<br />
-  - searx (https://github.com/asciimoo/searx)
+  - jshon (http://kmkeen.com/jshon/index.html)
 
 # commands
 ### these commands are available through scripts under custom_commands/ directory
@@ -47,6 +45,7 @@ inline mode:
 d[number] (dice)<br />
 fortune (fortune cookie)<br />
 figlet [text]<br />
+jafw [text]<br />
 [system command] bin (administrative)<br />
 search [text to search on searx]<br />
 [g/s/e621]b [booru pic tag]

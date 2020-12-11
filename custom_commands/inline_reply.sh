@@ -39,6 +39,16 @@ case $results in
 		return_query=$(inline_array article)
 		tg_method send_inline > /dev/null
 	;;
+	"jafw "*)
+		j_normal=$(sed -e "s/jafw //" -e "s/ /  /g" <<< "$results")
+		j_fullw_low=$(sed -e 's/a/ａ/g' -e 's/b/ｂ/g' -e 's/c/ｃ/g' -e 's/d/ｄ/g' -e 's/e/ｅ/g' -e 's/f/ｆ/g' -e 's/g/ｇ/g' -e 's/h/ｈ/g' -e 's/i/ｉ/g' -e 's/j/ｊ/g' -e 's/k/ｋ/g' -e 's/l/ｌ/g' -e 's/m/ｍ/g' -e 's/n/ｎ/g' -e 's/o/ｏ/g' -e 's/p/ｐ/g' -e 's/q/ｑ/g' -e 's/r/ｒ/g' -e 's/s/ｓ/g' -e 's/t/ｔ/g' -e 's/u/ｕ/g' -e 's/v/ｖ/g' -e 's/w/ｗ/g' -e 's/x/ｘ/g' -e 's/y/ｙ/g' -e 's/z/ｚ/g' <<< "$j_normal")
+		j_fullw=$(sed -e 's/A/Ａ/g' -e 's/B/Ｂ/g' -e 's/C/Ｃ/g' -e 's/D/Ｄ/g' -e 's/E/Ｅ/g' -e 's/F/Ｆ/g' -e 's/G/Ｇ/g' -e 's/H/Ｈ/g' -e 's/I/Ｉ/g' -e 's/J/Ｊ/g' -e 's/K/Ｋ/g' -e 's/L/Ｌ/g' -e 's/M/Ｍ/g' -e 's/N/Ｎ/g' -e 's/O/Ｏ/g' -e 's/P/Ｐ/g' -e 's/Q/Ｑ/g' -e 's/R/Ｒ/g' -e 's/S/Ｓ/g' -e 's/T/Ｔ/g' -e 's/U/Ｕ/g' -e 's/V/Ｖ/g' -e 's/W/Ｗ/g' -e 's/X/Ｘ/g' -e 's/Y/Ｙ/g' -e 's/Z/Ｚ/g' <<< "$j_fullw_low")
+		j_trans=$(trans :ja -j -b "$j_normal")
+		title="『 $j_trans — $j_fullw 』"
+		message_text=$title
+		return_query=$(inline_array article)
+		tg_method send_inline > /dev/null
+	;;
 	"${ilb}b "*|"${ilb}booru "*)
 		offset=$(($(jshon_n -e offset -u <<< "$inline")+1))
 		tags=$(sed "s/${ilb}b \|${ilb}booru //" <<< "$results")
