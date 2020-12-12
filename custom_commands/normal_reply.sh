@@ -131,11 +131,27 @@ case $normal_message in
 				text_id="reply to a media"
 				tg_method send_message > /dev/null
 			;;
-			photo)
-				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$photo_id" | jshon_n -e result -e file_path -u)
-				wget -O "pic-$request_id-r.jpg" "https://api.telegram.org/file/bot$TOKEN/$file_path"
-				magick "pic-$request_id-r.jpg" -resize 200% "pic-$request_id.jpg"
-				magick "pic-$request_id.jpg" -quality 10 "pic-low-$request_id.jpg"
+			photo|document)
+				case $file_type in
+					photo)
+						media_id=$photo_id
+						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon_n -e result -e file_path -u)
+					;;
+					document)
+						media_id=$document_id
+						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon_n -e result -e file_path -u)
+						case "$(grep -o "...$" <<< "$file_path")" in
+							png) ext=png ;;
+							jpg) ext=jpg ;;
+							*) return ;;
+						esac
+						wget -O "pic-$request_id-r.$ext" "https://api.telegram.org/file/bot$TOKEN/$file_path"
+						convert "pic-$request_id-r.$ext" "pic-$request_id-r.jpg"
+						rm "pic-$request_id-r.$ext"
+					;;
+				esac
+				magick "pic-$request_id-r.jpg" -resize 400% "pic-$request_id.jpg"
+				magick "pic-$request_id.jpg" -quality 7 "pic-low-$request_id.jpg"
 				
 				photo_id="@pic-low-$request_id.jpg"
 				tg_method send_photo > /dev/null
