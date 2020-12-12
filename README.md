@@ -7,6 +7,8 @@ Utilities used:
   - cURL<br />
   - jshon (http://kmkeen.com/jshon/index.html)
 
+PowerShell version by adamantinum: https://github.com/adamantinum/PSTelegramBot
+
 # commands
 ### these commands are available through scripts under custom_commands/ directory
 
