@@ -26,7 +26,7 @@ get_reply_id() {
 	esac
 }
 is_admin() {
-	grep -v "#" admins | grep -w "$username_id\|$inline_user_id"
+	grep -v "#" admins | grep -w -- "$username_id\|$inline_user_id"
 }
 loading() {
 	case $1 in
