@@ -107,7 +107,7 @@ case $normal_message in
 		trad=$(sed -e 's/!w//' -e 's/\s.*//' <<< "$normal_message")
 		search=$(sed 's/\s/%20/g' <<< "$fn_arg")
 		wordreference=$(curl -A 'neekshellbot/1.0' -s "https://www.wordreference.com/$trad/$search" \
-			| sed -en "s/.*\s>(.*\s)<em.*/\1/p" \
+			| sed -En "s/.*\s>(.*\s)<em.*/\1/p" \
 			| sed -e "s/<a.*//g" -e "s/<span.*'\(.*\)'.*/\1/g" \
 			| head | awk '!x[$0]++')
 		if [ "$wordreference" != "" ]; then

@@ -59,9 +59,16 @@ case $inline_message in
 				getbooru=$(curl -A 'neekmkshbot/1.0 (by neek)' -s "https://e621.net/posts.json?tags=$tags&page=$offset&limit=$limit&$apikey")
 				for j in $(seq 0 $((limit - 1))); do
 					photo_url[$j]=$(jshon_n -e posts -e $y -e file -e url -u <<< "$getbooru")
-					while [ "$(grep 'jpg\|png' <<< "${photo_url[$j]}")" = "" ]; do
+					while [ "$(grep 'jpg\|jpeg' <<< "${photo_url[$j]}")" = "" ]; do
 						y=$((y+1))
+						if [ "$y" -gt "10" ]; then
+							break
+						fi
 						photo_url[$j]=$(jshon_n -e posts -e $y -e file -e url -u <<< "$getbooru")
+						photo_weight[$j]=$(curl -s -L -I "${photo_url[$j]}" | gawk -v IGNORECASE=1 '/^Content-Length/ { print $2 }')
+						if [ "${photo_weight[$j]}" -gt "5000000" ]; then
+							photo_url[$j]=""
+						fi
 					done
 					thumb_url[$j]=${photo_url[$j]}
 					caption[$j]="tag: $tags\\nsource: ${photo_url[$j]}"
@@ -79,11 +86,15 @@ case $inline_message in
 				esac
 				for j in $(seq 0 $((limit - 1))); do
 					photo_url[$j]=$(jshon_n -e $y -e file_url -u <<< "$getbooru")
-					while [ "$(grep 'jpg\|png' <<< "${photo_url[$j]}")" = "" ]; do
+					while [ "$(grep 'jpg\|jpeg' <<< "${photo_url[$j]}")" = "" ]; do
 						y=$((y+1))
-						photo_url[$j]=$(jshon_n -e $y -e file_url -u <<< "$getbooru")
 						if [ "$y" -gt "10" ]; then
 							break
+						fi
+						photo_url[$j]=$(jshon_n -e $y -e file_url -u <<< "$getbooru")
+						photo_weight[$j]=$(curl -s -L -I "${photo_url[$j]}" | gawk -v IGNORECASE=1 '/^Content-Length/ { print $2 }')
+						if [ "${photo_weight[$j]}" -gt "5000000" ]; then
+							photo_url[$j]=""
 						fi
 					done
 					thumb_url[$j]=${photo_url[$j]}
