@@ -118,9 +118,9 @@ case $normal_message in
 		get_reply_id self
 		tg_method send_message > /dev/null
 	;;
-	"!rrandom")
+	"!reddit "*)
 		get_reply_id self
-		r_subreddit random
+		r_subreddit "$fn_arg"
 	;;
 	"!jpg")
 		request_id=$RANDOM

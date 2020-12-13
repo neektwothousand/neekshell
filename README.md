@@ -21,7 +21,7 @@ PowerShell version by adamantinum: https://github.com/adamantinum/PSTelegramBot
 !tag [[@username] (new tag text)] (in private)<br />
 !stats (displays number of groups and users)<br />
 !neofetch (displays general system info)<br />
-!rrandom (gets a random reddit post)<br />
+!reddit [sub] (gets a random reddit post)<br />
 !deemix (downloads a song from deezer)<br />
 !ping<br />
 !me [text]<br />
