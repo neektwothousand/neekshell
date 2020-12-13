@@ -41,7 +41,7 @@ case $normal_message in
 		printf '%s' "$input" | sed -e 's/{"/{\n"/g' -e 's/,"/,\n"/g' > decode-$update_id.json
 		document_id=@decode-$update_id.json
 		get_reply_id any
-		tg_method send_document > /dev/null
+		tg_method send_document upload > /dev/null
 		rm decode-$update_id.json
 	;;
 	"!ping")
@@ -154,7 +154,7 @@ case $normal_message in
 				magick "pic-$request_id.jpg" -quality 7 "pic-low-$request_id.jpg"
 				
 				photo_id="@pic-low-$request_id.jpg"
-				tg_method send_photo > /dev/null
+				tg_method send_photo upload > /dev/null
 				
 				rm "pic-$request_id.jpg" \
 					"pic-low-$request_id.jpg" \
@@ -170,7 +170,7 @@ case $normal_message in
 				convert "sticker-$request_id-4.jpg" "sticker-$request_id-5.webp"
 				
 				sticker_id="@sticker-$request_id-5.webp"
-				tg_method send_sticker > /dev/null
+				tg_method send_sticker upload > /dev/null
 				
 				rm "sticker-$request_id-0.webp" \
 					"sticker-$request_id-1.jpg" \
@@ -190,7 +190,7 @@ case $normal_message in
 					loading 2
 				
 				animation_id="@animation-low-$request_id.mp4"
-				tg_method send_animation > /dev/null
+				tg_method send_animation upload > /dev/null
 				
 					loading 3
 				
@@ -207,7 +207,7 @@ case $normal_message in
 					loading 2
 				
 				video_id="@video-low-$request_id.mp4"
-				tg_method send_video > /dev/null
+				tg_method send_video upload > /dev/null
 				
 					loading 3
 				
@@ -224,7 +224,7 @@ case $normal_message in
 					loading 2
 				
 				audio_id="@audio-low-$request_id.mp3"
-				tg_method send_audio > /dev/null
+				tg_method send_audio upload > /dev/null
 				
 					loading 3
 				
@@ -241,7 +241,7 @@ case $normal_message in
 					loading 2
 				
 				voice_id="@voice-low-$request_id.ogg"
-				tg_method send_voice > /dev/null
+				tg_method send_voice upload > /dev/null
 				
 					loading 3
 				
@@ -323,7 +323,7 @@ case $normal_message in
 		
 		audio_id="@$song_file"
 		get_reply_id any
-		tg_method send_audio > /dev/null
+		tg_method send_audio upload > /dev/null
 		
 			loading 3
 		
@@ -623,7 +623,7 @@ case $normal_message in
 			
 				loading 2
 			
-			tg_method send_video > /dev/null
+			tg_method send_video upload > /dev/null
 			
 				loading 3
 			
@@ -728,7 +728,7 @@ case $normal_message in
 						for x in $(seq $zip_num); do
 							zip_file=$(sed -n ${x}p <<< "$zip_list")
 							document_id="@$zip_file"
-							tg_method send_document > /dev/null
+							tg_method send_document upload > /dev/null
 							rm "$zip_file"
 						done
 							loading 3 ; return
@@ -738,7 +738,7 @@ case $normal_message in
 					
 						loading 2
 					
-					tg_method send_document > /dev/null
+					tg_method send_document upload > /dev/null
 					
 						loading 3
 					

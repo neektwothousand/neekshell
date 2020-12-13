@@ -87,7 +87,7 @@ r_subreddit() {
 		media_id=$(curl -s "$media_id" | sed -En 's|.*<source src="(https://thumbs.*mp4)" .*|\1|p')
 	fi
 	permalink=$(jshon -e permalink -u <<< "$hot")
-	title=$(jshon -e title -u <<< "$hot" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
+	title=$(jshon -e title -u <<< "$hot")
 	stickied=$(jshon -e stickied -u <<< "$hot")
 	if [ "$title" != "" ]; then
 		caption=$(printf '%s\n' \
@@ -165,124 +165,132 @@ inline_array() {
 	esac
 }
 tg_method() {
+	case $2 in
+		upload)
+			curl_f="-F"
+		;;
+		*)
+			curl_f="--form-string"
+		;;
+	esac
 	case $1 in
 		send_message)
 			[ -z "$enable_markdown" ] && text_id=$(sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "$text_id")
 			curl -s "${TELEAPI}/sendMessage" \
-			--form-string "chat_id=$chat_id" \
-			--form-string "parse_mode=html" \
-			--form-string "reply_to_message_id=$reply_id" \
-			--form-string "reply_markup=$markup_id" \
-			--form-string "text=${markdown[0]}$text_id${markdown[1]}"
+				$curl_f "chat_id=$chat_id" \
+				$curl_f "parse_mode=html" \
+				$curl_f "reply_to_message_id=$reply_id" \
+				$curl_f "reply_markup=$markup_id" \
+				$curl_f "text=${markdown[0]}$text_id${markdown[1]}"
 		;;
 		send_photo)
 			curl -s "${TELEAPI}/sendPhoto" \
-				-F "chat_id=$chat_id" \
-				-F "parse_mode=html" \
-				-F "reply_to_message_id=$reply_id" \
-				-F "caption=$caption" \
-				-F "photo=$photo_id"
+				$curl_f "chat_id=$chat_id" \
+				$curl_f "parse_mode=html" \
+				$curl_f "reply_to_message_id=$reply_id" \
+				$curl_f "caption=$caption" \
+				$curl_f "photo=$photo_id"
 		;;
 		send_document)
 			curl -s "${TELEAPI}/sendDocument" \
-				-F "chat_id=$chat_id" \
-				-F "parse_mode=html" \
-				-F "reply_to_message_id=$reply_id" \
-				-F "caption=$caption" \
-				-F "document=$document_id"
+				$curl_f "chat_id=$chat_id" \
+				$curl_f "parse_mode=html" \
+				$curl_f "reply_to_message_id=$reply_id" \
+				$curl_f "caption=$caption" \
+				$curl_f "document=$document_id"
 		;;
 		send_video)
 			curl -s "$TELEAPI/sendVideo" \
-				-F "chat_id=$chat_id" \
-				-F "parse_mode=html" \
-				-F "reply_to_message_id=$reply_id" \
-				-F "thumb=$thumb" \
-				-F "caption=$caption" \
-				-F "video=$video_id"
+				$curl_f "chat_id=$chat_id" \
+				$curl_f "parse_mode=html" \
+				$curl_f "reply_to_message_id=$reply_id" \
+				$curl_f "thumb=$thumb" \
+				$curl_f "caption=$caption" \
+				$curl_f "video=$video_id"
 		;;
 		send_mediagroup)
 			curl -s "$TELEAPI/sendMediaGroup" \
-				-F "chat_id=$chat_id" \
-				-F "parse_mode=html" \
-				-F "reply_to_message_id=$reply_id" \
-				-F "caption=$caption" \
-				-F "media=$mediagroup_id"
+				$curl_f "chat_id=$chat_id" \
+				$curl_f "parse_mode=html" \
+				$curl_f "reply_to_message_id=$reply_id" \
+				$curl_f "caption=$caption" \
+				$curl_f "media=$mediagroup_id"
 		;;
 		send_audio)
 			curl -s "$TELEAPI/sendAudio" \
-				-F "chat_id=$chat_id" \
-				-F "parse_mode=html" \
-				-F "reply_to_message_id=$reply_id" \
-				-F "caption=$caption" \
-				-F "audio=$audio_id"
+				$curl_f "chat_id=$chat_id" \
+				$curl_f "parse_mode=html" \
+				$curl_f "reply_to_message_id=$reply_id" \
+				$curl_f "caption=$caption" \
+				$curl_f "audio=$audio_id"
 		;;
 		send_voice)
 			curl -s "$TELEAPI/sendVoice" \
-				-F "chat_id=$chat_id" \
-				-F "parse_mode=html" \
-				-F "reply_to_message_id=$reply_id" \
-				-F "caption=$caption" \
-				-F "voice=$voice_id"
+				$curl_f "chat_id=$chat_id" \
+				$curl_f "parse_mode=html" \
+				$curl_f "reply_to_message_id=$reply_id" \
+				$curl_f "caption=$caption" \
+				$curl_f "voice=$voice_id"
 		;;
 		send_animation)
 			curl -s "$TELEAPI/sendAnimation" \
-				-F "chat_id=$chat_id" \
-				-F "parse_mode=html" \
-				-F "reply_to_message_id=$reply_id" \
-				-F "caption=$caption" \
-				-F "animation=$animation_id"
+				$curl_f "chat_id=$chat_id" \
+				$curl_f "parse_mode=html" \
+				$curl_f "reply_to_message_id=$reply_id" \
+				$curl_f "caption=$caption" \
+				$curl_f "animation=$animation_id"
 		;;
 		send_sticker)
 			curl -s "$TELEAPI/sendSticker" \
-				-F "chat_id=$chat_id" \
-				-F "parse_mode=html" \
-				-F "reply_to_message_id=$reply_id" \
-				-F "caption=$caption" \
-				-F "sticker=$sticker_id"
+				$curl_f "chat_id=$chat_id" \
+				$curl_f "parse_mode=html" \
+				$curl_f "reply_to_message_id=$reply_id" \
+				$curl_f "caption=$caption" \
+				$curl_f "sticker=$sticker_id"
 		;;
 		send_inline)
 			curl -s "$TELEAPI/answerInlineQuery" \
-				--form-string "inline_query_id=$inline_id" \
-				--form-string "results=$(sed 's/\\/\\\\/g' <<< "$return_query")" \
-				--form-string "next_offset=$offset" \
-				--form-string "cache_time=0" \
-				--form-string "is_personal=true"
+				$curl_f "inline_query_id=$inline_id" \
+				$curl_f "results=$(sed 's/\\/\\\\/g' <<< "$return_query")" \
+				$curl_f "next_offset=$offset" \
+				$curl_f "cache_time=0" \
+				$curl_f "is_personal=true"
 		;;
 		forward_message)
 			curl -s "$TELEAPI/forwardMessage" \
-				--form-string "chat_id=$chat_id" \
-				--form-string "from_chat_id=$from_chat_id" \
-				--form-string "message_id=$forward_id"
+				$curl_f "chat_id=$chat_id" \
+				$curl_f "from_chat_id=$from_chat_id" \
+				$curl_f "message_id=$forward_id"
 		;;
 		inline_reply)
 			curl -s "$TELEAPI/answerInlineQuery" \
-				--form-string "inline_query_id=$inline_id" \
-				--form-string "results=$return_query" \
-				--form-string "next_offset=$offset" \
-				--form-string "cache_time=100" \
-				--form-string "is_personal=true" > /dev/null
+				$curl_f "inline_query_id=$inline_id" \
+				$curl_f "results=$return_query" \
+				$curl_f "next_offset=$offset" \
+				$curl_f "cache_time=100" \
+				$curl_f "is_personal=true" > /dev/null
 		;;
 		button_reply)
 			curl -s "$TELEAPI/answerCallbackQuery" \
-				--form-string "callback_query_id=$callback_id" \
-				--form-string "text=$button_text_reply"
+				$curl_f "callback_query_id=$callback_id" \
+				$curl_f "text=$button_text_reply"
 		;;
 		edit_message)
 			curl -s "$TELEAPI/editMessageText" \
-				--form-string "chat_id=$chat_id" \
-				--form-string "message_id=$to_edit_id" \
-				--form-string "text=$edit_text"
+				$curl_f "chat_id=$chat_id" \
+				$curl_f "message_id=$to_edit_id" \
+				$curl_f "text=$edit_text"
 		;;
 		delete_message)
 			curl -s "$TELEAPI/deleteMessage" \
-				--form-string "chat_id=$chat_id" \
-				--form-string "message_id=$to_delete_id"
+				$curl_f "chat_id=$chat_id" \
+				$curl_f "message_id=$to_delete_id"
 		;;
 		copy_message)
 			curl -s "$TELEAPI/copyMessage" \
-				--form-string "chat_id=$chat_id" \
-				--form-string "from_chat_id=$from_chat_id" \
-				--form-string "message_id=$copy_id"
+				$curl_f "chat_id=$chat_id" \
+				$curl_f "from_chat_id=$from_chat_id" \
+				$curl_f "message_id=$copy_id"
 		;;
 		set_chat_permissions)
 			curl -s "$TELEAPI/setChatPermissions" \
@@ -298,11 +306,11 @@ tg_method() {
 		;;
 		leave_chat)
 			curl -s "$TELEAPI/leaveChat" \
-				--form-string "chat_id=$chat_id"
+				$curl_f "chat_id=$chat_id"
 		;;
 		get_chat)
 			curl -s "$TELEAPI/getChat" \
-				--form-string "chat_id=$get_chat_id"
+				$curl_f "chat_id=$get_chat_id"
 		;;
 		get_me)
 			curl -s "$TELEAPI/getMe"
@@ -343,22 +351,22 @@ get_file_type() {
 }
 get_normal_reply() {
 	case $normal_message in
-		"${pf}start")
-			text_id="this is a mksh bot, use /source to download"
+		"!start")
+			text_id="this is a mksh bot, use !source to download"
 			reply_id=$message_id
 			tg_method send_message > /dev/null
 		;;
-		"${pf}source")
+		"!source")
 			source_id=$RANDOM
 			zip -r source-"$source_id".zip neekshellbot.sh custom_commands LICENSE webhook.php
 			document_id="@source-$source_id.zip"
 			reply_id=$message_id
-			tg_method send_document > /dev/null
+			tg_method send_document upload > /dev/null
 			rm source-"$source_id".zip
 			text_id="https://gitlab.com/craftmallus/neekshell-telegrambot/"
 			tg_method send_message > /dev/null
 		;;
-		"${pf}help")
+		"!help")
 			text_id="https://gitlab.com/craftmallus/neekshell-telegrambot/-/blob/master/README.md#commands"
 			reply_id=$message_id
 			tg_method send_message > /dev/null
