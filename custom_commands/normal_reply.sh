@@ -81,7 +81,7 @@ case $normal_message in
 		else
 			rm $lockfile
 			get_chat_id=$gs_id
-			gs_info="$username_fname $username_lname $(tg_method get_chat | jshon_n -e result -e bio -u)"
+			gs_info="$username_fname $username_lname $(tg_method get_chat | jshon -Q -e result -e bio -u)"
 			if [ "$(grep 'admin\|bi\|gay\|🏳️‍🌈' <<< "$gs_info")" != "" ]; then
 				gs_perc=$(((RANDOM % 51) + 50))
 			else
@@ -135,20 +135,23 @@ case $normal_message in
 				case $file_type in
 					photo)
 						media_id=$photo_id
-						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon_n -e result -e file_path -u)
 					;;
 					document)
 						media_id=$document_id
-						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon_n -e result -e file_path -u)
-						case "$(grep -o "...$" <<< "$file_path")" in
-							png) ext=png ;;
-							jpg) ext=jpg ;;
-							*) return ;;
-						esac
+					;;
+				esac
+				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
+				ext=$(grep -o "...$" <<< "$file_path")
+				case "$ext" in
+					png)
 						wget -O "pic-$request_id-r.$ext" "https://api.telegram.org/file/bot$TOKEN/$file_path"
 						convert "pic-$request_id-r.$ext" "pic-$request_id-r.jpg"
 						rm "pic-$request_id-r.$ext"
 					;;
+					jpg)
+						wget -O "pic-$request_id-r.$ext" "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					;;
+					*) return ;;
 				esac
 				magick "pic-$request_id-r.jpg" -resize 400% "pic-$request_id.jpg"
 				magick "pic-$request_id.jpg" -quality 7 "pic-low-$request_id.jpg"
@@ -161,7 +164,7 @@ case $normal_message in
 					"pic-$request_id-r.jpg"
 			;;
 			sticker)
-				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$sticker_id" | jshon_n -e result -e file_path -u)
+				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$sticker_id" | jshon -Q -e result -e file_path -u)
 				wget -O "sticker-$request_id-0.webp" "https://api.telegram.org/file/bot$TOKEN/$file_path"
 				convert "sticker-$request_id-0.webp" "sticker-$request_id-1.jpg"
 				magick "sticker-$request_id-1.jpg" -resize 200% "sticker-$request_id-2.jpg"
@@ -180,7 +183,7 @@ case $normal_message in
 					"sticker-$request_id-5.webp"
 			;;
 			animation)
-				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$animation_id" | jshon_n -e result -e file_path -u)
+				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$animation_id" | jshon -Q -e result -e file_path -u)
 				wget -O animation-"$request_id".mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
 				
 					loading 1
@@ -197,7 +200,7 @@ case $normal_message in
 				rm animation-"$request_id".mp4 animation-low-"$request_id".mp4
 			;;
 			video)
-				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$video_id" | jshon_n -e result -e file_path -u)
+				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$video_id" | jshon -Q -e result -e file_path -u)
 				wget -O video-"$request_id".mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
 				
 					loading 1
@@ -214,7 +217,7 @@ case $normal_message in
 				rm video-"$request_id".mp4 video-low-"$request_id".mp4
 			;;
 			audio)
-				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$audio_id" | jshon_n -e result -e file_path -u)
+				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$audio_id" | jshon -Q -e result -e file_path -u)
 				wget -O audio-"$request_id".mp3 "https://api.telegram.org/file/bot$TOKEN/$file_path"
 				
 					loading 1
@@ -231,7 +234,7 @@ case $normal_message in
 				rm audio-"$request_id".mp3 audio-low-"$request_id".mp3
 			;;
 			voice)
-				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$voice_id" | jshon_n -e result -e file_path -u)
+				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$voice_id" | jshon -Q -e result -e file_path -u)
 				wget -O voice-"$request_id".ogg "https://api.telegram.org/file/bot$TOKEN/$file_path"
 				
 					loading 1
@@ -462,7 +465,7 @@ case $normal_message in
 		tg_method send_photo > /dev/null
 	;;
 	"!owoifer"|"!owo"|"!cringe")
-		reply=$(jshon_n -e reply_to_message -e text -u <<< "$message")
+		reply=$(jshon -Q -e reply_to_message -e text -u <<< "$message")
 		if [ "$reply" != "" ]; then
 			numberspace=$(tr -dc ' ' <<< "$reply" | wc -c)
 			
@@ -493,7 +496,7 @@ case $normal_message in
 			text_id="reply to a text message"
 			get_reply_id self
 		fi
-		if [ "$reply_to_user_id" = "$(jshon_n -e result -e id -u < botinfo)" ]; then
+		if [ "$reply_to_user_id" = "$(jshon -Q -e result -e id -u < botinfo)" ]; then
 			to_edit_id=$reply_to_id
 			edit_text=$text_id
 			tg_method edit_message > /dev/null
@@ -502,7 +505,7 @@ case $normal_message in
 		fi
 	;;
 	"!sed "*)
-		reply_to_caption=$(jshon_n -e caption -u <<< "$reply_to_message")
+		reply_to_caption=$(jshon -Q -e caption -u <<< "$reply_to_message")
 		[ "$reply_to_caption" != "" ] && reply_to_text=$reply_to_caption
 		if [ "$reply_to_text" != "" ]; then
 			regex=$fn_arg
@@ -608,7 +611,7 @@ case $normal_message in
 			
 				loading 1
 			
-			caption=$(youtube-dl --print-json --format mp4 -o ytdl-$ytdl_id.mp4 "$ytdl_link" | jshon_n -e title -u)
+			caption=$(youtube-dl --print-json --format mp4 -o ytdl-$ytdl_id.mp4 "$ytdl_link" | jshon -Q -e title -u)
 			
 			if [ "$(du -m ytdl-$ytdl_id.mp4 | cut -f 1)" -ge 50 ]; then
 				loading error
@@ -814,7 +817,7 @@ case $normal_message in
 	"!nomedia")
 		if [ "$type" != "private" ] && [ $(is_admin) ]; then
 		get_reply_id self
-		current_send_media=$(curl -s "${TELEAPI}/getChat" --form-string "chat_id=$chat_id" | jshon_n -e result -e permissions -e can_send_media_messages -u)
+		current_send_media=$(curl -s "${TELEAPI}/getChat" --form-string "chat_id=$chat_id" | jshon -Q -e result -e permissions -e can_send_media_messages -u)
 			if [ "$current_send_media" = "true" ]; then
 				can_send_messages="true"
 				can_send_media_messages="false"
@@ -822,7 +825,7 @@ case $normal_message in
 				can_send_polls="false"
 				can_add_web_page_previews="false"
 				
-				set_chat_permissions=$(tg_method set_chat_permissions | jshon_n -e ok -u)
+				set_chat_permissions=$(tg_method set_chat_permissions | jshon -Q -e ok -u)
 				
 				if [ "$set_chat_permissions" = "true" ]; then
 					text_id="no-media mode activated, send again to deactivate"
@@ -836,7 +839,7 @@ case $normal_message in
 				can_send_polls="true"
 				can_add_web_page_previews="true"
 				
-				set_chat_permissions=$(tg_method set_chat_permissions | jshon_n -e ok -u)
+				set_chat_permissions=$(tg_method set_chat_permissions | jshon -Q -e ok -u)
 				
 				if [ "$set_chat_permissions" = "true" ]; then
 					text_id="no-media mode deactivated"
@@ -854,7 +857,7 @@ case $normal_message in
 	"!silence")
 		if [ "$type" != "private" ] && [ $(is_admin) ]; then
 		get_reply_id self
-		current_send_messages=$(curl -s "${TELEAPI}/getChat" --form-string "chat_id=$chat_id" | jshon_n -e result -e permissions -e can_send_messages -u)
+		current_send_messages=$(curl -s "${TELEAPI}/getChat" --form-string "chat_id=$chat_id" | jshon -Q -e result -e permissions -e can_send_messages -u)
 			if [ "$current_send_messages" = "true" ]; then
 				can_send_messages="false"
 				can_send_media_messages="false"
@@ -862,7 +865,7 @@ case $normal_message in
 				can_send_polls="false"
 				can_add_web_page_previews="false"
 				
-				set_chat_permissions=$(tg_method set_chat_permissions | jshon_n -e ok -u)
+				set_chat_permissions=$(tg_method set_chat_permissions | jshon -Q -e ok -u)
 				
 				if [ "$set_chat_permissions" = "true" ]; then
 					text_id="read-only mode activated, send again to deactivate"
@@ -876,7 +879,7 @@ case $normal_message in
 				can_send_polls="true"
 				can_add_web_page_previews="true"
 				
-				set_chat_permissions=$(tg_method set_chat_permissions | jshon_n -e ok -u)
+				set_chat_permissions=$(tg_method set_chat_permissions | jshon -Q -e ok -u)
 				
 				if [ "$set_chat_permissions" = "true" ]; then
 					text_id="read-only mode deactivated"
@@ -969,7 +972,8 @@ case $normal_message in
 		fi
 		return
 	;;
-	ok|Ok|OK|oK)
+	[oO][kK]|[oO][kK]?)
+		text_id="ok"
 		get_reply_id self
 		tg_method send_message > /dev/null
 	;;
@@ -1017,7 +1021,7 @@ case $normal_message in
 				done
 			fi
 			for c in $(seq "$bc_users_num"); do
-				if [ "$(jshon_n -e description -u <<< "${send_message_id[$c]}")" = "Forbidden: bot was blocked by the user" ]; then
+				if [ "$(jshon -Q -e description -u <<< "${send_message_id[$c]}")" = "Forbidden: bot was blocked by the user" ]; then
 					sed -i "s/$chat_id //" "$(grep -r -- "$bot_chat_user_id" $bot_chat_dir | cut -d : -f 1)"
 				fi
 			done

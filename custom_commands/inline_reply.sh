@@ -50,7 +50,7 @@ case $inline_message in
 		tg_method send_inline > /dev/null
 	;;
 	"${ilb}b "*|"${ilb}booru "*)
-		offset=$(($(jshon_n -e offset -u <<< "$inline")+1))
+		offset=$(($(jshon -Q -e offset -u <<< "$inline")+1))
 		tags=$(sed "s/${ilb}b \|${ilb}booru //" <<< "$inline_message")
 		limit=5 y=0
 		case "$ilb" in 
@@ -58,13 +58,13 @@ case $inline_message in
 				apikey=$(cat e621_api_key)
 				getbooru=$(curl -A 'neekmkshbot/1.0 (by neek)' -s "https://e621.net/posts.json?tags=$tags&page=$offset&limit=$limit&$apikey")
 				for j in $(seq 0 $((limit - 1))); do
-					photo_url[$j]=$(jshon_n -e posts -e $y -e file -e url -u <<< "$getbooru")
+					photo_url[$j]=$(jshon -Q -e posts -e $y -e file -e url -u <<< "$getbooru")
 					while [ "$(grep 'jpg\|jpeg' <<< "${photo_url[$j]}")" = "" ]; do
 						y=$((y+1))
 						if [ "$y" -gt "10" ]; then
 							break
 						fi
-						photo_url[$j]=$(jshon_n -e posts -e $y -e file -e url -u <<< "$getbooru")
+						photo_url[$j]=$(jshon -Q -e posts -e $y -e file -e url -u <<< "$getbooru")
 						photo_weight[$j]=$(curl -s -L -I "${photo_url[$j]}" | gawk -v IGNORECASE=1 '/^Content-Length/ { print $2 }')
 						if [ "${photo_weight[$j]}" -gt "5000000" ]; then
 							photo_url[$j]=""
@@ -85,13 +85,13 @@ case $inline_message in
 				;;
 				esac
 				for j in $(seq 0 $((limit - 1))); do
-					photo_url[$j]=$(jshon_n -e $y -e file_url -u <<< "$getbooru")
+					photo_url[$j]=$(jshon -Q -e $y -e file_url -u <<< "$getbooru")
 					while [ "$(grep 'jpg\|jpeg' <<< "${photo_url[$j]}")" = "" ]; do
 						y=$((y+1))
 						if [ "$y" -gt "10" ]; then
 							break
 						fi
-						photo_url[$j]=$(jshon_n -e $y -e file_url -u <<< "$getbooru")
+						photo_url[$j]=$(jshon -Q -e $y -e file_url -u <<< "$getbooru")
 						photo_weight[$j]=$(curl -s -L -I "${photo_url[$j]}" | gawk -v IGNORECASE=1 '/^Content-Length/ { print $2 }')
 						if [ "${photo_weight[$j]}" -gt "5000000" ]; then
 							photo_url[$j]=""
@@ -107,14 +107,14 @@ case $inline_message in
 		tg_method send_inline > /dev/null
 	;;
 	"search "*)
-		offset=$(($(jshon_n -e offset -u <<< "$inline")+1))
+		offset=$(($(jshon -Q -e offset -u <<< "$inline")+1))
 		search=$(sed 's/search //' <<< "$inline_message" | sed 's/\s/%20/g')
 		searx_results=$(curl -s "https://archneek.zapto.org/searx/?q=$search&pageno=$offset&categories=general&format=json")
-		for j in $(seq 0 $(($(jshon_n -e results -l <<< "$searx_results")-1)) ); do
-			title[$j]=$(jshon_n -e results -e "$j" -e title -u <<< "$searx_results" | sed 's/"/\\"/g')
-			url[$j]=$(jshon_n -e results -e "$j" -e url -u <<< "$searx_results" | sed 's/"/\\"/g')
+		for j in $(seq 0 $(($(jshon -Q -e results -l <<< "$searx_results")-1)) ); do
+			title[$j]=$(jshon -Q -e results -e "$j" -e title -u <<< "$searx_results" | sed 's/"/\\"/g')
+			url[$j]=$(jshon -Q -e results -e "$j" -e url -u <<< "$searx_results" | sed 's/"/\\"/g')
 			message_text[$j]="${title[$j]}\\n${url[$j]}"
-			description[$j]=$(jshon_n -e results -e "$j" -e content -u <<< "$searx_results" | sed 's/"/\\"/g')
+			description[$j]=$(jshon -Q -e results -e "$j" -e content -u <<< "$searx_results" | sed 's/"/\\"/g')
 		done
 		return_query=$(inline_array article)
 		tg_method send_inline > /dev/null
@@ -124,9 +124,9 @@ case $inline_message in
 			command=$(sed 's/ bin$//' <<< "$inline_message")
 			markdown=("<code>" "</code>")
 			message_text=$(mksh -c "$command" 2>&1)
-			title="$~> $command"
+			title="> $command"
 			return_query=$(inline_array article)
-			tg_method send_inline > /dev/null
+			tg_method send_inline
 		fi
 	;;
 esac

@@ -5,9 +5,6 @@ exec 1>>"log.log" 2>&1
 set -a
 TOKEN=$(cat ./token)
 TELEAPI="https://api.telegram.org/bot${TOKEN}"
-jshon_n() {
-	jshon "$@" 2>/dev/null
-}
 get_reply_id() {
 	case $1 in
 		any)
@@ -32,17 +29,17 @@ loading() {
 	case $1 in
 		1)
 			text_id="processing ..."
-			processing_id=$(tg_method send_message | jshon_n -e result -e message_id -u)
+			processing_id=$(tg_method send_message | jshon -Q -e result -e message_id -u)
 		;;
 		value)
 			to_edit_id=$processing_id
 			edit_text="$2"
-			processing_id=$(tg_method edit_message | jshon_n -e result -e message_id -u)
+			processing_id=$(tg_method edit_message | jshon -Q -e result -e message_id -u)
 		;;
 		2)
 			to_edit_id=$processing_id
 			edit_text="sending..."
-			edited_id=$(tg_method edit_message | jshon_n -e result -e message_id -u)
+			edited_id=$(tg_method edit_message | jshon -Q -e result -e message_id -u)
 		;;
 		3)
 			to_delete_id=$edited_id
@@ -125,6 +122,7 @@ inline_array() {
 		article)
 			for x in $(seq 0 $j); do
 				message_text[$x]=$(sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "${message_text[$x]}")
+				title[$x]=$(sed 's/"//g' <<< "${title[$x]}")
 				obj[$x]=$(printf '%s' "{\"type\":\"article\"," \
 					"\"id\":\"$RANDOM\"," \
 					"\"title\":\"${title[$x]}\"," \
@@ -319,19 +317,19 @@ tg_method() {
 }
 get_file_type() {
 	[ "$1" = "reply" ] && message=$reply_to_message
-	text_id=$(jshon_n -e text -u <<< "$message")
-	photo_id=$(jshon_n -e photo -e 0 -e file_id -u <<< "$message")
-	animation_id=$(jshon_n -e animation -e file_id -u <<< "$message")
-	video_id=$(jshon_n -e video -e file_id -u <<< "$message")
-	sticker_id=$(jshon_n -e sticker -e file_id -u <<< "$message")
-	audio_id=$(jshon_n -e audio -e file_id -u <<< "$message")
-	voice_id=$(jshon_n -e voice -e file_id -u <<< "$message")
-	document_id=$(jshon_n -e document -e file_id -u <<< "$message")
+	text_id=$(jshon -Q -e text -u <<< "$message")
+	photo_id=$(jshon -Q -e photo -e 0 -e file_id -u <<< "$message")
+	animation_id=$(jshon -Q -e animation -e file_id -u <<< "$message")
+	video_id=$(jshon -Q -e video -e file_id -u <<< "$message")
+	sticker_id=$(jshon -Q -e sticker -e file_id -u <<< "$message")
+	audio_id=$(jshon -Q -e audio -e file_id -u <<< "$message")
+	voice_id=$(jshon -Q -e voice -e file_id -u <<< "$message")
+	document_id=$(jshon -Q -e document -e file_id -u <<< "$message")
 	if [ "$text_id" != "" ]; then
 		if [ ! -e botinfo ]; then
 			tg_method get_me > botinfo
 		fi
-		text_id=${text_id/@$(jshon_n -e result -e username -u < botinfo)/}
+		text_id=${text_id/@$(jshon -Q -e result -e username -u < botinfo)/}
 		file_type="text"
 	elif [ "$sticker_id" != "" ]; then
 		file_type="sticker"
@@ -356,6 +354,11 @@ get_normal_reply() {
 			reply_id=$message_id
 			tg_method send_message > /dev/null
 		;;
+		"!help")
+			text_id="https://gitlab.com/craftmallus/neekshell-telegrambot/-/blob/master/README.md#commands"
+			reply_id=$message_id
+			tg_method send_message > /dev/null
+		;;
 		"!source")
 			source_id=$RANDOM
 			zip -r source-"$source_id".zip neekshellbot.sh custom_commands LICENSE webhook.php
@@ -364,11 +367,6 @@ get_normal_reply() {
 			tg_method send_document upload > /dev/null
 			rm source-"$source_id".zip
 			text_id="https://gitlab.com/craftmallus/neekshell-telegrambot/"
-			tg_method send_message > /dev/null
-		;;
-		"!help")
-			text_id="https://gitlab.com/craftmallus/neekshell-telegrambot/-/blob/master/README.md#commands"
-			reply_id=$message_id
 			tg_method send_message > /dev/null
 		;;
 	esac
@@ -395,20 +393,20 @@ get_button_reply() {
 	esac
 }
 process_reply() {
-	message_type=$(jshon_n <<< "$input" | sed -n 3p | sed -e 's/^\s"//' -e 's/".*//')
+	message_type=$(jshon -Q <<< "$input" | sed -n 3p | sed -e 's/^\s"//' -e 's/".*//')
 	case "$message_type" in
 		message)
-			message=$(jshon_n -e message <<< "$input")
+			message=$(jshon -Q -e message <<< "$input")
 		;;
 		channel_post)
-			message=$(jshon_n -e channel_post <<< "$input")
+			message=$(jshon -Q -e channel_post <<< "$input")
 		;;
 	esac
-	inline=$(jshon_n -e inline_query <<< "$input")
-	callback=$(jshon_n -e callback_query <<< "$input")
-	type=$(jshon_n -e chat -e type -u <<< "$message")
-	chat_id=$(jshon_n -e chat -e id -u <<< "$message")
-	username_id=$(jshon_n -e from -e id -u <<< "$message")
+	inline=$(jshon -Q -e inline_query <<< "$input")
+	callback=$(jshon -Q -e callback_query <<< "$input")
+	type=$(jshon -Q -e chat -e type -u <<< "$message")
+	chat_id=$(jshon -Q -e chat -e id -u <<< "$message")
+	username_id=$(jshon -Q -e from -e id -u <<< "$message")
 	if [ "$type" = "private" ] || [ "$inline" != "" ] || [ "$callback" != "" ]; then
 		bot_chat_dir="db/bot_chats/"
 		bot_chat_user_id=$username_id
@@ -418,9 +416,9 @@ process_reply() {
 	fi
 
 	# user database
-	username_tag=$(jshon_n -e from -e username -u <<< "$message")
-	username_fname=$(jshon_n -e from -e first_name -u <<< "$message")
-	username_lname=$(jshon_n -e from -e last_name -u <<< "$message")
+	username_tag=$(jshon -Q -e from -e username -u <<< "$message")
+	username_fname=$(jshon -Q -e from -e first_name -u <<< "$message")
+	username_lname=$(jshon -Q -e from -e last_name -u <<< "$message")
 	if [ "$username_id" != "" ]; then
 		[ ! -d db/users/ ] && mkdir -p db/users/
 		file_user=db/users/"$username_id"
@@ -442,17 +440,17 @@ process_reply() {
 			sed -i "s/lname: .*/lname: $username_lname/" "$file_user"
 		fi
 	fi
-	reply_to_message=$(jshon_n -e reply_to_message <<< "$message")
+	reply_to_message=$(jshon -Q -e reply_to_message <<< "$message")
 	if [ "$reply_to_message" != "" ]; then
-		reply_to_id=$(jshon_n -e message_id -u <<< "$reply_to_message")
-		reply_to_user_id=$(jshon_n -e from -e id -u <<< "$reply_to_message")
-		reply_to_user_tag=$(jshon_n -e from -e username -u <<< \
+		reply_to_id=$(jshon -Q -e message_id -u <<< "$reply_to_message")
+		reply_to_user_id=$(jshon -Q -e from -e id -u <<< "$reply_to_message")
+		reply_to_user_tag=$(jshon -Q -e from -e username -u <<< \
 			"$reply_to_message")
-		reply_to_user_fname=$(jshon_n -e from -e first_name -u \
+		reply_to_user_fname=$(jshon -Q -e from -e first_name -u \
 			<<< "$reply_to_message")
-		reply_to_user_lname=$(jshon_n -e from -e last_name -u \
+		reply_to_user_lname=$(jshon -Q -e from -e last_name -u \
 			<<< "$reply_to_message")
-		reply_to_text=$(jshon_n -e text -u <<< "$reply_to_message")
+		reply_to_text=$(jshon -Q -e text -u <<< "$reply_to_message")
 		[ ! -d db/users/ ] && mkdir -p db/users/
 		file_reply_user=db/users/"$reply_to_user_id"
 		if [ ! -e "$file_reply_user" ]; then
@@ -465,7 +463,7 @@ process_reply() {
 		fi
 	fi
 	# chat database
-	chat_title=$(jshon_n -e chat -e title -u <<< "$message")
+	chat_title=$(jshon -Q -e chat -e title -u <<< "$message")
 	if [ "$chat_title" != "" ]; then
 		[ ! -d db/chats/ ] && mkdir -p db/chats/
 		file_chat=db/chats/"$chat_id"
@@ -477,24 +475,31 @@ process_reply() {
 		fi
 	fi
 
-	callback_user=$(jshon_n -e from -e username -u <<< "$callback")
-	callback_user_id=$(jshon_n -e from -e id -u <<< "$callback")
-	callback_id=$(jshon_n -e id -u <<< "$callback")
-	callback_data=$(jshon_n -e data -u <<< "$callback")
-	callback_message_text=$(jshon_n -e message -e text -u <<< "$callback")
+	callback_user=$(jshon -Q -e from -e username -u <<< "$callback")
+	callback_user_id=$(jshon -Q -e from -e id -u <<< "$callback")
+	callback_id=$(jshon -Q -e id -u <<< "$callback")
+	callback_data=$(jshon -Q -e data -u <<< "$callback")
+	callback_message_text=$(jshon -Q -e message -e text -u <<< "$callback")
 
-	message_id=$(jshon_n -e message_id -u <<< "$message")
+	message_id=$(jshon -Q -e message_id -u <<< "$message")
 
-	inline_user=$(jshon_n -e from -e username -u <<< "$inline")
-	inline_user_id=$(jshon_n -e from -e id -u <<< "$inline")
-	inline_id=$(jshon_n -e id -u <<< "$inline")
-	inline_message=$(jshon_n -e query -u <<< "$inline")
+	inline_user=$(jshon -Q -e from -e username -u <<< "$inline")
+	inline_user_id=$(jshon -Q -e from -e id -u <<< "$inline")
+	inline_id=$(jshon -Q -e id -u <<< "$inline")
+	inline_message=$(jshon -Q -e query -u <<< "$inline")
 
 	get_file_type
 
 	case "$file_type" in
 		text)
-			normal_message=$text_id
+			pf=$(grep -o '^.' <<< "$text_id")
+			case "$pf" in
+				"/"|"$"|"&"|"%"|";")
+					normal_message=$(sed "s|^[$pf]|!|" <<< "$text_id")
+				;;
+				*)
+					normal_message=$text_id
+			esac
 			fn_arg=$(cut -f 2- -d ' ' <<< "$normal_message")
 		;;
 		photo)
