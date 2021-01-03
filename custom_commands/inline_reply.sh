@@ -119,6 +119,19 @@ case $inline_message in
 		return_query=$(inline_array article)
 		tg_method send_inline > /dev/null
 	;;
+	"arch "*)
+		wiki_link="https://wiki.archlinux.org/index.php/$im_arg"
+		wiki=$(curl -s "$wiki_link")
+		title=$im_arg
+		extract=$(grep -m 3 '<p>' <<< "$wiki" | grep -v 'a id="logo"\|<p>Related articles</p>' | head -n 1 | sed -e 's|>|&\n|g' | grep -v '^<' | sed 's|<.*>||g' | tr '\n' ' ' | tr -s ' ' | sed 's/ \././g')
+		if [ $(wc -c <<< "$extract") -gt 2096 ]; then
+			extract="$(head -c 2093 <<< "$extract")..."
+		fi
+		message_text=$(printf '%s\n\n' "$wiki_link" "$extract")
+		description=$extract
+		return_query=$(inline_array article)
+		tg_method send_inline > /dev/null
+	;;
 	*" bin")
 		if [ $(is_admin) ]; then
 			command=$(sed 's/ bin$//' <<< "$inline_message")
@@ -128,5 +141,24 @@ case $inline_message in
 			return_query=$(inline_array article)
 			tg_method send_inline
 		fi
+	;;
+	*)
+		owoarray=("owo" "ewe" "uwu" ":3" "x3" "🥵" "🙈" "🤣" "😘" "🥺" "💁‍♀️" "OwO" "😳" "🤠" "🤪" "😜" "🤬" "🤧" "🦹‍♂" "🍌" "😏" "😒" "😎" "🙄" "🧐" "😈" "👐🏻" "👏🏻" "👀" "👅" "🍆" "🤢" "🤮" "🤡" "💯" "👌" "😂" "🅱️" "💦")
+		numberspace=$(tr -dc ' ' <<< "$inline_message" | wc -c)
+		if [ "$numberspace" = "" ]; then
+			return
+		fi
+		for x in $(seq $(((numberspace / 8)+1))); do
+			inline_message=$(sed "s/\s/\n/$(((RANDOM % numberspace)+1))" <<< "$inline_message")
+		done
+		for x in $(seq $(($(wc -l <<< "$inline_message") - 1))); do
+			fixed_part[$x]=$(sed -n "${x}"p <<< "$inline_message" | sed "s/$/ ${owoarray[$((RANDOM % ${#owoarray[@]}))]} /")
+		done
+		fixed_text=$(printf '%s' "${fixed_part[*]}" "$(tail -1 <<< "$inline_message")" | tr -s ' ')
+		
+		title=$(sed -e 's/[lr]/w/g' -e 's/[LR]/W/g' <<< "$fixed_text")
+		message_text=$title
+		return_query=$(inline_array article)
+		tg_method send_inline > /dev/null
 	;;
 esac

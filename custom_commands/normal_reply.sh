@@ -1,26 +1,54 @@
 case $normal_message in
-	"!top+")
-		list_rep=$(grep -r "rep: " db/users/ | cut -d : -f 1)
-		for x in $(seq $(wc -l <<< "$list_rep")); do
-			user_file[$x]=$(sed -n ${x}p <<< "$list_rep")
-			user_rep[$x]=$(sed -e 1,2d "${user_file[$x]}" | sed -e 's/fname: //' -e 's/lname: //' -e 's/rep: //' | tr '\n' ' ' | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' | sed -e "s|(.*)\s(.*)\s|\2 ☆ <b>\1</b>|")
-		done
-		if [ "${user_rep[*]}" = "" ]; then
-			text_id="oops, respect not found"
-		else
+	"!top "*)
+		case "$fn_arg" in
+			+|rep)
+				top_info="rep"
+			;;
+			gs|gayscale)
+				top_info="gs"
+			;;
+			*)
+				return
+			;;
+		esac
+		list_top=$(grep -r "^$top_info: " db/users/ | cut -d : -f 1)
+		if [ "$list_top" != "" ]; then
+			for x in $(seq $(wc -l <<< "$list_top")); do
+				user_file[$x]=$(sed -n ${x}p <<< "$list_top")
+				user_info[$x]=$(grep "^fname\|^lname\|^$top_info" "${user_file[$x]}")
+				user_top[$x]=$(grep "^$top_info" <<< "${user_info[$x]}" | cut -f 2- -d ' ')
+				user_fname[$x]=$(grep '^fname' <<< "${user_info[$x]}" | cut -f 2- -d ' ' | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
+				user_lname[$x]=$(grep '^lname' <<< "${user_info[$x]}" | cut -f 2- -d ' ' | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
+				user_entry[$x]="${user_top[$x]}<b> ☆ ${user_fname[$x]} ${user_lname[$x]}</b>"
+			done
 			enable_markdown=true
-			text_id=$(sort -nr <<< "$(printf '%s\n' "${user_rep[@]}")" | head -n 10)
+			text_id=$(sort -nr <<< "$(printf '%s\n' "${user_entry[@]}")" | head -n 10)
+			get_reply_id self
+			tg_method send_message > /dev/null
 		fi
-		get_reply_id self
-		tg_method send_message > /dev/null
 	;;
-	"!my+")
-		user_rep=$(sed -e 1,2d "$file_user" | sed -e 's/fname: //' -e 's/lname: //' -e 's/rep: //' | tr '\n' ' ' | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' | sed -e "s|(.*)\s(.*)\s|\2 ☆ <b>\1</b>|")
-		if [ "$user_rep" = "" ]; then
-			text_id="oops, respect not found"
+	"!my "*)
+		case "$fn_arg" in
+			+|rep)
+				top_info="rep"
+			;;
+			gs|gayscale)
+				top_info="gs"
+			;;
+			*)
+				return
+			;;
+		esac
+		user_info=$(grep "^fname\|^lname\|^$top_info" "$file_user")
+		user_top=$(grep "^$top_info" <<< "$user_info" | cut -f 2- -d ' ')
+		user_fname=$(grep '^fname' <<< "$user_info" | cut -f 2- -d ' ' | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
+		user_lname=$(grep '^lname' <<< "$user_info" | cut -f 2- -d ' ' | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
+		user_entry="$user_top<b> ☆ $user_fname $user_lname</b>"
+		if [ "$user_top" = "" ]; then
+			return
 		else
 			enable_markdown=true
-			text_id=$user_rep
+			text_id=$user_entry
 		fi
 		get_reply_id self
 		tg_method send_message > /dev/null
@@ -37,6 +65,7 @@ case $normal_message in
 		tg_method send_message > /dev/null
 	;;
 	"!decode")
+		cd $tmpdir
 		update_id="${message_id}${username_id}"
 		printf '%s' "$input" | sed -e 's/{"/{\n"/g' -e 's/,"/,\n"/g' > decode-$update_id.json
 		document_id=@decode-$update_id.json
@@ -69,15 +98,23 @@ case $normal_message in
 	"!gayscale"|"!gs")
 		if [ "$reply_to_user_id" = "" ]; then
 			gs_id=$username_id
+			gs_fname=$username_fname
 		else
 			gs_id=$reply_to_user_id
+			gs_fname=$reply_to_user_fname
 		fi
 		[ ! -d .lock+/gs/ ] && mkdir -p .lock+/gs/
 		lockfile=.lock+/gs/"$gs_id"-lock
 		# check if it's younger than one day
 		lock_age=$(bc <<< "$(date +%s) - $(stat -c "%W" $lockfile)")
 		if [ -e $lockfile ] && [ $lock_age -lt 86400 ]; then
-			text_id=$(cat $lockfile)
+			gs_perc=$(grep "^gs: " db/users/"$gs_id" | sed 's/gs: //')
+			if [ $gs_perc -gt 9 ]; then
+				for x in $(seq $((gs_perc/10))); do
+					rainbow="🏳️‍🌈${rainbow}"
+				done
+			fi
+			text_id="$gs_fname is ${gs_perc}% gay $rainbow"
 		else
 			rm $lockfile
 			get_chat_id=$gs_id
@@ -92,13 +129,13 @@ case $normal_message in
 					rainbow="🏳️‍🌈${rainbow}"
 				done
 			fi
-			if [ "$reply_to_message" != "" ]; then
-				gs_fname=$reply_to_user_fname
-			else
-				gs_fname=$username_fname
-			fi
 			text_id="$gs_fname is ${gs_perc}% gay $rainbow"
-			printf '%s' "$text_id" > $lockfile
+			prev_gs=$(grep "^gs: " db/users/"$gs_id" | sed 's/gs: //')
+			if [ "$prev_gs" = "" ]; then
+				printf '%s\n' "gs: 0" >> db/users/"$gs_id"
+			fi
+			sed -i "s/^gs: .*/gs: ${gs_perc}/" db/users/"$gs_id"
+			touch $lockfile
 		fi
 		get_reply_id any
 		tg_method send_message > /dev/null
@@ -120,9 +157,55 @@ case $normal_message in
 	;;
 	"!reddit "*)
 		get_reply_id self
-		r_subreddit "$fn_arg"
+		case "$(grep -o "pic$" <<< "$fn_arg")" in
+			pic)
+				r_subreddit "$(cut -f 1 -d ' ' <<< "$fn_arg")" pic
+			;;
+			*)
+				r_subreddit "$(cut -f 1 -d ' ' <<< "$fn_arg")"
+			;;
+		esac
+	;;
+	"!insta "*)
+		if [ "$(grep '[^_.a-zA-Z]' <<< "$fn_arg")" != "" ]; then
+			return
+		elif
+			[ "$(grep '^@' <<< "$fn_arg")" != "" ]; then
+			fn_arg=${fn_arg/@/}
+		fi
+			loading 1
+		ig_user=$(sed -n 1p ig_key)
+		ig_pass=$(sed -n 2p ig_key)
+		cd $tmpdir
+		button_text=(">")
+		button_data=("insta + $fn_arg $chat_id")
+		markup_id=$(inline_array button)
+		request_id="${fn_arg}_${chat_id}"
+		[ ! -d "$request_id" ] && mkdir "$request_id"
+		cd "$request_id"
+		~/.local/bin/instagram-scraper -u $ig_user -p $ig_pass -m 50 "$fn_arg"
+			loading 2
+		ls -t -1 "$fn_arg" > ig_list
+		printf '%s' "1" > ig_page
+		media_id="@$(sed -n 1p ig_list)"
+		ext=$(grep -o "...$" <<< "$media_id")
+		cd "$fn_arg"
+			loading 3
+		case "$ext" in
+			jpg)
+				photo_id=$media_id
+				ig_id=$(tg_method send_photo upload | jshon -Q -e result -e message_id -u)
+			;;
+			mp4)
+				video_id=$media_id
+				ig_id=$(tg_method send_video upload | jshon -Q -e result -e message_id -u)
+			;;
+		esac
+		cd ..
+		printf '%s' "$ig_id" > ig_id
 	;;
 	"!jpg")
+		cd $tmpdir
 		request_id=$RANDOM
 		get_reply_id reply
 		get_file_type reply
@@ -144,17 +227,17 @@ case $normal_message in
 				ext=$(grep -o "...$" <<< "$file_path")
 				case "$ext" in
 					png)
-						wget -O "pic-$request_id-r.$ext" "https://api.telegram.org/file/bot$TOKEN/$file_path"
+						wget -q -O "pic-$request_id-r.$ext" "https://api.telegram.org/file/bot$TOKEN/$file_path"
 						convert "pic-$request_id-r.$ext" "pic-$request_id-r.jpg"
 						rm "pic-$request_id-r.$ext"
 					;;
 					jpg)
-						wget -O "pic-$request_id-r.$ext" "https://api.telegram.org/file/bot$TOKEN/$file_path"
+						wget -q -O "pic-$request_id-r.$ext" "https://api.telegram.org/file/bot$TOKEN/$file_path"
 					;;
 					*) return ;;
 				esac
-				magick "pic-$request_id-r.jpg" -resize 400% "pic-$request_id.jpg"
-				magick "pic-$request_id.jpg" -quality 7 "pic-low-$request_id.jpg"
+				magick "pic-$request_id-r.jpg" -resize 150% "pic-$request_id.jpg"
+				magick "pic-$request_id.jpg" -quality 4 "pic-low-$request_id.jpg"
 				
 				photo_id="@pic-low-$request_id.jpg"
 				tg_method send_photo upload > /dev/null
@@ -291,6 +374,7 @@ case $normal_message in
 		esac
 	;;
 	"!deemix "*|"!deemix")
+		cd $tmpdir
 		if [ "$reply_to_text" != "" ]; then
 			deemix_link=$(grep -o 'https://www.deezer.*\|https://deezer.*' <<< "$reply_to_text" | cut -f 1 -d ' ')
 		else
@@ -418,13 +502,13 @@ case $normal_message in
 					fi
 				;;
 				"list")
-					text_id="$(
+					text_id=$(
 						for c in $(seq "$(ls -1 "$bot_chat_dir" | wc -l)"); do
 							bot_chat_id=$(ls -1 "$bot_chat_dir" | sed -n "${c}"p)
 							bot_chat_users=$(sed 's/.*:\s//' "$bot_chat_dir$bot_chat_id" | tr ' ' '\n' | sed '/^$/d' | wc -l)
-							printf '%s' "chat: $bot_chat_id users: $bot_chat_users"
+							printf '%s\n' "chat: $bot_chat_id users: $bot_chat_users"
 						done
-					)"
+					)
 					[ "$text_id" = "" ] && text_id="no chats found"
 				;;
 				*)
@@ -497,9 +581,9 @@ case $normal_message in
 			get_reply_id self
 		fi
 		if [ "$reply_to_user_id" = "$(jshon -Q -e result -e id -u < botinfo)" ]; then
-			to_edit_id=$reply_to_id
+			edit_id=$reply_to_id
 			edit_text=$text_id
-			tg_method edit_message > /dev/null
+			tg_method edit_text > /dev/null
 		else
 			tg_method send_message > /dev/null
 		fi
@@ -601,6 +685,7 @@ case $normal_message in
 	"!ytdl "*|"!ytdl")
 		get_reply_id self
 		if [ $(is_admin) ]; then
+			cd $tmpdir
 			if [ "$reply_to_text" != "" ]; then
 				ytdl_link=$(sed -e 's/.*(https.*)\s.*/\1/' <<< "$reply_to_text" | cut -d ' ' -f 1 | grep 'youtube\|youtu.be')
 			else
@@ -640,6 +725,7 @@ case $normal_message in
 	"!nh "*)
 		get_reply_id self
 		if [ $(is_admin) ]; then
+			cd $tmpdir
 			nhentai_id=$(cut -d / -f 5 <<< "$fn_arg")
 			nhentai_check=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/1/")
 			if [ "$nhentai_check" != "" ]; then
@@ -691,6 +777,7 @@ case $normal_message in
 	"!nhzip "*)
 		get_reply_id self
 		if [ $(is_admin) ]; then
+			cd $tmpdir
 			nhentai_id=$(cut -d / -f 5 <<< "$fn_arg")
 			nhentai_check=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/1/")
 			if [ "$nhentai_check" != "" ]; then
@@ -916,15 +1003,14 @@ case $normal_message in
 	## no prefix
 	
 	"respect+"|"+"|"-"|"+"*|"-"*)
-		if [ "$username_id" != "$reply_to_user_id" ]; then
+		if [ "$username_id" != "$reply_to_user_id" ] && [ "$reply_to_user_id" != "" ]; then
 			# check existing lock+
 			[ ! -d .lock+/respect/ ] && mkdir -p .lock+/respect/
 			lockfile=.lock+/respect/"$username_id"-lock
 			if [ -e $lockfile ]; then
-				# if it's younger than one day return
 				lock_age=$(bc <<< "$(date +%s) - $(stat -c "%W" $lockfile)")
 				lock_time=$((60 + (RANDOM % 60)))
-				if [ $lock_age -lt $locktime ]; then
+				if [ $lock_age -lt $lock_time ]; then
 					return
 				else
 					rm $lockfile
@@ -937,10 +1023,10 @@ case $normal_message in
 			else
 				rep_sign=$(sed 's/respect//' <<< "$normal_message")
 			fi
-			prevrep=$(sed -n 5p db/users/"$reply_to_user_id" | sed 's/rep: //')
+			prevrep=$(grep "^rep" db/users/"$reply_to_user_id" | sed 's/rep: //')
 			if [ "$prevrep" = "" ]; then
 				printf '%s\n' "rep: 0" >> db/users/"$reply_to_user_id"
-				prevrep=$(sed -n 5p db/users/"$reply_to_user_id" | sed 's/rep: //')
+				prevrep=0
 			fi
 			reply_id=$reply_to_id
 			if [ "$rep_n" = "" ]; then
@@ -951,10 +1037,9 @@ case $normal_message in
 			else
 				return
 			fi
-			newrep=$(sed -n 5p db/users/"$reply_to_user_id" | sed 's/rep: //')
-			voice_id="https://archneek.zapto.org/webaudio/respect.ogg"
+			newrep=$(grep "^rep:" db/users/"$reply_to_user_id" | sed 's/rep: //')
 			if [ "$(grep respect <<< "$normal_message")" = "" ]; then
-				case "$rep_sign" in 
+				case "$rep_sign" in
 					"+")
 						text_id="respect + to $reply_to_user_fname ($newrep)"
 						tg_method send_message > /dev/null
@@ -964,6 +1049,7 @@ case $normal_message in
 						tg_method send_message > /dev/null
 				esac
 			else
+				voice_id="https://archneek.zapto.org/webaudio/respect.ogg"
 				caption="respect + to $reply_to_user_fname ($newrep)"
 				tg_method send_voice > /dev/null
 			fi
@@ -971,11 +1057,6 @@ case $normal_message in
 			[ ! -e $lockfile ] && touch $lockfile
 		fi
 		return
-	;;
-	[oO][kK]|[oO][kK]?)
-		text_id="ok"
-		get_reply_id self
-		tg_method send_message > /dev/null
 	;;
 	*)
 		if [ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" != "" ]; then
@@ -988,20 +1069,13 @@ case $normal_message in
 			if [ "$file_type" = "text" ]; then
 				if [ "$reply_to_text" != "" ]; then
 					quote_reply=$(sed -n 1p <<< "$reply_to_text" | grep '^|')
+					if [ "$quote_reply" != "" ]; then
+						reply_to_text=$(sed '1,2d' <<< "$reply_to_text")
+					fi
 					if [ "$(wc -c <<< "$reply_to_text")" -gt 30 ]; then
-						if [ "$quote_reply" = "" ]; then
-							quote="$(head -c 30 <<< "$reply_to_text" | sed 's/^/| /g')..."
-						else
-							reply_to_text=$(sed '1,2d' <<< "$reply_to_text")
-							quote="$(head -c 30 <<< "$reply_to_text" | sed 's/^/| /g')..."
-						fi
+						quote="$(head -c 30 <<< "$reply_to_text" | sed 's/^/| /g')..."
 					else
-						if [ "$quote_reply" = "" ]; then
-							quote="$(head -c 30 <<< "$reply_to_text" | sed 's/^/| /g')"
-						else
-							reply_to_text=$(sed '1,2d' <<< "$reply_to_text")
-							quote="$(head -c 30 <<< "$reply_to_text" | sed 's/^/| /g')"
-						fi
+						quote="$(head -c 30 <<< "$reply_to_text" | sed 's/^/| /g')"
 					fi
 					text_id=$(printf '%s\n' "$quote" "" "$normal_message")
 				elif [ "$reply_to_message" != "" ] && [ "$reply_to_text" = "" ]; then

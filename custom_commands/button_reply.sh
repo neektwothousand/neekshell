@@ -1,4 +1,4 @@
-case $callback_message_text in
+case "$callback_message_text" in
 	"Select chat to join:")
 		chat_id=$callback_user_id
 		if [ "$(grep -r "$callback_user_id" $bot_chat_dir)" = "" ]; then
@@ -26,5 +26,46 @@ case $callback_message_text in
 		document_id="@$(sed -n 1p <<< "$callback_message_text" | sed 's/^selected directory: //')/$callback_data"
 		chat_id=$callback_user_id
 		tg_method send_document > /dev/null
+	;;
+esac
+case "$callback_data" in
+	"insta "*)
+		set -x
+		cd $tmpdir
+		sign=$(cut -f 2 -d ' ' <<< "$callback_data")
+		ig_tag=$(cut -f 3 -d ' ' <<< "$callback_data")
+		chat_id=$(cut -f 4 -d ' ' <<< "$callback_data")
+		request_id="${ig_tag}_${chat_id}"
+		cd "$request_id"
+		ig_page=$(($(cat ig_page) $sign 1))
+		if [ $ig_page -eq 1 ]; then
+			button_text=(">")
+			button_data=("insta + $ig_tag $chat_id")
+		else
+			j=1
+			button_text=("<" ">")
+			button_data=("insta - $ig_tag $chat_id" "insta + $ig_tag $chat_id")
+		fi
+		printf '%s' "$ig_page" > ig_page
+		markup_id=$(inline_array button)
+		media_id="@$(sed -n ${ig_page}p ig_list)"
+		to_delete_id=$(cat ig_id)
+		tg_method button_reply > /dev/null
+		cd "$ig_tag"
+		tg_method delete_message > /dev/null
+		ext=$(grep -o "...$" <<< "$media_id")
+		case "$ext" in
+			jpg)
+				photo_id=$media_id
+				ig_id=$(tg_method send_photo upload | jshon -Q -e result -e message_id -u)
+			;;
+			mp4)
+				video_id=$media_id
+				ig_id=$(tg_method send_video upload | jshon -Q -e result -e message_id -u)
+			;;
+		esac
+		cd ..
+		printf '%s' "$ig_id" > ig_id
+		set +x
 	;;
 esac

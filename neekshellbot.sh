@@ -32,14 +32,14 @@ loading() {
 			processing_id=$(tg_method send_message | jshon -Q -e result -e message_id -u)
 		;;
 		value)
-			to_edit_id=$processing_id
+			edit_id=$processing_id
 			edit_text="$2"
-			processing_id=$(tg_method edit_message | jshon -Q -e result -e message_id -u)
+			processing_id=$(tg_method edit_text | jshon -Q -e result -e message_id -u)
 		;;
 		2)
-			to_edit_id=$processing_id
+			edit_id=$processing_id
 			edit_text="sending..."
-			edited_id=$(tg_method edit_message | jshon -Q -e result -e message_id -u)
+			edited_id=$(tg_method edit_text | jshon -Q -e result -e message_id -u)
 		;;
 		3)
 			to_delete_id=$edited_id
@@ -60,21 +60,38 @@ r_subreddit() {
 		none)
 			case $sort in
 				random)
-					input=$(wget -q -O- "https://reddit.com/random/.json")
-					hot=$(jshon -e 0 -e data -e children -e 0 -e data <<< "$input")
+					r_input=$(wget -q -O- "https://reddit.com/random/.json")
+					hot=$(jshon -e 0 -e data -e children -e 0 -e data <<< "$r_input")
 				;;
 			esac
 		;;
 		*)
 			case $sort in
 				random)
-					input=$(wget -q -O- "https://reddit.com/r/${subreddit}/random/.json")
-					hot=$(jshon -e 0 -e data -e children -e 0 -e data <<< "$input")
+					r_input=$(wget -q -O- "https://reddit.com/r/${subreddit}/random/.json")
+					hot=$(jshon -e 0 -e data -e children -e 0 -e data <<< "$r_input")
 				;;
 				*)
-					amount=5
-					input=$(wget -q -O- "https://reddit.com/r/${subreddit}/.json?sort=top&t=week&limit=$amount")
-					hot=$(jshon -e data -e children -e $((RANDOM % $amount)) -e data <<< "$input")
+					amount=10
+					r_input=$(wget -q -O- "https://reddit.com/r/${subreddit}/.json?sort=top&t=week&limit=$amount")
+					hot=$(jshon -e data -e children -e $((RANDOM % $amount)) -e data <<< "$r_input")
+					if [ "$3" = "pic" ] \
+					&& [ "$(jshon -e url -u <<< "$hot" | grep "i.redd.it\|imgur" | grep "jpg\|png")" = "" ]; then
+						x=0
+						while [ "$s_pic" != "found" ]; do
+							hot=$(jshon -e data -e children -e $x -e data <<< "$r_input")
+							pic=$(jshon -e url -u <<< "$hot" | grep "i.redd.it\|imgur" | grep "jpg\|png")
+							x=$((x+1))
+							if [ "$pic" != "" ]; then
+								s_pic="found"
+							fi
+							if [ $x -gt 10 ]; then
+								text_id="pic not found"
+								tg_method send_message > /dev/null
+								return
+							fi
+						done
+					fi
 				;;
 			esac
 		;;
@@ -83,13 +100,13 @@ r_subreddit() {
 	if [ "$(grep "gfycat" <<< "$media_id")" != "" ]; then
 		media_id=$(curl -s "$media_id" | sed -En 's|.*<source src="(https://thumbs.*mp4)" .*|\1|p')
 	fi
-	permalink=$(jshon -e permalink -u <<< "$hot")
+	permalink=$(jshon -e permalink -u <<< "$hot" | cut -f 5 -d /)
 	title=$(jshon -e title -u <<< "$hot")
 	stickied=$(jshon -e stickied -u <<< "$hot")
 	if [ "$title" != "" ]; then
 		caption=$(printf '%s\n' \
 			"$title" \
-			"link: <a href=\"https://reddit.com$permalink\">$permalink</a>")
+			"link: redd.it/$permalink")
 	fi
 	if [ "$media_id" = "" ]; then
 		text_id=$caption
@@ -154,9 +171,10 @@ inline_array() {
 			printf '%s' "[ $(printf '%s' "${obj[@]}" | sed -E 's/(.*)},/\1}/') ]"
 		;;
 		button)
+			[ "$button_data" = "" ] && button_data=("${button_text[@]}")
 			for x in $(seq 0 $j); do
 				obj[$x]=$(printf '%s' "[{\"text\":\"${button_text[$x]}\"," \
-					"\"callback_data\":\"${button_text[$x]}\"}],")
+					"\"callback_data\":\"${button_data[$x]}\"}],")
 			done
 			printf '%s' "{\"inline_keyboard\":[$(sed -E 's/(.*)],/\1]/' <<< "${obj[@]}")]}"
 		;;
@@ -166,9 +184,11 @@ tg_method() {
 	case $2 in
 		upload)
 			curl_f="-F"
+			header="-H 'Content-Type: multipart/form-data'"
 		;;
 		*)
 			curl_f="--form-string"
+			header="-H 'Content-Type: application/json'"
 		;;
 	esac
 	case $1 in
@@ -186,6 +206,7 @@ tg_method() {
 				$curl_f "chat_id=$chat_id" \
 				$curl_f "parse_mode=html" \
 				$curl_f "reply_to_message_id=$reply_id" \
+				$curl_f "reply_markup=$markup_id" \
 				$curl_f "caption=$caption" \
 				$curl_f "photo=$photo_id"
 		;;
@@ -202,6 +223,7 @@ tg_method() {
 				$curl_f "chat_id=$chat_id" \
 				$curl_f "parse_mode=html" \
 				$curl_f "reply_to_message_id=$reply_id" \
+				$curl_f "reply_markup=$markup_id" \
 				$curl_f "thumb=$thumb" \
 				$curl_f "caption=$caption" \
 				$curl_f "video=$video_id"
@@ -273,11 +295,24 @@ tg_method() {
 				$curl_f "callback_query_id=$callback_id" \
 				$curl_f "text=$button_text_reply"
 		;;
-		edit_message)
+		edit_text)
 			curl -s "$TELEAPI/editMessageText" \
 				$curl_f "chat_id=$chat_id" \
-				$curl_f "message_id=$to_edit_id" \
+				$curl_f "message_id=$edit_id" \
 				$curl_f "text=$edit_text"
+		;;
+		edit_media)
+			curl -s "$TELEAPI/editMessageMedia" \
+				-d "$(printf '%s' \
+					"{\"chat_id\":\"$chat_id\"," \
+					"\"message_id\":\"$edit_id\"," \
+						"\"media\":{" \
+							"\"type\":\"$edit_type\"," \
+							"\"media\":\"$edit_media\"" \
+						"}," \
+					"\"reply_markup\":\"$markup_id\""\
+					"}")" \
+				-H 'Content-Type: application/json'
 		;;
 		delete_message)
 			curl -s "$TELEAPI/deleteMessage" \
@@ -404,6 +439,7 @@ process_reply() {
 	esac
 	inline=$(jshon -Q -e inline_query <<< "$input")
 	callback=$(jshon -Q -e callback_query <<< "$input")
+	printf '%s\n\n' "$callback" >> callback_query
 	type=$(jshon -Q -e chat -e type -u <<< "$message")
 	chat_id=$(jshon -Q -e chat -e id -u <<< "$message")
 	username_id=$(jshon -Q -e from -e id -u <<< "$message")
@@ -436,7 +472,7 @@ process_reply() {
 		if [ "fname: $username_fname" != "$(grep -- "fname" "$file_user")" ]; then
 			sed -i "s/fname: .*/fname: $username_fname/" "$file_user"
 		fi
-		if [ "lname: $username_fname" != "$(grep -- "lname" "$file_user")" ]; then
+		if [ "lname: $username_lname" != "$(grep -- "lname" "$file_user")" ]; then
 			sed -i "s/lname: .*/lname: $username_lname/" "$file_user"
 		fi
 	fi
@@ -487,6 +523,7 @@ process_reply() {
 	inline_user_id=$(jshon -Q -e from -e id -u <<< "$inline")
 	inline_id=$(jshon -Q -e id -u <<< "$inline")
 	inline_message=$(jshon -Q -e query -u <<< "$inline")
+	im_arg=$(cut -f 2- -d ' ' <<< "$inline_message")
 
 	get_file_type
 
@@ -537,6 +574,8 @@ process_reply() {
 	fi
 }
 input=$1
+tmpdir="/tmp/neekshell"
+[ ! -d $tmpdir ] && mkdir -p $tmpdir
 process_reply
 END_TIME=$(bc <<< "$(date +%s%N) / 1000000")
 printf '%s\n' "[$(date "+%F %H:%M:%S")] elapsed time: $(($END_TIME - $START_TIME))ms"
