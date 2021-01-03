@@ -23,11 +23,12 @@ PowerShell version by adamantinum: https://github.com/adamantinum/PSTelegramBot
 !neofetch (displays general system info)<br />
 !reddit [sub] (gets a random reddit post)<br />
 !deemix (downloads a song from deezer)<br />
+!insta [instagram_username] (scrapes pics and vids from instagram)<br />
 !ping<br />
 !me [text]<br />
 !gayscale (on reply too)<br />
-!top+ (gets a top 10 highscores)<br />
-!my+ (gets your score)<br />
+!top [+|gs] (gets a top 10 highscores)<br />
+!my [+|gs] (gets your score)<br />
 \+ (on reply to give a point)
 
 administrative commands:
@@ -44,6 +45,7 @@ administrative commands:
 
 inline mode:
 
+[any text] (converts as owoifier command)<br>
 d[number] (dice)<br />
 fortune (fortune cookie)<br />
 figlet [text]<br />
