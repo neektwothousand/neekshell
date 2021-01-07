@@ -41,6 +41,9 @@ case "$callback_data" in
 		if [ $ig_page -eq 1 ]; then
 			button_text=(">")
 			button_data=("insta + $ig_tag $chat_id")
+		elif [ "$(sed -n $(($ig_page+1))p ig_list)" = "" ]; then
+			button_text=("<")
+			button_data=("insta - $ig_tag $chat_id")
 		else
 			j=1
 			button_text=("<" ">")

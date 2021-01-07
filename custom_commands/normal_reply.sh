@@ -167,30 +167,36 @@ case $normal_message in
 		esac
 	;;
 	"!insta "*)
-		if [ "$(grep '[^_.a-zA-Z]' <<< "$fn_arg")" != "" ]; then
-			return
-		elif
-			[ "$(grep '^@' <<< "$fn_arg")" != "" ]; then
+		if [ "$(grep '^@' <<< "$fn_arg")" != "" ]; then
 			fn_arg=${fn_arg/@/}
 		fi
-			loading 1
+		if [ "$(grep '[^_.a-zA-Z]' <<< "$fn_arg")" != "" ]; then
+			return
+		fi
+		loading 1
 		ig_user=$(sed -n 1p ig_key)
 		ig_pass=$(sed -n 2p ig_key)
 		cd $tmpdir
-		button_text=(">")
-		button_data=("insta + $fn_arg $chat_id")
-		markup_id=$(inline_array button)
 		request_id="${fn_arg}_${chat_id}"
 		[ ! -d "$request_id" ] && mkdir "$request_id"
 		cd "$request_id"
-		~/.local/bin/instagram-scraper -u $ig_user -p $ig_pass -m 50 "$fn_arg"
-			loading 2
+		ig_scraper=$(~/.local/bin/instagram-scraper -u $ig_user -p $ig_pass -m 50 "$fn_arg")
+		if [ "$(grep "^ERROR" <<< "$ig_scraper")" != "" ]; then
+			loading error
+			return
+		fi
+		loading 2
 		ls -t -1 "$fn_arg" > ig_list
+		if [ "$(sed -n 2p ig_list)" != "" ]; then
+			button_text=(">")
+			button_data=("insta + $fn_arg $chat_id")
+			markup_id=$(inline_array button)
+		fi
 		printf '%s' "1" > ig_page
 		media_id="@$(sed -n 1p ig_list)"
 		ext=$(grep -o "...$" <<< "$media_id")
 		cd "$fn_arg"
-			loading 3
+		loading 3
 		case "$ext" in
 			jpg)
 				photo_id=$media_id
@@ -525,7 +531,11 @@ case $normal_message in
 			text_id=$reply_to_text
 		fi
 		username=$(cut -f 1 -d ' ' <<< "$fn_arg")
-		userid=$(sed -n 2p $(grep -r -- "$(sed 's/@//' <<< "$username")" db/users/ | cut -d : -f 1) | sed 's/id: //')
+		if [ $username -eq $username ] 2>/dev/null; then
+			userid=$username
+		else
+			userid=$(sed -n 2p $(grep -r -- "$(sed 's/@//' <<< "$username")" db/users/ | cut -d : -f 1) | sed 's/id: //')
+		fi
 		if [ "$userid" != "" ] && [ "$text_id" != "" ]; then
 			markdown=("<a href=\"tg://user?id=$userid\">" "</a>")
 		elif [ "$userid" = "" ]; then
