@@ -59,19 +59,19 @@ case $inline_message in
 				getbooru=$(curl -A 'neekmkshbot/1.0 (by neek)' -s "https://e621.net/posts.json?tags=$tags&page=$offset&limit=$limit&$apikey")
 				for j in $(seq 0 $((limit - 1))); do
 					photo_url[$j]=$(jshon -Q -e posts -e $y -e file -e url -u <<< "$getbooru")
-					while [ "$(grep 'jpg\|jpeg' <<< "${photo_url[$j]}")" = "" ]; do
+					while [[ "$(grep 'jpg\|jpeg' <<< "${photo_url[$j]}")" = "" ]]; do
 						y=$((y+1))
-						if [ "$y" -gt "10" ]; then
+						if [[ "$y" -gt "10" ]]; then
 							break
 						fi
 						photo_url[$j]=$(jshon -Q -e posts -e $y -e file -e url -u <<< "$getbooru")
 						photo_weight[$j]=$(curl -s -L -I "${photo_url[$j]}" | gawk -v IGNORECASE=1 '/^Content-Length/ { print $2 }')
-						if [ "${photo_weight[$j]}" -gt "5000000" ]; then
+						if [[ "${photo_weight[$j]}" -gt "5000000" ]]; then
 							photo_url[$j]=""
 						fi
 					done
 					thumb_url[$j]=${photo_url[$j]}
-					caption[$j]="tag: $tags\\nsource: ${photo_url[$j]}"
+					caption[$j]="source: ${photo_url[$j]}"
 					y=$((y+1))
 				done
 			;;
@@ -86,19 +86,19 @@ case $inline_message in
 				esac
 				for j in $(seq 0 $((limit - 1))); do
 					photo_url[$j]=$(jshon -Q -e $y -e file_url -u <<< "$getbooru")
-					while [ "$(grep 'jpg\|jpeg' <<< "${photo_url[$j]}")" = "" ]; do
+					while [[ "$(grep 'jpg\|jpeg' <<< "${photo_url[$j]}")" = "" ]]; do
 						y=$((y+1))
-						if [ "$y" -gt "10" ]; then
+						if [[ "$y" -gt "10" ]]; then
 							break
 						fi
 						photo_url[$j]=$(jshon -Q -e $y -e file_url -u <<< "$getbooru")
 						photo_weight[$j]=$(curl -s -L -I "${photo_url[$j]}" | gawk -v IGNORECASE=1 '/^Content-Length/ { print $2 }')
-						if [ "${photo_weight[$j]}" -gt "5000000" ]; then
+						if [[ "${photo_weight[$j]}" -gt "5000000" ]]; then
 							photo_url[$j]=""
 						fi
 					done
 					thumb_url[$j]=${photo_url[$j]}
-					caption[$j]="tag: $tags\\nsource: ${photo_url[$j]}"
+					caption[$j]="source: ${photo_url[$j]}"
 					y=$((y+1))
 				done
 			;;
@@ -124,7 +124,7 @@ case $inline_message in
 		wiki=$(curl -s "$wiki_link")
 		title=$im_arg
 		extract=$(grep -m 3 '<p>' <<< "$wiki" | grep -v 'a id="logo"\|<p>Related articles</p>' | head -n 1 | sed -e 's|>|&\n|g' | grep -v '^<' | sed 's|<.*>||g' | tr '\n' ' ' | tr -s ' ' | sed 's/ \././g')
-		if [ $(wc -c <<< "$extract") -gt 2096 ]; then
+		if [[ $(wc -c <<< "$extract") -gt 2096 ]]; then
 			extract="$(head -c 2093 <<< "$extract")..."
 		fi
 		message_text=$(printf '%s\n\n' "$wiki_link" "$extract")
@@ -133,7 +133,7 @@ case $inline_message in
 		tg_method send_inline > /dev/null
 	;;
 	*" bin")
-		if [ $(is_admin) ]; then
+		if [[ $(is_admin) ]]; then
 			command=$(sed 's/ bin$//' <<< "$inline_message")
 			markdown=("<code>" "</code>")
 			message_text=$(mksh -c "$command" 2>&1)
@@ -145,7 +145,7 @@ case $inline_message in
 	*)
 		owoarray=("owo" "ewe" "uwu" ":3" "x3" "🥵" "🙈" "🤣" "😘" "🥺" "💁‍♀️" "OwO" "😳" "🤠" "🤪" "😜" "🤬" "🤧" "🦹‍♂" "🍌" "😏" "😒" "😎" "🙄" "🧐" "😈" "👐🏻" "👏🏻" "👀" "👅" "🍆" "🤢" "🤮" "🤡" "💯" "👌" "😂" "🅱️" "💦")
 		numberspace=$(tr -dc ' ' <<< "$inline_message" | wc -c)
-		if [ "$numberspace" = "" ]; then
+		if [[ "$numberspace" = "" ]]; then
 			return
 		fi
 		for x in $(seq $(((numberspace / 8)+1))); do

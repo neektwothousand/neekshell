@@ -1,7 +1,7 @@
 case "$callback_message_text" in
 	"Select chat to join:")
 		chat_id=$callback_user_id
-		if [ "$(grep -r "$callback_user_id" $bot_chat_dir)" = "" ]; then
+		if [[ "$(grep -r "$callback_user_id" $bot_chat_dir)" = "" ]]; then
 			sed -i "s/\(users: \)/\1$callback_user_id /" $bot_chat_dir"$callback_data"
 			button_text_reply="joined"
 			text_id="joined $callback_data"
@@ -30,18 +30,20 @@ case "$callback_message_text" in
 esac
 case "$callback_data" in
 	"insta "*)
-		set -x
 		cd $tmpdir
 		sign=$(cut -f 2 -d ' ' <<< "$callback_data")
 		ig_tag=$(cut -f 3 -d ' ' <<< "$callback_data")
 		chat_id=$(cut -f 4 -d ' ' <<< "$callback_data")
 		request_id="${ig_tag}_${chat_id}"
 		cd "$request_id"
+		if [ "$callback_user_id" != "$(cat ig_userid)" ]; then
+			return
+		fi
 		ig_page=$(($(cat ig_page) $sign 1))
-		if [ $ig_page -eq 1 ]; then
+		if [[ $ig_page -eq 1 ]]; then
 			button_text=(">")
 			button_data=("insta + $ig_tag $chat_id")
-		elif [ "$(sed -n $(($ig_page+1))p ig_list)" = "" ]; then
+		elif [[ "$(sed -n $(($ig_page+1))p ig_list)" = "" ]]; then
 			button_text=("<")
 			button_data=("insta - $ig_tag $chat_id")
 		else
@@ -69,6 +71,5 @@ case "$callback_data" in
 		esac
 		cd ..
 		printf '%s' "$ig_id" > ig_id
-		set +x
 	;;
 esac
