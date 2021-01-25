@@ -35,6 +35,7 @@ administrative commands:
 
 !bin [system command]<br />
 !explorer [directory] (browse directories and download files)<br />
+!db [chats/get (on reply)]<br />
 !setadmin @username<br />
 !deladmin @username<br />
 !nomedia (disable media messages)<br />
