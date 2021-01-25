@@ -343,40 +343,58 @@ case $normal_message in
 		esac
 	;;
 	"!hf")
-		randweb=$(( ( RANDOM % 3 ) ))
+		randweb=$(( ( RANDOM % 4 ) +1))
 		get_reply_id self
 		case $randweb in
-			0)
+			1)
 				popfeat=$(wget -q -O- "https://www.hentai-foundry.com/pictures/random/?enterAgree=1" | \
 					grep -io '<div class="thumbTitle"><a href=['"'"'"][^"'"'"']*['"'"'"]' | \
 					sed -e 's/^<div class="thumbTitle"><a href=["'"'"']//i' -e 's/["'"'"']$//i')
 				hflist=$(sort -t / -k 5 <<< "$popfeat")
 				counth=$(wc -l <<< "$hflist")
-				randh=$(sed -n "$(( ( RANDOM % counth ) + 1 ))p" <<< "$hflist")
-				wgethf=$(wget -q -O- "https://www.hentai-foundry.com$randh/?enterAgree=1")
-				photo_id=$(sed -n 's/.*src="\([^"]*\)".*/\1/p' <<< "$wgethf" | \
-					grep "pictures.hentai" | \
-					sed "s/^/https:/")
-				caption="https://www.hentai-foundry.com$randh"
-				tg_method send_photo > /dev/null
-			;;
-			1)
-				randh=$(wget -q -O- 'https://rule34.xxx/index.php?page=post&s=random')
-				
-				photo_id=$(grep 'content="https://img.rule34.xxx\|content="https://himg.rule34.xxx' <<< "$randh" \
-					| sed -En 's/.*content="(.*)"\s.*/\1/p')
-				caption="https://rule34.xxx/index.php?page=post&s=view&$(grep 'action="index.php?' <<< "$randh" \
-					| sed -En 's/.*(id=.*)&.*/\1/p')"
-				tg_method send_photo > /dev/null
+				while [[ "$x" -le "5" ]]; do
+					x=$((x+1))
+					randh=$(sed -n "$(( ( RANDOM % counth ) + 1 ))p" <<< "$hflist")
+					wgethf=$(wget -q -O- "https://www.hentai-foundry.com$randh/?enterAgree=1")
+					photo_id=$(sed -n 's/.*src="\([^"]*\)".*/\1/p' <<< "$wgethf" | \
+						grep "pictures.hentai" | \
+						sed "s/^/https:/")
+					caption="https://www.hentai-foundry.com$randh"
+					[[ "$(tg_method send_photo | jshon -Q -e ok)" = "true" ]] && return
+				done
 			;;
 			2)
-				randh=$(wget -q -O- 'https://safebooru.org/index.php?page=post&s=random')
-				
-				photo_id=$(grep 'content="https://safebooru.org' <<< "$randh" \
-					| sed -En 's/.*content="(.*)"\s.*/\1/p')
-				caption="https://safebooru.org/index.php?page=post&s=view&$(grep 'action="index.php?' <<< "$randh" \
+				while [[ "$x" -le "5" ]]; do
+					x=$((x+1))
+					randh=$(wget -q -O- 'https://rule34.xxx/index.php?page=post&s=random')
+					photo_id=$(grep 'content="https://img.rule34.xxx\|content="https://himg.rule34.xxx' <<< "$randh" \
+						| sed -En 's/.*content="(.*)"\s.*/\1/p')
+					caption="https://rule34.xxx/index.php?page=post&s=view&$(grep 'action="index.php?' <<< "$randh" \
 					| sed -En 's/.*(id=.*)&.*/\1/p')"
-				tg_method send_photo > /dev/null
+					[[ "$(tg_method send_photo | jshon -Q -e ok)" = "true" ]] && return
+				done
+			;;
+			3)
+				while [[ "$x" -le "5" ]]; do
+					x=$((x+1))
+					randh=$(wget -q -O- 'https://safebooru.org/index.php?page=post&s=random')
+					photo_id=$(grep 'content="https://safebooru.org' <<< "$randh" \
+						| sed -En 's/.*content="(.*)"\s.*/\1/p')
+					caption="https://safebooru.org/index.php?page=post&s=view&$(grep '<form method="post" action="index.php?' <<< "$randh" \
+						| sed -En 's/.*(id=.*)&.*/\1/p')"
+					[[ "$(tg_method send_photo | jshon -Q -e ok)" = "true" ]] && return
+				done
+			;;
+			4)
+				while [[ "$x" -le "5" ]]; do
+					x=$((x+1))
+					randh=$(wget -q -O- 'https://gelbooru.com/index.php?page=post&s=random')
+					photo_id=$(grep 'content="https://img2' <<< "$randh" \
+						| sed -En 's/.*content="(.*)"\s.*/\1/p')
+					caption="https://gelbooru.com/index.php?page=post&s=view&$(grep '<form method="post" action="index.php' <<< "$randh" \
+						| sed -En 's/.*(id=.*)&.*/\1/p')"
+					[[ "$(tg_method send_photo | jshon -Q -e ok)" = "true" ]] && return
+				done
 			;;
 		esac
 	;;
@@ -636,6 +654,33 @@ case $normal_message in
 	
 	## administrative commands
 	
+	"!db "*)
+		if [[ $(is_admin) ]]; then
+			case "$fn_arg" in
+				"chats")
+					unset text_id
+					for x in $(seq $(dir -1 db/chats/ | wc -l)); do
+						info_chat=$(dir -1 db/chats/ | sed -n ${x}p)
+						count[$x]=$(curl -s "$TELEAPI/getChatMembersCount" --form-string "chat_id=$info_chat" | jshon -Q -e result -u)
+						info[$x]="${count[$x]} members, $(cat -- db/chats/"$info_chat" | sed -e 's/^title: //' -e '2d' -e 's/^type:/,/' | tr -d '\n')"
+						if [[ "${count[$x]}" = "" ]]; then
+							unset info[$x]
+							rm -f -- db/chats/"$info_chat"
+						fi
+					done
+					text_id=$(printf '%s\n' "${info[@]}" | sort -nr)
+					get_reply_id any
+					tg_method send_message > /dev/null
+				;;
+				"get")
+					if [[ "$reply_to_user_id" != "" ]]; then
+						text_id=$(cat db/users/"$reply_to_user_id")
+						get_reply_id any
+						tg_method send_message > /dev/null
+					fi
+			esac
+		fi
+	;;
 	"!setadmin "*)
 		if [[ $(is_admin) ]]; then
 			username=$(tr -d '@' <<< "$fn_arg")

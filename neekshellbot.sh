@@ -462,14 +462,14 @@ process_reply() {
 			"fname: $username_fname" \
 			"lname: $username_lname" > "$file_user"
 		fi
-		if [[ "tag: $username_tag" != "$(grep -- "tag" "$file_user")" ]]; then
-			sed -i "s/tag: .*/tag: $username_tag/" "$file_user"
+		if [[ "tag: $username_tag" != "$(grep -- "^tag" "$file_user")" ]]; then
+			sed -i "s/^tag: .*/tag: $username_tag/" "$file_user"
 		fi
-		if [[ "fname: $username_fname" != "$(grep -- "fname" "$file_user")" ]]; then
-			sed -i "s/fname: .*/fname: $username_fname/" "$file_user"
+		if [[ "fname: $username_fname" != "$(grep -- "^fname" "$file_user")" ]]; then
+			sed -i "s/^fname: .*/fname: $username_fname/" "$file_user"
 		fi
-		if [[ "lname: $username_lname" != "$(grep -- "lname" "$file_user")" ]]; then
-			sed -i "s/lname: .*/lname: $username_lname/" "$file_user"
+		if [[ "lname: $username_lname" != "$(grep -- "^lname" "$file_user")" ]]; then
+			sed -i "s/^lname: .*/lname: $username_lname/" "$file_user"
 		fi
 	fi
 	reply_to_message=$(jshon -Q -e reply_to_message <<< "$message")
@@ -511,6 +511,9 @@ process_reply() {
 			"title: $chat_title" \
 			"id: $chat_id" \
 			"type: $type" > "$file_chat"
+		fi
+		if [[ "title: $chat_title" != "$(grep -- "^title" "$file_chat")" ]]; then
+			sed -i "s/^title: .*/title: $chat_title/" "$file_chat"
 		fi
 	fi
 
