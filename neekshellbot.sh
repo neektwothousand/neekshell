@@ -49,20 +49,32 @@ loading() {
 }
 r_subreddit() {
 	[[ "$1" = "" ]] && exit
-	subreddit=$1
-	sort=$2
 	enable_markdown=true
-	case $subreddit in
+	case "$subreddit" in
 		none)
-			case $sort in
+			case "$filter" in
 				random)
 					r_input=$(wget -q -O- "https://reddit.com/random/.json")
 					hot=$(jshon -e 0 -e data -e children -e 0 -e data <<< "$r_input")
 				;;
 			esac
 		;;
+		"https"*)
+			if [[ "$(grep "reddit.com" <<< "$subreddit")" != "" ]]; then
+				if [[ "$(grep '?' <<< "$subreddit")" != "" ]]; then
+					subreddit=$(sed 's/\?.*//' <<< "$subreddit")
+				fi
+				r_input=$(wget -q -O- "$subreddit/.json")
+			else
+				text_id="invalid link"
+				get_reply_id any
+				tg_method send_message > /dev/null
+				return
+			fi
+			hot=$(jshon -e 0 -e data -e children -e 0 -e data <<< "$r_input")
+		;;
 		*)
-			case $sort in
+			case "$filter" in
 				random)
 					r_input=$(wget -q -O- "https://reddit.com/r/${subreddit}/random/.json")
 					hot=$(jshon -e 0 -e data -e children -e 0 -e data <<< "$r_input")
@@ -71,7 +83,7 @@ r_subreddit() {
 					amount=10
 					r_input=$(wget -q -O- "https://reddit.com/r/${subreddit}/.json?sort=top&t=week&limit=$amount")
 					hot=$(jshon -e data -e children -e $((RANDOM % $amount)) -e data <<< "$r_input")
-					if [[ "$3" = "pic" ]] \
+					if [[ "$filter" = "pic" ]] \
 					&& [[ "$(jshon -e url -u <<< "$hot" | grep "i.redd.it\|imgur" | grep "jpg\|png")" = "" ]]; then
 						x=0
 						while [[ "$s_pic" != "found" ]]; do
@@ -92,9 +104,11 @@ r_subreddit() {
 			esac
 		;;
 	esac
-	media_id=$(jshon -e url -u <<< "$hot" | grep "i.redd.it\|imgur\|gfycat")
+	media_id=$(jshon -e url -u <<< "$hot" | grep "i.redd.it\|imgur\|gfycat\|redgifs")
 	if [[ "$(grep "gfycat" <<< "$media_id")" != "" ]]; then
 		media_id=$(curl -s "$media_id" | sed -En 's|.*<source src="(https://thumbs.*mp4)" .*|\1|p')
+	elif [[ "$(grep "redgifs" <<< "$media_id")" != "" ]]; then
+		media_id=$(wget -q -O- "$media_id" | sed -En 's|.*content="(https://thumbs2.redgifs.*-mobile.mp4)".*|\1|p')
 	fi
 	permalink=$(jshon -e permalink -u <<< "$hot" | cut -f 5 -d /)
 	title=$(jshon -e title -u <<< "$hot")
@@ -109,16 +123,28 @@ r_subreddit() {
 		tg_method send_message > /dev/null
 	elif [[ "$(grep "jpg\|png" <<< "$media_id")" != "" ]]; then
 		photo_id=$media_id
-		tg_method send_photo > /dev/null
+		if [[ "$(tg_method send_photo | jshon -Q -e ok)" = "false" ]]; then
+			text_id=$caption
+			tg_method send_message > /dev/null
+		fi
 	elif [[ "$(grep "gif" <<< "$media_id")" != "" ]]; then
 		animation_id=$media_id
-		tg_method send_animation > /dev/null
+		if [[ "$(tg_method send_animation | jshon -Q -e ok)" = "false" ]]; then
+			text_id=$caption
+			tg_method send_message > /dev/null
+		fi
 	elif [[ "$(grep "mp4" <<< "$media_id")" != "" ]] && [[ "$(ffprobe "$media_id" 2>&1 | grep -o 'Audio:')" = "" ]]; then
 		animation_id=$media_id
-		tg_method send_animation > /dev/null
+		if [[ "$(tg_method send_animation | jshon -Q -e ok)" = "false" ]]; then
+			text_id=$caption
+			tg_method send_message > /dev/null
+		fi
 	elif [[ "$(grep "mp4" <<< "$media_id")" != "" ]] && [[ "$(ffprobe "$media_id" 2>&1 | grep -o 'Audio:')" != "" ]]; then
 		video_id=$media_id
-		tg_method send_video > /dev/null
+		if [[ "$(tg_method send_video | jshon -Q -e ok)" = "false" ]]; then
+			text_id=$caption
+			tg_method send_message > /dev/null
+		fi
 	fi
 }
 photo_array() {
@@ -295,6 +321,7 @@ tg_method() {
 			curl -s "$TELEAPI/editMessageText" \
 				$curl_f "chat_id=$chat_id" \
 				$curl_f "message_id=$edit_id" \
+				$curl_f "parse_mode=html" \
 				$curl_f "text=$edit_text"
 		;;
 		edit_media)
@@ -382,19 +409,24 @@ get_normal_reply() {
 	case $normal_message in
 		"!start")
 			text_id="this is a mksh bot, use !source to download"
-			reply_id=$message_id
+			get_reply_id self
 			tg_method send_message > /dev/null
 		;;
-		"!help")
-			text_id="https://gitlab.com/craftmallus/neekshell-telegrambot/-/blob/master/README.md#commands"
-			reply_id=$message_id
+		"!help"|"!help "*)
+			if [[ "$fn_arg" = "" ]]; then
+				text_id=$(printf '%s\n' "$(cat help/* | grep -A 1 '^Usage' | grep -v '^Usage\|--' | sed 's/^  //' | sort)" "" "send !help <command> for details")
+			else
+				text_id=$(cat help/"$fn_arg")
+				[[ "$text_id" = "" ]] && text_id="command not found"
+			fi
+			get_reply_id self
 			tg_method send_message > /dev/null
 		;;
 		"!source")
 			source_id=$RANDOM
-			zip -r source-"$source_id".zip neekshellbot.sh custom_commands LICENSE webhook.php
+			zip -r source-"$source_id".zip neekshellbot.sh custom_commands LICENSE README.md webhook.php
 			document_id="@source-$source_id.zip"
-			reply_id=$message_id
+			get_reply_id self
 			tg_method send_document upload > /dev/null
 			rm source-"$source_id".zip
 			text_id="https://gitlab.com/craftmallus/neekshell-telegrambot/"
@@ -490,6 +522,7 @@ process_reply() {
 				<<< "$reply_to_message")
 		fi
 		reply_to_text=$(jshon -Q -e text -u <<< "$reply_to_message")
+		reply_to_caption=$(jshon -Q -e caption -u <<< "$reply_to_message")
 		[[ ! -d db/users/ ]] && mkdir -p db/users/
 		file_reply_user=db/users/"$reply_to_user_id"
 		if [[ ! -e "$file_reply_user" ]]; then
@@ -544,6 +577,7 @@ process_reply() {
 					normal_message=$text_id
 			esac
 			fn_arg=$(cut -f 2- -d ' ' <<< "$normal_message")
+			[[ "$fn_arg" = "$normal_message" ]] && fn_arg=""
 		;;
 		photo)
 			normal_message=$photo_id

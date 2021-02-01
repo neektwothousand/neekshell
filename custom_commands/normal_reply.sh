@@ -1,5 +1,30 @@
-case $normal_message in
+case "$chat_id" in
+	-1001348224205)
+		# stacca
+		case "$normal_message" in
+			[oO][kK]|[oO][kK]?)
+				text_id="ok"
+				get_reply_id any
+				tg_method send_message > /dev/null
+			;;
+		esac
+	;;
+	-1001049069552|-1001428507662)
+		# recupero/testgroup
+		case "$normal_message" in
+			"!markov")
+				cd misc-shell/markov/
+				rand_messages=$(( ($(cat /dev/urandom | tr -dc '[:digit:]' 2>/dev/null | head -c 6) % 240000) + 1 ))
+				sed -n ${rand_messages},$((rand_messages + 4999))p recupero_text_full | tr -d [\'\"\)] > recupero_text
+				text_id=$(./markupero.py | grep -v '^None$' | head -n 1)
+				tg_method send_message > /dev/null
+			;;
+		esac
+	;;
+esac
+case "$normal_message" in
 	"!top "*)
+		get_reply_id self
 		case "$fn_arg" in
 			+|rep)
 				top_info="rep"
@@ -8,6 +33,8 @@ case $normal_message in
 				top_info="gs"
 			;;
 			*)
+				text_id=$(cat help/top)
+				tg_method send_message > /dev/null
 				return
 			;;
 		esac
@@ -23,11 +50,11 @@ case $normal_message in
 			done
 			enable_markdown=true
 			text_id=$(sort -nr <<< "$(printf '%s\n' "${user_entry[@]}")" | head -n 10)
-			get_reply_id self
 			tg_method send_message > /dev/null
 		fi
 	;;
 	"!my "*)
+		get_reply_id self
 		case "$fn_arg" in
 			+|rep)
 				top_info="rep"
@@ -36,6 +63,8 @@ case $normal_message in
 				top_info="gs"
 			;;
 			*)
+				text_id=$(cat help/my)
+				tg_method send_message > /dev/null
 				return
 			;;
 		esac
@@ -50,21 +79,36 @@ case $normal_message in
 			enable_markdown=true
 			text_id=$user_entry
 		fi
-		get_reply_id self
 		tg_method send_message > /dev/null
 	;;
-	"!me "*)
-		text_id="> $username_fname $fn_arg"
-		tg_method send_message > /dev/null
-		to_delete_id=$message_id
-		tg_method delete_message > /dev/null
+	"!me"|"!me "*)
+		if [[ "$fn_arg" != "" ]]; then
+			text_id="> $username_fname $fn_arg"
+			tg_method send_message > /dev/null
+			to_delete_id=$message_id
+			tg_method delete_message > /dev/null
+		else
+			get_reply_id self
+			text_id=$(cat help/me)
+			tg_method send_message > /dev/null
+		fi
 	;;
-	"!fortune")
-		text_id=$(/usr/bin/fortune fortunes paradoxum goedel linuxcookie | tr '\n' ' ' | awk '{$2=$2};1')
-		get_reply_id any
-		tg_method send_message > /dev/null
+	"!fortune"|"!fortune "*)
+		if [[ "$fn_arg" = "" ]]; then
+			text_id=$(/usr/bin/fortune fortunes paradoxum goedel linuxcookie | tr '\n' ' ' | awk '{$2=$2};1')
+		else
+			text_id=$(/usr/bin/fortune "$fn_arg" | tr '\n' ' ' | awk '{$2=$2};1')
+		fi
+		if [[ "$text_id" != "" ]]; then
+			get_reply_id any
+			tg_method send_message > /dev/null
+		else
+			get_reply_id self
+			text_id=$(cat help/fortune)
+			tg_method send_message > /dev/null
+		fi
 	;;
-	"!decode")
+	"!json")
 		cd $tmpdir
 		update_id="${message_id}${username_id}"
 		printf '%s' "$input" | sed -e 's/{"/{\n"/g' -e 's/,"/,\n"/g' > decode-$update_id.json
@@ -78,22 +122,30 @@ case $normal_message in
 		get_reply_id self
 		tg_method send_message > /dev/null
 	;;
-	"!d"[0-9]*|"!d"[0-9]*"*"[0-9]*)
-		if [[ "$(grep "*" <<< "$normal_message")" != "" ]]; then
-			normaldice=$(sed "s/!d//" <<< "$normal_message" | cut -d "*" -f 1)
-			mul=$(sed "s/!d//" <<< "$normal_message" | cut -d "*" -f 2)
-		else
-			normaldice=$(sed "s/!d//" <<< "$normal_message")
-			mul=1
-		fi
-		for x in $(seq "$mul"); do
-			chars=$(( $(wc -m <<< "$normaldice") - 1 ))
-			result[$x]=$(( ($(cat /dev/urandom | tr -dc '[:digit:]' 2>/dev/null | head -c $chars) % $normaldice) + 1 ))
-		done
-		text_id=${result[*]}
-		markdown=("<code>" "</code>")
+	"!d "*|"!dice "*|"!d"|"!dice")
 		get_reply_id self
-		tg_method send_message > /dev/null
+		case "$fn_arg" in
+			[0-9]*|[0-9]*"*"[0-9]*)
+				if [[ "$(grep "*" <<< "$normal_message")" != "" ]]; then
+					normaldice=$(sed "s/!d//" <<< "$normal_message" | cut -d "*" -f 1)
+					mul=$(sed "s/!d//" <<< "$normal_message" | cut -d "*" -f 2)
+				else
+					normaldice=$(sed "s/!d//" <<< "$normal_message")
+					mul=1
+				fi
+				for x in $(seq "$mul"); do
+					chars=$(( $(wc -m <<< "$normaldice") - 1 ))
+					result[$x]=$(( ($(cat /dev/urandom | tr -dc '[:digit:]' 2>/dev/null | head -c $chars) % $normaldice) + 1 ))
+				done
+				text_id=${result[*]}
+				markdown=("<code>" "</code>")
+				tg_method send_message > /dev/null
+			;;
+			*)
+				text_id=$(cat help/dice)
+				tg_method send_message > /dev/null
+			;;
+		esac
 	;;
 	"!gayscale"|"!gs")
 		if [[ "$reply_to_user_id" = "" ]]; then
@@ -140,207 +192,224 @@ case $normal_message in
 		get_reply_id any
 		tg_method send_message > /dev/null
 	;;
-	"!wenit "*|"!witen "*)
-		trad=$(sed -e 's/!w//' -e 's/\s.*//' <<< "$normal_message")
-		search=$(sed 's/\s/%20/g' <<< "$fn_arg")
-		wordreference=$(curl -A 'neekshellbot/1.0' -s "https://www.wordreference.com/$trad/$search" \
-			| sed -En "s/.*\s>(.*\s)<em.*/\1/p" \
-			| sed -e "s/<a.*//g" -e "s/<span.*'\(.*\)'.*/\1/g" \
-			| head | awk '!x[$0]++')
-		if [[ "$wordreference" != "" ]]; then
-			text_id=$(printf '%s\n' "translations:" "$wordreference")
+	"!wr "*|"!wr")
+		get_reply_id self
+		if [[ "$fn_arg" != "" ]]; then
+			trad=$(cut -f 1 -d ' ' <<< "$fn_arg")
+			search=$(cut -f 2- -d ' ' <<< "$fn_arg" | sed 's/ /%20/g')
+			wordreference=$(curl -A 'neekshellbot/1.0' -s "https://www.wordreference.com/$trad/$search" \
+				| sed -En "s/.*\s>(.*\s)<em.*/\1/p" \
+				| sed -e "s/<a.*//g" -e "s/<span.*'\(.*\)'.*/\1/g" \
+				| head | awk '!x[$0]++')
+			if [[ "$wordreference" != "" ]]; then
+				text_id=$(printf '%s\n' "translations:" "$wordreference")
+			else
+				text_id=$(printf '%s' "$search " "not found" | sed 's/%20/ /g')
+			fi
+			tg_method send_message > /dev/null
 		else
-			text_id=$(printf '%s' "$search " "not found" | sed 's/%20/ /g')
+			text_id=$(cat help/wr)
+			tg_method send_message > /dev/null
 		fi
-		get_reply_id self
-		tg_method send_message > /dev/null
 	;;
-	"!reddit "*)
+	"!reddit "*|"!reddit")
 		get_reply_id self
-		case "$(grep -o "pic$" <<< "$fn_arg")" in
-			pic)
-				r_subreddit "$(cut -f 1 -d ' ' <<< "$fn_arg")" pic
-			;;
-			*)
-				r_subreddit "$(cut -f 1 -d ' ' <<< "$fn_arg")"
-			;;
-		esac
+		if [[ "$fn_arg" != "" ]]; then
+			subreddit=$(cut -f 1 -d ' ' <<< "$fn_arg")
+			filter=$(cut -f 2 ' ' <<< "$fn_arg")
+			r_subreddit "$subreddit" "$filter"
+		else
+			text_id=$(cat help/reddit)
+			tg_method send_message > /dev/null
+		fi
 	;;
-	"!insta "*)
-		if [[ "$(grep '^@' <<< "$fn_arg")" != "" ]]; then
-			fn_arg=${fn_arg/@/}
-		fi
-		if [[ "$(grep '[^_.a-zA-Z]' <<< "$fn_arg")" != "" ]]; then
-			return
-		fi
-		loading 1
-		ig_user=$(sed -n 1p ig_key)
-		ig_pass=$(sed -n 2p ig_key)
-		cd $tmpdir
-		request_id="${fn_arg}_${chat_id}"
-		[[ ! -d "$request_id" ]] && mkdir "$request_id"
-		cd "$request_id"
-		ig_scraper=$(~/.local/bin/instagram-scraper -u $ig_user -p $ig_pass -m 50 "$fn_arg")
-		if [[ "$(grep "^ERROR" <<< "$ig_scraper")" != "" ]]; then
+	"!insta "*|"!insta")
+		if [[ "$fn_arg" != "" ]]; then
+			if [[ "$(grep '^@' <<< "$fn_arg")" != "" ]]; then
+				fn_arg=${fn_arg/@/}
+			fi
+			if [[ "$(grep '[^_.a-zA-Z]' <<< "$fn_arg")" != "" ]]; then
+				return
+			fi
+			loading 1
+			ig_user=$(sed -n 1p ig_key)
+			ig_pass=$(sed -n 2p ig_key)
+			cd $tmpdir
+			request_id="${fn_arg}_${chat_id}"
+			[[ ! -d "$request_id" ]] && mkdir "$request_id"
+			cd "$request_id"
+			ig_scraper=$(~/.local/bin/instagram-scraper -u $ig_user -p $ig_pass -m 50 "$fn_arg")
+			if [[ "$(grep "^ERROR" <<< "$ig_scraper")" != "" ]]; then
+				loading 3
+				return
+			fi
+			loading 2
+			ls -t -1 "$fn_arg" > ig_list
+			printf '%s' "$username_id" > ig_userid
+			if [[ "$(sed -n 2p ig_list)" != "" ]]; then
+				button_text=(">")
+				button_data=("insta + $fn_arg $chat_id")
+				markup_id=$(inline_array button)
+			fi
+			printf '%s' "1" > ig_page
+			media_id="@$(sed -n 1p ig_list)"
+			ext=$(grep -o "...$" <<< "$media_id")
+			cd "$fn_arg"
 			loading 3
-			return
+			case "$ext" in
+				jpg)
+					photo_id=$media_id
+					ig_id=$(tg_method send_photo upload | jshon -Q -e result -e message_id -u)
+				;;
+				mp4)
+					video_id=$media_id
+					ig_id=$(tg_method send_video upload | jshon -Q -e result -e message_id -u)
+				;;
+			esac
+			cd ..
+			printf '%s' "$ig_id" > ig_id
+		else
+			text_id=$(cat help/insta)
+			get_reply_id self
+			tg_method send_message > /dev/null
 		fi
-		loading 2
-		ls -t -1 "$fn_arg" > ig_list
-		printf '%s' "$username_id" > ig_userid
-		if [[ "$(sed -n 2p ig_list)" != "" ]]; then
-			button_text=(">")
-			button_data=("insta + $fn_arg $chat_id")
-			markup_id=$(inline_array button)
-		fi
-		printf '%s' "1" > ig_page
-		media_id="@$(sed -n 1p ig_list)"
-		ext=$(grep -o "...$" <<< "$media_id")
-		cd "$fn_arg"
-		loading 3
-		case "$ext" in
-			jpg)
-				photo_id=$media_id
-				ig_id=$(tg_method send_photo upload | jshon -Q -e result -e message_id -u)
-			;;
-			mp4)
-				video_id=$media_id
-				ig_id=$(tg_method send_video upload | jshon -Q -e result -e message_id -u)
-			;;
-		esac
-		cd ..
-		printf '%s' "$ig_id" > ig_id
 	;;
 	"!jpg")
-		cd $tmpdir
-		request_id=$RANDOM
-		get_reply_id reply
-		get_file_type reply
-		case $file_type in
-			text|"")
-				text_id="reply to a media"
-				tg_method send_message > /dev/null
-			;;
-			photo|document)
-				case $file_type in
-					photo)
-						media_id=$photo_id
-					;;
-					document)
-						media_id=$document_id
-					;;
-				esac
-				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
-				ext=$(grep -o "...$" <<< "$file_path")
-				case "$ext" in
-					png)
-						wget -q -O "pic-$request_id-r.$ext" "https://api.telegram.org/file/bot$TOKEN/$file_path"
-						convert "pic-$request_id-r.$ext" "pic-$request_id-r.jpg"
-						rm "pic-$request_id-r.$ext"
-					;;
-					jpg)
-						wget -q -O "pic-$request_id-r.$ext" "https://api.telegram.org/file/bot$TOKEN/$file_path"
-					;;
-					*) return ;;
-				esac
-				magick "pic-$request_id-r.jpg" -resize 150% "pic-$request_id.jpg"
-				magick "pic-$request_id.jpg" -quality 4 "pic-low-$request_id.jpg"
-				
-				photo_id="@pic-low-$request_id.jpg"
-				tg_method send_photo upload > /dev/null
-				
-				rm "pic-$request_id.jpg" \
-					"pic-low-$request_id.jpg" \
-					"pic-$request_id-r.jpg"
-			;;
-			sticker)
-				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$sticker_id" | jshon -Q -e result -e file_path -u)
-				wget -O "sticker-$request_id-0.webp" "https://api.telegram.org/file/bot$TOKEN/$file_path"
-				convert "sticker-$request_id-0.webp" "sticker-$request_id-1.jpg"
-				magick "sticker-$request_id-1.jpg" -resize 200% "sticker-$request_id-2.jpg"
-				magick "sticker-$request_id-2.jpg" -quality 10 "sticker-$request_id-3.jpg"
-				magick "sticker-$request_id-3.jpg" -resize 512x512 "sticker-$request_id-4.jpg"
-				convert "sticker-$request_id-4.jpg" "sticker-$request_id-5.webp"
-				
-				sticker_id="@sticker-$request_id-5.webp"
-				tg_method send_sticker upload > /dev/null
-				
-				rm "sticker-$request_id-0.webp" \
-					"sticker-$request_id-1.jpg" \
-					"sticker-$request_id-2.jpg" \
-					"sticker-$request_id-3.jpg" \
-					"sticker-$request_id-4.jpg" \
-					"sticker-$request_id-5.webp"
-			;;
-			animation)
-				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$animation_id" | jshon -Q -e result -e file_path -u)
-				wget -O animation-"$request_id".mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
-				
-					loading 1
-				
-				ffmpeg -i animation-"$request_id".mp4 -crf 50 -an animation-low-"$request_id".mp4
-				
-					loading 2
-				
-				animation_id="@animation-low-$request_id.mp4"
-				tg_method send_animation upload > /dev/null
-				
-					loading 3
-				
-				rm animation-"$request_id".mp4 animation-low-"$request_id".mp4
-			;;
-			video)
-				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$video_id" | jshon -Q -e result -e file_path -u)
-				wget -O video-"$request_id".mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
-				
-					loading 1
-				
-				ffmpeg -i video-"$request_id".mp4 -crf 50 video-low-"$request_id".mp4
-				
-					loading 2
-				
-				video_id="@video-low-$request_id.mp4"
-				tg_method send_video upload > /dev/null
-				
-					loading 3
-				
-				rm video-"$request_id".mp4 video-low-"$request_id".mp4
-			;;
-			audio)
-				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$audio_id" | jshon -Q -e result -e file_path -u)
-				wget -O audio-"$request_id".mp3 "https://api.telegram.org/file/bot$TOKEN/$file_path"
-				
-					loading 1
-				
-				ffmpeg -i audio-"$request_id".mp3 -vn -acodec libmp3lame -b:a 6k audio-low-"$request_id".mp3
-				
-					loading 2
-				
-				audio_id="@audio-low-$request_id.mp3"
-				tg_method send_audio upload > /dev/null
-				
-					loading 3
-				
-				rm audio-"$request_id".mp3 audio-low-"$request_id".mp3
-			;;
-			voice)
-				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$voice_id" | jshon -Q -e result -e file_path -u)
-				wget -O voice-"$request_id".ogg "https://api.telegram.org/file/bot$TOKEN/$file_path"
-				
-					loading 1
-				
-				ffmpeg -i voice-"$request_id".ogg -vn -acodec opus -b:a 6k -strict -2 voice-low-"$request_id".ogg
-				
-					loading 2
-				
-				voice_id="@voice-low-$request_id.ogg"
-				tg_method send_voice upload > /dev/null
-				
-					loading 3
-				
-				rm voice-"$request_id".ogg voice-low-"$request_id".ogg
-			;;
-		esac
+		if [[ "$reply_to_id" != "" ]]; then
+			cd $tmpdir
+			request_id=$RANDOM
+			get_reply_id reply
+			get_file_type reply
+			case $file_type in
+				text|"")
+					text_id="reply to a media"
+					tg_method send_message > /dev/null
+				;;
+				photo|document)
+					case $file_type in
+						photo)
+							media_id=$photo_id
+						;;
+						document)
+							media_id=$document_id
+						;;
+					esac
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
+					ext=$(grep -o "...$" <<< "$file_path")
+					case "$ext" in
+						png)
+							wget -q -O "pic-$request_id-r.$ext" "https://api.telegram.org/file/bot$TOKEN/$file_path"
+							convert "pic-$request_id-r.$ext" "pic-$request_id-r.jpg"
+							rm "pic-$request_id-r.$ext"
+						;;
+						jpg)
+							wget -q -O "pic-$request_id-r.$ext" "https://api.telegram.org/file/bot$TOKEN/$file_path"
+						;;
+						*) return ;;
+					esac
+					magick "pic-$request_id-r.jpg" -resize 150% "pic-$request_id.jpg"
+					magick "pic-$request_id.jpg" -quality 4 "pic-low-$request_id.jpg"
+					
+					photo_id="@pic-low-$request_id.jpg"
+					tg_method send_photo upload > /dev/null
+					
+					rm "pic-$request_id.jpg" \
+						"pic-low-$request_id.jpg" \
+						"pic-$request_id-r.jpg"
+				;;
+				sticker)
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$sticker_id" | jshon -Q -e result -e file_path -u)
+					wget -O "sticker-$request_id-0.webp" "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					convert "sticker-$request_id-0.webp" "sticker-$request_id-1.jpg"
+					magick "sticker-$request_id-1.jpg" -resize 200% "sticker-$request_id-2.jpg"
+					magick "sticker-$request_id-2.jpg" -quality 10 "sticker-$request_id-3.jpg"
+					magick "sticker-$request_id-3.jpg" -resize 512x512 "sticker-$request_id-4.jpg"
+					convert "sticker-$request_id-4.jpg" "sticker-$request_id-5.webp"
+					
+					sticker_id="@sticker-$request_id-5.webp"
+					tg_method send_sticker upload > /dev/null
+					
+					rm "sticker-$request_id-0.webp" \
+						"sticker-$request_id-1.jpg" \
+						"sticker-$request_id-2.jpg" \
+						"sticker-$request_id-3.jpg" \
+						"sticker-$request_id-4.jpg" \
+						"sticker-$request_id-5.webp"
+				;;
+				animation)
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$animation_id" | jshon -Q -e result -e file_path -u)
+					wget -O animation-"$request_id".mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					
+						loading 1
+					
+					ffmpeg -i animation-"$request_id".mp4 -crf 50 -an animation-low-"$request_id".mp4
+					
+						loading 2
+					
+					animation_id="@animation-low-$request_id.mp4"
+					tg_method send_animation upload > /dev/null
+					
+						loading 3
+					
+					rm animation-"$request_id".mp4 animation-low-"$request_id".mp4
+				;;
+				video)
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$video_id" | jshon -Q -e result -e file_path -u)
+					wget -O video-"$request_id".mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					
+						loading 1
+					
+					ffmpeg -i video-"$request_id".mp4 -crf 50 video-low-"$request_id".mp4
+					
+						loading 2
+					
+					video_id="@video-low-$request_id.mp4"
+					tg_method send_video upload > /dev/null
+					
+						loading 3
+					
+					rm video-"$request_id".mp4 video-low-"$request_id".mp4
+				;;
+				audio)
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$audio_id" | jshon -Q -e result -e file_path -u)
+					wget -O audio-"$request_id".mp3 "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					
+						loading 1
+					
+					ffmpeg -i audio-"$request_id".mp3 -vn -acodec libmp3lame -b:a 6k audio-low-"$request_id".mp3
+					
+						loading 2
+					
+					audio_id="@audio-low-$request_id.mp3"
+					tg_method send_audio upload > /dev/null
+					
+						loading 3
+					
+					rm audio-"$request_id".mp3 audio-low-"$request_id".mp3
+				;;
+				voice)
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$voice_id" | jshon -Q -e result -e file_path -u)
+					wget -O voice-"$request_id".ogg "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					
+						loading 1
+					
+					ffmpeg -i voice-"$request_id".ogg -vn -acodec opus -b:a 6k -strict -2 voice-low-"$request_id".ogg
+					
+						loading 2
+					
+					voice_id="@voice-low-$request_id.ogg"
+					tg_method send_voice upload > /dev/null
+					
+						loading 3
+					
+					rm voice-"$request_id".ogg voice-low-"$request_id".ogg
+				;;
+			esac
+		else
+			text_id=$(cat help/jpg)
+			get_reply_id self
+			tg_method send_message > /dev/null
+		fi
 	;;
 	"!hf")
 		randweb=$(( ( RANDOM % 4 ) +1))
@@ -402,8 +471,12 @@ case $normal_message in
 		cd $tmpdir
 		if [[ "$reply_to_text" != "" ]]; then
 			deemix_link=$(grep -o 'https://www.deezer.*\|https://deezer.*' <<< "$reply_to_text" | cut -f 1 -d ' ')
-		else
+		elif [[ "$fn_arg" != "" ]]; then
 			deemix_link=$fn_arg
+		else
+			text_id=$(cat help/deemix)
+			get_reply_id self
+			tg_method send_message > /dev/null
 		fi
 		
 		[[ "$deemix_link" = "" ]] && return
@@ -441,12 +514,12 @@ case $normal_message in
 		
 		rm -- "$song_file"
 	;;
-	"!chat "*)
+	"!chat "*|"!chat")
 		if [[ "$type" = "private" ]] || [[ $(is_admin) ]] ; then
 			chat_command=$fn_arg
 			action=$(cut -d ' ' -f 1 <<< "$chat_command")
 			get_reply_id self
-			case $action in
+			case "$action" in
 				"create")
 					[[ ! -d $bot_chat_dir ]] && mkdir -p $bot_chat_dir
 					if [[ "$(dir $bot_chat_dir | grep -o -- "$bot_chat_user_id")" = "" ]]; then
@@ -537,7 +610,8 @@ case $normal_message in
 					[[ "$text_id" = "" ]] && text_id="no chats found"
 				;;
 				*)
-					return
+					text_id=$(cat help/chat)
+					get_reply_id self
 				;;
 			esac
 			tg_method send_message > /dev/null
@@ -555,27 +629,35 @@ case $normal_message in
 		else
 			userid=$(sed -n 2p $(grep -r -- "$(sed 's/@//' <<< "$username")" db/users/ | cut -d : -f 1) | sed 's/id: //')
 		fi
-		if [[ "$userid" != "" ]] && [[ "$text_id" != "" ]]; then
-			markdown=("<a href=\"tg://user?id=$userid\">" "</a>")
+		if [[ "$text_id" = "" ]]; then
+			text_id=$(cat help/tag)
+			get_reply_id self
 		elif [[ "$userid" = "" ]]; then
 			text_id="$username not found"
-		elif [[ "$text_id" = "" ]]; then
-			text_id="text not found"
+		elif [[ "$userid" != "" ]] && [[ "$text_id" != "" ]]; then
+			markdown=("<a href=\"tg://user?id=$userid\">" "</a>")
 		fi
 		tg_method send_message > /dev/null
 	;;
 	"!text2img"|"!text2img "*)
+		get_reply_id self
 		if [[ "$reply_to_text" != "" ]]; then
 			text2img=$reply_to_text
 		else
 			text2img=$fn_arg
+			[[ "$fn_arg" = "$normal_message" ]] && text2img=""
 		fi
-		api_key=$(cat deepai_key)
-		photo_id=$(curl -s "https://api.deepai.org/api/text2img" \
-			-F "text=$text2img" \
-			-H "api-key:$api_key" | jshon -e output_url -u)
-		get_reply_id self
-		tg_method send_photo > /dev/null
+		if [[ "$text2img" != "" ]]; then
+			api_key=$(cat deepai_key)
+			photo_id=$(curl -s "https://api.deepai.org/api/text2img" \
+				-F "text=$text2img" \
+				-H "api-key:$api_key" | jshon -e output_url -u)
+			tg_method send_photo > /dev/null
+		else
+			text_id=$(cat help/text2img)
+			get_reply_id self
+			tg_method send_message > /dev/null
+		fi
 	;;
 	"!owoifer"|"!owo"|"!cringe")
 		reply=$(jshon -Q -e reply_to_message -e text -u <<< "$message")
@@ -606,7 +688,7 @@ case $normal_message in
 			text_id=$(sed -e 's/[lr]/w/g' -e 's/[LR]/W/g' <<< "$fixed_text")
 			get_reply_id reply
 		else
-			text_id="reply to a text message"
+			text_id=$(cat help/owo)
 			get_reply_id self
 		fi
 		if [[ "$reply_to_user_id" = "$(jshon -Q -e result -e id -u < botinfo)" ]]; then
@@ -617,8 +699,7 @@ case $normal_message in
 			tg_method send_message > /dev/null
 		fi
 	;;
-	"!sed "*)
-		reply_to_caption=$(jshon -Q -e caption -u <<< "$reply_to_message")
+	"!sed "*|"!sed")
 		[[ "$reply_to_caption" != "" ]] && reply_to_text=$reply_to_caption
 		if [[ "$reply_to_text" != "" ]]; then
 			regex=$fn_arg
@@ -626,16 +707,17 @@ case $normal_message in
 				"$(grep /g$ <<< "$regex")")
 					regex=$(sed 's|/g$||' <<< "$regex")
 					sed=$(sed -e "s/$regex/g" <<< "$reply_to_text")
-				;; 
-				*) 
+				;;
+				*)
 					sed=$(sed -e "s/$regex/" <<< "$reply_to_text")
 				;;
 			esac
+			get_reply_id reply
 			text_id=$(printf '%s\n' "$sed" "FTFY")
 		else
-			text_id="reply to a text message"
+			text_id=$(cat help/sed)
+			get_reply_id self
 		fi
-		get_reply_id reply
 		tg_method send_message > /dev/null
 	;;
 	"!neofetch")
@@ -743,22 +825,23 @@ case $normal_message in
 		if [[ $(is_admin) ]]; then
 			cd $tmpdir
 			if [[ "$reply_to_text" != "" ]]; then
-				ytdl_link=$(sed -e 's/.*(https.*)\s.*/\1/' <<< "$reply_to_text" | cut -d ' ' -f 1 | grep 'youtube\|youtu.be')
+				ytdl_link=$reply_to_text
 			else
 				ytdl_link=$fn_arg
-				[[ "$ytdl_link" = "" ]] && return
 			fi
+			ytdl_link=$(sed -e 's/.*\(https\)/\1/' -e 's/ .*//' <<< "$ytdl_link" | grep 'youtu\|instagram\|twitter')
+			[[ "$ytdl_link" = "" ]] && return
 			ytdl_id=$RANDOM
 			
 				loading 1
 			
-			caption=$(youtube-dl --print-json --format mp4 -o ytdl-$ytdl_id.mp4 "$ytdl_link" | jshon -Q -e title -u)
+			ytdl_json=$(youtube-dl --print-json --format mp4 -o ytdl-$ytdl_id.mp4 "$ytdl_link")
+			[[ "$ytdl_json" = "" ]] && loading value "error" && return
+			caption=$(jshon -Q -e title -u <<< "$ytdl_json")
 			
 			if [[ "$(du -m ytdl-$ytdl_id.mp4 | cut -f 1)" -ge 50 ]]; then
-				loading 3
+				loading value "error"
 				rm ytdl-$ytdl_id.mp4
-				text_id="file size exceeded"
-				tg_method send_message > /dev/null
 				return
 			fi
 			
@@ -778,33 +861,7 @@ case $normal_message in
 			tg_method send_message > /dev/null
 		fi
 	;;
-	"!redgifs "*)
-		if [[ "$(grep "reddit.com" <<< "$fn_arg")" != "" ]]; then
-			if [[ "$(grep '?' <<< "$fn_arg")" != "" ]]; then
-				fn_arg=$(sed 's/\?.*//' <<< "$fn_arg")
-			fi
-			r_json=$(wget -q -O- "$fn_arg/.json")
-			red_url=$(jshon -e 0 -e data -e children -e 0 -e data -e url -u <<< "$r_json")
-		elif [[ "$(grep "redgifs.com" <<< "$fn_arg")" != "" ]]; then
-			red_url=$fn_arg
-		else
-			text_id="invalid link"
-			get_reply_id any
-			tg_method send_message > /dev/null
-			return
-		fi
-		video_id=$(wget -q -O- "$red_url" | sed -En 's|.*content="(https://thumbs2.redgifs.*-mobile.mp4)".*|\1|p')
-		if [[ "$video_id" = "" ]]; then
-			text_id="unexpected error"
-			get_reply_id any
-			tg_method send_message > /dev/null
-			return
-		fi
-		get_reply_id any
-		tg_method send_video > /dev/null
-	;;
 	"!nh "*)
-		set -x
 		get_reply_id self
 		if [[ $(is_admin) ]]; then
 			cd $tmpdir
@@ -862,7 +919,6 @@ case $normal_message in
 			text_id="Access denied"
 			tg_method send_message > /dev/null
 		fi
-		set +x
 	;;
 	"!nhzip "*)
 		get_reply_id self
@@ -1082,17 +1138,35 @@ case $normal_message in
 			cd $tmpdir
 			case "$fn_arg" in
 				start)
-					text_id="loading /"
+					enable_markdown=true
+					text_id="<code>..loading    ..</code>"
 					processing_id=$(tg_method send_message | jshon -Q -e result -e message_id -u)
 					printf '%s' "$processing_id" > loading-$username_id-$chat_id
-					load_an=('—' '\' '|' '/')
-					x=0
-					load_status=$(loading value "loading ${load_an[$x]}" | jshon -Q -e ok)
+					l_s=("l" "o" "a" "d" "i" "n" "g" " " " " " " " ")
+					[[ "$processing_id" != "" ]] && load_status=true
 					while [[ "$load_status" != "false" ]]; do
-						x=$((x+1))
-						[[ $x -gt 3 ]] && x=0
-						sleep 5
-						load_status=$(loading value "loading ${load_an[$x]}" | jshon -Q -e ok)
+						for shift in $(seq $((${#l_s[*]}-1))); do
+							shift=$((shift+1))
+							y=$((shift-1))
+							z=$y
+							for x in $(seq 0 $((${#l_s[*]}-1))); do
+								if [[ "$shift" = "" ]]; then
+									x=$((x-z))
+									load_text="${load_text}${l_s[$x]}"
+								else
+									s_e=$((${#l_s[*]}-y))
+									s_a[$y]=${l_s[$s_e]}
+									load_text="${load_text}${s_a[$y]}"
+									y=$((y-1))
+									[[ y -eq 0 ]] && unset shift
+								fi
+							done
+							sleep 3
+							load_status=$(loading value "<code>..${load_text}..</code>" | jshon -Q -e ok)
+							unset load_text
+						done
+						sleep 3
+						load_status=$(loading value "<code>..loading    ..</code>" | jshon -Q -e ok)
 					done
 				;;
 				stop)
@@ -1215,28 +1289,5 @@ case $normal_message in
 				fi
 			done
 		fi
-	;;
-esac
-case "$chat_id" in
-	-1001348224205)
-		# stacca
-		case "$normal_message" in
-			[oO][kK]|[oO][kK]?)
-				text_id="ok"
-				get_reply_id any
-				tg_method send_message > /dev/null
-			;;
-		esac
-	;;
-	-1001049069552|-1001428507662)
-		# recupero/testgroup
-		case "$normal_message" in
-			"!markov")
-				cd misc-shell/markov/
-				text_id=$(./markupero.py | grep -v '^None$' | head -n 1)
-				get_reply_id reply
-				tg_method send_message > /dev/null
-			;;
-		esac
 	;;
 esac

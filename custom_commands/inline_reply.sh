@@ -1,21 +1,39 @@
-booru_prefix=$(grep -o '^.*b\s\|^.*gif\s' <<< "$inline_message" | sed 's/\s$//')
-
-case "$booru_prefix" in
-	'gb'|'gbgif')
-		booru="gelbooru.com"
-		ilb="g"
-	;;
-	'e621b'|'e621bgif')
-		booru="e621.net"
-		ilb="e621"
-	;;
-	'sb'|'sbgif')
-		booru="safebooru.donmai.us"
-		ilb="s"
+case "$inline_user_id" in
+	160551211) # neek
+		case "$inline_message" in
+			"markov")
+				set -x
+				cd misc-shell/markov/
+				rand_messages=$(( ($(cat /dev/urandom | tr -dc '[:digit:]' 2>/dev/null | head -c 6) % 240000) + 1 ))
+				sed -n ${rand_messages},$((rand_messages + 4999))p recupero_text_full | tr -d [\'\"\)] > recupero_text
+				markov_results=$(./markupero.py | grep -v '^None$')
+				while [[ "$markov_results" = "" ]] && [[ "$x" -le 5 ]]; do
+					x=$((x+1))
+					rand_messages=$(( ($(cat /dev/urandom | tr -dc '[:digit:]' 2>/dev/null | head -c 6) % 240000) + 1 ))
+					sed -n ${rand_messages},$((rand_messages + 4999))p recupero_text_full | tr -d [\'\"\)] > recupero_text
+					markov_results=$(./markupero.py | grep -v '^None$')
+				done
+				if [[ "$markov_results" = "" ]]; then
+					message_text="error"
+					title="error"
+					return_query=$(inline_array article)
+					tg_method send_inline > /dev/null
+					return
+				fi
+				for j in $(seq 0 $(($(wc -l <<< "$markov_results")-1))); do
+					message_text[$j]=$(sed -n $((j+1))p <<< "$markov_results")
+					title[$j]=$((j+1))
+					description[$j]=${message_text[$j]}
+				done
+				return_query=$(inline_array article)
+				tg_method send_inline > /dev/null
+				return
+				set +x
+			;;
+		esac
 	;;
 esac
-
-case $inline_message in
+case "$inline_message" in
 	"fortune")
 		fortune=$(/usr/bin/fortune fortunes paradoxum goedel linuxcookie | tr '\n' ' ' | awk '{$2=$2};1')
 		title="Cookie"
@@ -49,9 +67,26 @@ case $inline_message in
 		return_query=$(inline_array article)
 		tg_method send_inline > /dev/null
 	;;
-	"${ilb}b "*|"${ilb}booru "*)
+	"booru "*)
 		offset=$(($(jshon -Q -e offset -u <<< "$inline")+1))
-		tags=$(sed "s/${ilb}b \|${ilb}booru //" <<< "$inline_message")
+		booru_prefix=$(cut -f 2 -d ' ' <<< "$inline_message")
+		case "$booru_prefix" in
+			'e621b'|'e621bgif')
+				booru="e621.net"
+				ilb="e621"
+				tags=$(cut -f 3- -d ' ' <<< "$inline_message")
+			;;
+			'sb'|'sbgif')
+				booru="safebooru.donmai.us"
+				ilb="s"
+				tags=$(cut -f 3- -d ' ' <<< "$inline_message")
+			;;
+			*)
+				booru="gelbooru.com"
+				ilb="g"
+				tags=$(cut -f 2- -d ' ' <<< "$inline_message")
+			;;
+		esac
 		limit=5 y=0
 		case "$ilb" in 
 			"e621")
