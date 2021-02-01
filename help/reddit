@@ -1,0 +1,16 @@
+Usage
+  !reddit <subreddit or post link> <filter>
+
+Description
+  sends a hot post from the specified subreddit or title/media of a linked one
+
+Subreddit
+  any sub without r/ prefix or "none"
+
+Filters
+  pic (sends a picture from <subreddit>)
+  random (sends a random post from <subreddit> without sorting by hot)
+
+Examples
+  !reddit italy random (sends a random post from r/italy)
+  !reddit none random (sends a random post from any sub)

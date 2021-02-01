@@ -1,0 +1,5 @@
+Usage
+  !tag <usertag>/<userid> <text>
+
+Description
+  links a text to a user using a tag or an id

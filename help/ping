@@ -1,0 +1,5 @@
+Usage
+  !ping
+
+Description
+  pings api.telegram.org and prints time in ms

@@ -1,0 +1,13 @@
+Usage
+  !chat <action>
+
+Description
+  performs an action on bot chats
+
+Actions
+  create (creates a bot chat)
+  delete (deletes your bot chat)
+  join (sends join buttons)
+  leave (sends leave buttons)
+  users (sends a number of active users in the current bot chat)
+  list (sends a list of bot chats and relative active users)

@@ -1,0 +1,9 @@
+Usage
+  !top <type>
+
+Description
+  sends a classification based on type
+
+Types
+  +		(rep points)
+  gs	(gayscale)

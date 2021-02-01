@@ -1,0 +1,5 @@
+Usage
+  !dice <faces> (or <faces>*<dice>)
+
+Faces and dice
+  must be an integer number

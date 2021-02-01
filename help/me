@@ -1,0 +1,5 @@
+Usage
+  !me <action>
+
+Description
+  sends "<your name> <action>" and tries to delete your original message
