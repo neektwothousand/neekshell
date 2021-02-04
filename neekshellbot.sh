@@ -148,10 +148,22 @@ r_subreddit() {
 	fi
 }
 photo_array() {
-    for x in $(seq 0 $j); do
-        obj[$x]=$(printf '%s' "{\"type\":\"photo\",\"media\":\"${media[$x]}\"},")
+	for x in $(seq 0 $j); do
+        if [ "${caption}" != "" ]; then
+			obj[$x]="{
+			\"type\":\"photo\",
+			\"media\":\"${media[$x]}\",
+			\"caption\":\"${caption}\"
+			},"
+        else
+			obj[$x]="{
+			\"type\":\"photo\",
+			\"media\":\"${media[$x]}\"
+			},"
+        fi
+        caption=""
     done
-    printf '%s' "[ $(printf '%s' "${obj[@]}" | sed -E 's/(.*)},/\1}/') ]"
+	printf '%s' "[ $(printf '%s' "${obj[@]}" | head -c -1) ]"
 }
 inline_array() {
 	if [[ "$j" = "" ]]; then
@@ -203,6 +215,10 @@ inline_array() {
 	esac
 }
 tg_method() {
+	if [[ -z "$enable_markdown" ]]; then
+		text_id="${markdown[0]}$(sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "$text_id")${markdown[1]}"
+		caption="${markdown[0]}$(sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "$caption")${markdown[1]}"
+	fi
 	case $2 in
 		upload)
 			curl_f="-F"
@@ -215,7 +231,6 @@ tg_method() {
 	esac
 	case $1 in
 		send_message)
-			[[ -z "$enable_markdown" ]] && text_id=$(sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "$text_id")
 			curl -s "${TELEAPI}/sendMessage" \
 				$curl_f "chat_id=$chat_id" \
 				$curl_f "parse_mode=html" \
@@ -255,7 +270,6 @@ tg_method() {
 				$curl_f "chat_id=$chat_id" \
 				$curl_f "parse_mode=html" \
 				$curl_f "reply_to_message_id=$reply_id" \
-				$curl_f "caption=$caption" \
 				$curl_f "media=$mediagroup_id"
 		;;
 		send_audio)

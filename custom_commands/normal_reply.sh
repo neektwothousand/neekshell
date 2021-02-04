@@ -829,7 +829,7 @@ case "$normal_message" in
 			else
 				ytdl_link=$fn_arg
 			fi
-			ytdl_link=$(sed -e 's/.*\(https\)/\1/' -e 's/ .*//' <<< "$ytdl_link" | grep 'youtu\|instagram\|twitter')
+			ytdl_link=$(sed -e 's/.*\(https\)/\1/' -e 's/ .*//' <<< "$ytdl_link")
 			[[ "$ytdl_link" = "" ]] && return
 			ytdl_id=$RANDOM
 			
