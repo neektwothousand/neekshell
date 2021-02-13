@@ -492,16 +492,21 @@ case "$normal_message" in
 		export LC_ALL=C.UTF-8
 		export LANG=C.UTF-8
 		
-		song_title=$(/usr/local/bin/deemix -p ./ "$deemix_link" 2>&1 | tail -n 4 | sed -n 1p)
-		song_file="$(basename -s .mp3 -- "$song_title")-$deemix_id.mp3"
+		song_title=$(~/.local/bin/deemix -b flac -p ./ "$deemix_link" 2>&1 | tail -n 4 | sed -n 1p)
+		song_file="$(basename -s .flac -- "$song_title")-$deemix_id.flac"
 		mv -- "$song_title" "$song_file"
-		
 		if [[ "$(du -m -- "$song_file" | cut -f 1)" -ge 50 ]]; then
-			loading 3
 			rm -- "$song_file"
-			text_id="file size exceeded"
-			tg_method send_message > /dev/null
-			return
+			song_title=$(~/.local/bin/deemix -b mp3 -p ./ "$deemix_link" 2>&1 | tail -n 4 | sed -n 1p)
+			song_file="$(basename -s .mp3 -- "$song_title")-$deemix_id.mp3"
+			mv -- "$song_title" "$song_file"
+			if [[ "$(du -m -- "$song_file" | cut -f 1)" -ge 50 ]]; then
+				loading 3
+				rm -- "$song_file"
+				text_id="file size exceeded"
+				tg_method send_message > /dev/null
+				return
+			fi
 		fi
 		
 			loading 2
@@ -1191,7 +1196,7 @@ case "$normal_message" in
 	
 	## no prefix
 	
-	"respect+"|"+"|"-"|"+"*|"-"*)
+	"respect+"|"+"|"-"|"+"[0-9]*|"-"[0-9]*)
 		if [[ "$username_id" != "$reply_to_user_id" ]] && [[ "$reply_to_user_id" != "" ]]; then
 			# check existing lock+
 			[[ ! -d .lock+/respect/ ]] && mkdir -p .lock+/respect/
@@ -1202,7 +1207,7 @@ case "$normal_message" in
 				if [[ $lock_age -lt $lock_time ]]; then
 					return
 				else
-					rm $lockfile
+					rm -- $lockfile
 				fi
 			fi
 			if [[ "$(grep respect <<< "$normal_message")" = "" ]]; then
@@ -1243,7 +1248,7 @@ case "$normal_message" in
 				tg_method send_voice > /dev/null
 			fi
 			# create lock+
-			[[ ! -e $lockfile ]] && touch $lockfile
+			[[ ! -e $lockfile ]] && touch -- $lockfile
 		fi
 		return
 	;;
