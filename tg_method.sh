@@ -1,12 +1,9 @@
 tg_method() {
-	if [[ "$parse_mode" = "none" ]]; then
-		parse_mode=""
-	else
-		parse_mode="html"
-	fi
-	if [[ -z "$enable_markdown" ]]; then
-		text_id="${markdown[0]}$(sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "$text_id")${markdown[1]}"
-		caption="${markdown[0]}$(sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "$caption")${markdown[1]}"
+	if [[ "$parse_mode" = "html" ]]; then
+		if [[ "$enable_markdown" = "" ]]; then
+			text_id="${markdown[0]}$(sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "$text_id")${markdown[1]}"
+			caption="${markdown[0]}$(sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "$caption")${markdown[1]}"
+		fi
 	fi
 	case $2 in
 		upload)

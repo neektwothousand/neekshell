@@ -52,6 +52,7 @@ case "$inline_message" in
 	"figlet "*)
 		figtext=$(sed 's/figlet //' <<< "$inline_message")
 		markdown=("<code>" "</code>")
+		parse_mode=html
 		message_text=$(figlet -- "$figtext")
 		title="figlet $figtext"
 		return_query=$(inline_array article)
@@ -171,6 +172,7 @@ case "$inline_message" in
 		if [[ $(is_admin) ]]; then
 			command=$(sed 's/ bin$//' <<< "$inline_message")
 			markdown=("<code>" "</code>")
+			parse_mode=html
 			message_text=$(mksh -c "$command" 2>&1)
 			title="> $command"
 			return_query=$(inline_array article)

@@ -51,6 +51,7 @@ loading() {
 r_subreddit() {
 	[[ "$1" = "" ]] && exit
 	enable_markdown=true
+	parse_mode=html
 	case "$subreddit" in
 		none)
 			case "$filter" in

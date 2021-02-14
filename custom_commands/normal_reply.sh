@@ -49,6 +49,7 @@ case "$normal_message" in
 				user_entry[$x]="${user_top[$x]}<b> ☆ ${user_fname[$x]} ${user_lname[$x]}</b>"
 			done
 			enable_markdown=true
+			parse_mode=html
 			text_id=$(sort -nr <<< "$(printf '%s\n' "${user_entry[@]}")" | head -n 10)
 			tg_method send_message > /dev/null
 		fi
@@ -77,6 +78,7 @@ case "$normal_message" in
 			return
 		else
 			enable_markdown=true
+			parse_mode=html
 			text_id=$user_entry
 		fi
 		tg_method send_message > /dev/null
@@ -139,6 +141,7 @@ case "$normal_message" in
 				done
 				text_id=${result[*]}
 				markdown=("<code>" "</code>")
+				parse_mode=html
 				tg_method send_message > /dev/null
 			;;
 			*)
@@ -563,6 +566,7 @@ case "$normal_message" in
 							text_id="joined $join_chat"
 						else
 							markdown=("<code>" "</code>")
+							parse_mode=html
 							text_id="Access denied"
 							tg_method send_message > /dev/null
 							return	
@@ -641,6 +645,7 @@ case "$normal_message" in
 			text_id="$username not found"
 		elif [[ "$userid" != "" ]] && [[ "$text_id" != "" ]]; then
 			markdown=("<a href=\"tg://user?id=$userid\">" "</a>")
+			parse_mode=html
 		fi
 		tg_method send_message > /dev/null
 	;;
@@ -728,6 +733,7 @@ case "$normal_message" in
 	"!neofetch")
 		text_id=$(neofetch --stdout)
 		markdown=("<code>" "</code>")
+		parse_mode=html
 		get_reply_id self
 		tg_method send_message > /dev/null
 	;;
@@ -784,6 +790,7 @@ case "$normal_message" in
 			fi
 		else
 			markdown=("<code>" "</code>")
+			parse_mode=html
 			text_id="Access denied"
 		fi
 		get_reply_id self
@@ -806,6 +813,7 @@ case "$normal_message" in
 			fi
 		else
 			markdown=("<code>" "</code>")
+			parse_mode=html
 			text_id="Access denied"
 		fi
 		get_reply_id self
@@ -813,6 +821,7 @@ case "$normal_message" in
 	;;
 	"!bin "*)
 		markdown=("<code>" "</code>")
+		parse_mode=html
 		if [[ $(is_admin) ]]; then
 			command=$fn_arg
 			text_id=$(mksh -c "$command" 2>&1)
@@ -862,6 +871,7 @@ case "$normal_message" in
 			rm "ytdl-$ytdl_id.mp4" "thumb-$ytdl_id.jpg"
 		else
 			markdown=("<code>" "</code>")
+			parse_mode=html
 			text_id="Access denied"
 			tg_method send_message > /dev/null
 		fi
@@ -921,6 +931,7 @@ case "$normal_message" in
 			fi
 		else
 			markdown=("<code>" "</code>")
+			parse_mode=html
 			text_id="Access denied"
 			tg_method send_message > /dev/null
 		fi
@@ -994,6 +1005,7 @@ case "$normal_message" in
 			fi
 		else
 			markdown=("<code>" "</code>")
+			parse_mode=html
 			text_id="Access denied"
 			tg_method send_message > /dev/null
 		fi
@@ -1016,6 +1028,7 @@ case "$normal_message" in
 			tg_method send_message > /dev/null
 		else
 			markdown=("<code>" "</code>")
+			parse_mode=html
 			text_id="Access denied"
 		fi
 		tg_method send_message > /dev/null
@@ -1048,6 +1061,7 @@ case "$normal_message" in
 			fi
 		else
 			markdown=("<code>" "</code>")
+			parse_mode=html
 			text_id="Access denied"
 			send_message
 		fi
@@ -1088,6 +1102,7 @@ case "$normal_message" in
 			tg_method send_message > /dev/null
 		else
 			markdown=("<code>" "</code>")
+			parse_mode=html
 			text_id="Access denied"
 			tg_method send_message > /dev/null
 		fi
@@ -1128,6 +1143,7 @@ case "$normal_message" in
 			tg_method send_message > /dev/null
 		else
 			markdown=("<code>" "</code>")
+			parse_mode=html
 			text_id="Access denied"
 			tg_method send_message > /dev/null
 		fi
@@ -1189,6 +1205,7 @@ case "$normal_message" in
 			tg_method leave_chat > /dev/null
 		else
 			markdown=("<code>" "</code>")
+			parse_mode=html
 			text_id="Access denied"
 			tg_method send_message > /dev/null
 		fi
