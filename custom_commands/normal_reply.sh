@@ -1,27 +1,3 @@
-case "$chat_id" in
-	-1001348224205)
-		# stacca
-		case "$normal_message" in
-			[oO][kK]|[oO][kK]?)
-				text_id="ok"
-				get_reply_id any
-				tg_method send_message > /dev/null
-			;;
-		esac
-	;;
-	-1001049069552|-1001428507662)
-		# recupero/testgroup
-		case "$normal_message" in
-			"!markov")
-				cd misc-shell/markov/
-				rand_messages=$(( ($(cat /dev/urandom | tr -dc '[:digit:]' 2>/dev/null | head -c 6) % 240000) + 1 ))
-				sed -n ${rand_messages},$((rand_messages + 4999))p recupero_text_full | tr -d [\'\"\)] > recupero_text
-				text_id=$(./markupero.py | grep -v '^None$' | head -n 1)
-				tg_method send_message > /dev/null
-			;;
-		esac
-	;;
-esac
 case "$normal_message" in
 	"!top "*)
 		get_reply_id self
@@ -118,6 +94,7 @@ case "$normal_message" in
 		get_reply_id any
 		tg_method send_document upload > /dev/null
 		rm decode-$update_id.json
+		cd "$basedir"
 	;;
 	"!ping")
 		text_id=$(printf '%s\n' "pong" ; ping -c 1 api.telegram.org | grep time= | sed 's/.*time=//')
@@ -271,6 +248,7 @@ case "$normal_message" in
 			esac
 			cd ..
 			printf '%s' "$ig_id" > ig_id
+			cd "$basedir"
 		else
 			text_id=$(cat help/insta)
 			get_reply_id self
@@ -471,56 +449,47 @@ case "$normal_message" in
 		esac
 	;;
 	"!deemix "*|"!deemix")
-		cd $tmpdir
-		if [[ "$reply_to_text" != "" ]]; then
-			deemix_link=$(grep -o 'https://www.deezer.*\|https://deezer.*' <<< "$reply_to_text" | cut -f 1 -d ' ')
-		elif [[ "$fn_arg" != "" ]]; then
-			deemix_link=$fn_arg
+		if [[ "$reply_to_text" != "" ]] || [[ "$fn_arg" != "" ]]; then
+			if [[ "$reply_to_text" != "" ]]; then
+				deemix_link=$(grep -o 'https://www.deezer.*\|https://deezer.*' <<< "$reply_to_text" | cut -f 1 -d ' ')
+			elif [[ "$fn_arg" != "" ]]; then
+				deemix_link=$fn_arg
+			fi
+			if [[ "$(grep 'track' <<< "$deemix_link")" != "" ]]; then
+				cd $tmpdir
+				deemix_id=$RANDOM
+				loading 1
+				export LC_ALL=C.UTF-8
+				export LANG=C.UTF-8
+				song_title=$(~/.local/bin/deemix -b flac -p ./ "$deemix_link" 2>&1 | tail -n 4 | sed -n 1p)
+				song_file="$(basename -s .flac -- "$song_title")-$deemix_id.flac"
+				mv -- "$song_title" "$song_file"
+				if [[ "$(du -m -- "$song_file" | cut -f 1)" -ge 50 ]]; then
+					rm -- "$song_file"
+					song_title=$(~/.local/bin/deemix -b mp3 -p ./ "$deemix_link" 2>&1 | tail -n 4 | sed -n 1p)
+					song_file="$(basename -s .mp3 -- "$song_title")-$deemix_id.mp3"
+					mv -- "$song_title" "$song_file"
+					if [[ "$(du -m -- "$song_file" | cut -f 1)" -ge 50 ]]; then
+						loading 3
+						rm -- "$song_file"
+						text_id="file size exceeded"
+						tg_method send_message > /dev/null
+					else
+						loading 2
+						audio_id="@$song_file"
+						get_reply_id any
+						tg_method send_audio upload > /dev/null
+						loading 3
+						rm -- "$song_file"
+					fi
+				fi
+				cd "$basedir"
+			fi
 		else
 			text_id=$(cat help/deemix)
 			get_reply_id self
 			tg_method send_message > /dev/null
 		fi
-		
-		[[ "$deemix_link" = "" ]] && return
-		
-		if [[ "$(grep 'track' <<< "$deemix_link")" = "" ]]; then
-			exit
-		fi
-		
-		deemix_id=$RANDOM
-		
-			loading 1
-		
-		export LC_ALL=C.UTF-8
-		export LANG=C.UTF-8
-		
-		song_title=$(~/.local/bin/deemix -b flac -p ./ "$deemix_link" 2>&1 | tail -n 4 | sed -n 1p)
-		song_file="$(basename -s .flac -- "$song_title")-$deemix_id.flac"
-		mv -- "$song_title" "$song_file"
-		if [[ "$(du -m -- "$song_file" | cut -f 1)" -ge 50 ]]; then
-			rm -- "$song_file"
-			song_title=$(~/.local/bin/deemix -b mp3 -p ./ "$deemix_link" 2>&1 | tail -n 4 | sed -n 1p)
-			song_file="$(basename -s .mp3 -- "$song_title")-$deemix_id.mp3"
-			mv -- "$song_title" "$song_file"
-			if [[ "$(du -m -- "$song_file" | cut -f 1)" -ge 50 ]]; then
-				loading 3
-				rm -- "$song_file"
-				text_id="file size exceeded"
-				tg_method send_message > /dev/null
-				return
-			fi
-		fi
-		
-			loading 2
-		
-		audio_id="@$song_file"
-		get_reply_id any
-		tg_method send_audio upload > /dev/null
-		
-			loading 3
-		
-		rm -- "$song_file"
 	;;
 	"!chat "*|"!chat")
 		if [[ "$type" = "private" ]] || [[ $(is_admin) ]] ; then
@@ -844,31 +813,28 @@ case "$normal_message" in
 				ytdl_link=$fn_arg
 			fi
 			ytdl_link=$(sed -e 's/.*\(https\)/\1/' -e 's/ .*//' <<< "$ytdl_link")
-			[[ "$ytdl_link" = "" ]] && return
-			ytdl_id=$RANDOM
-			
+			if [[ "$ytdl_link" != "" ]]; then
+				ytdl_id=$RANDOM
 				loading 1
-			
-			ytdl_json=$(youtube-dl --print-json --format mp4 -o ytdl-$ytdl_id.mp4 "$ytdl_link")
-			[[ "$ytdl_json" = "" ]] && loading value "error" && return
-			caption=$(jshon -Q -e title -u <<< "$ytdl_json")
-			
-			if [[ "$(du -m ytdl-$ytdl_id.mp4 | cut -f 1)" -ge 50 ]]; then
-				loading value "error"
-				rm ytdl-$ytdl_id.mp4
-				return
+				ytdl_json=$(youtube-dl --print-json --format mp4 -o ytdl-$ytdl_id.mp4 "$ytdl_link")
+				if [[ "$ytdl_json" != "" ]]; then
+					caption=$(jshon -Q -e title -u <<< "$ytdl_json")
+					if [[ "$(du -m ytdl-$ytdl_id.mp4 | cut -f 1)" -ge 50 ]]; then
+						loading value "error"
+						rm ytdl-$ytdl_id.mp4
+					else
+						ffmpeg -i ytdl-$ytdl_id.mp4 -ss 05 -frames:v 1 thumb-$ytdl_id.jpg
+						video_id="@ytdl-$ytdl_id.mp4" thumb="@thumb-$ytdl_id.jpg"
+						loading 2
+						tg_method send_video upload > /dev/null
+						loading 3
+						rm "ytdl-$ytdl_id.mp4" "thumb-$ytdl_id.jpg"
+					fi
+				else
+					loading value "error"
+				fi
 			fi
-			
-			ffmpeg -i ytdl-$ytdl_id.mp4 -ss 05 -frames:v 1 thumb-$ytdl_id.jpg
-			video_id="@ytdl-$ytdl_id.mp4" thumb="@thumb-$ytdl_id.jpg"
-			
-				loading 2
-			
-			tg_method send_video upload > /dev/null
-			
-				loading 3
-			
-			rm "ytdl-$ytdl_id.mp4" "thumb-$ytdl_id.jpg"
+			cd "$basedir"
 		else
 			markdown=("<code>" "</code>")
 			parse_mode=html
@@ -892,9 +858,8 @@ case "$normal_message" in
 						media[$j]=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/$p_offset/" \
 							| grep 'img src' \
 							| sed -e 's/.*<img src="//' -e 's/".*//')
-						loading value "$p_offset/$numpages"
+						#loading value "$p_offset/$numpages"
 						p_offset=$((p_offset + 1))
-						sleep 5
 					done
 					mediagroup_id=$(photo_array)
 					tg_method send_mediagroup > /dev/null
@@ -904,31 +869,28 @@ case "$normal_message" in
 							media[$j]=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/$p_offset/" \
 								| grep 'img src' \
 								| sed -e 's/.*<img src="//' -e 's/".*//')
-							loading value "$p_offset/$numpages"
+							#loading value "$p_offset/$numpages"
 							p_offset=$((p_offset + 1))
-							sleep 5
 						done
 						mediagroup_id=$(photo_array)
 						tg_method send_mediagroup > /dev/null
-						sleep 20
 					done
 					for j in $(seq 0 $(((numpages - ${p}0) - 1))); do
 						media[$j]=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/$p_offset/" \
 							| grep 'img src' \
 							| sed -e 's/.*<img src="//' -e 's/".*//')
-						loading value "$p_offset/$numpages"
+						#loading value "$p_offset/$numpages"
 						p_offset=$((p_offset + 1))
-						sleep 5
 					done
 					mediagroup_id=$(photo_array)
 					tg_method send_mediagroup > /dev/null
-					sleep 20
 				fi
 				loading 3
 			else
 				text_id="invalid id"
 				tg_method send_message > /dev/null
 			fi
+			cd "$basedir"
 		else
 			markdown=("<code>" "</code>")
 			parse_mode=html
@@ -947,9 +909,7 @@ case "$normal_message" in
 				numpages=$(grep 'num-pages' <<< "$nhentai_check" \
 					| sed -e 's/.*<span class="num-pages">//' -e 's/<.*//')
 				if [[ "$numpages" -le "$maxpages" ]]; then
-					
-						loading 1
-					
+					loading 1
 					nhzip_id=$RANDOM
 					nhentai_title=$(wget -q -O- "https://nhentai.net/g/$nhentai_id" \
 						| grep 'meta itemprop="name"' \
@@ -964,37 +924,27 @@ case "$normal_message" in
 							| grep 'img src' \
 							| sed -e 's/.*<img src="//' -e 's/".*//')
 						wget -q -O "nhentai-$nhzip_id/pic-$x.$nhentai_ext" "$nhentai_pic"
-							
-							loading value "$x/$numpages"
-							
 					done
 					zip "$nhentai_title-$nhzip_id.zip" "nhentai-$nhzip_id/"* > /dev/null
 					rm -r "nhentai-$nhzip_id"
-					
 					if [[ "$(du -m "$nhentai_title-$nhzip_id.zip" | cut -f 1)" -ge 50 ]]; then
 						zip_list=$(zipsplit -qn 51380220 "$nhentai_title-$nhzip_id.zip" | grep creating | sed 's/creating: //')
 						zip_num=$(wc -l <<< "$zip_list")
-						
-							loading 2
-						
+						loading 2
 						for x in $(seq $zip_num); do
 							zip_file=$(sed -n ${x}p <<< "$zip_list")
 							document_id="@$zip_file"
 							tg_method send_document upload > /dev/null
 							rm "$zip_file"
 						done
-							loading 3 ; return
-					fi
-					
-					document_id="@$nhentai_title-$nhzip_id.zip"
-					
-						loading 2
-					
-					tg_method send_document upload > /dev/null
-					
 						loading 3
-					
-					rm "$nhentai_title-$nhzip_id.zip"
+					else
+						document_id="@$nhentai_title-$nhzip_id.zip"
+						loading 2
+						tg_method send_document upload > /dev/null
+						loading 3
+						rm "$nhentai_title-$nhzip_id.zip"
+					fi
 				else
 					text_id="too many pages (max $maxpages)"
 					tg_method send_message > /dev/null
@@ -1003,6 +953,7 @@ case "$normal_message" in
 				text_id="invalid id"
 				tg_method send_message > /dev/null
 			fi
+			cd "$basedir"
 		else
 			markdown=("<code>" "</code>")
 			parse_mode=html
@@ -1195,6 +1146,7 @@ case "$normal_message" in
 					loading 3
 				;;
 			esac
+			cd "$basedir"
 		fi
 	;;
 	"!exit")
@@ -1267,7 +1219,6 @@ case "$normal_message" in
 			# create lock+
 			[[ ! -e $lockfile ]] && touch -- $lockfile
 		fi
-		return
 	;;
 	*)
 		if [[ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" != "" ]]; then

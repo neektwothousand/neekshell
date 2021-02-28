@@ -2,10 +2,10 @@
 START_TIME=$(bc <<< "$(date +%s%N) / 1000000")
 PS4="[$(date "+%F %H:%M:%S")] "
 exec 1>>"log.log" 2>&1
-set -a
 TOKEN=$(cat ./token)
 TELEAPI="https://api.telegram.org/bot${TOKEN}"
 source tg_method.sh
+set -a
 get_reply_id() {
 	case $1 in
 		any)
@@ -308,11 +308,14 @@ process_reply() {
 			message=$(jshon -Q -e channel_post <<< "$input")
 		;;
 	esac
+	username_id=$(jshon -Q -e from -e id -u <<< "$message")
+	if [[ $(grep -v '^#' banned | grep -w -- "$username_id") ]]; then
+		return
+	fi
 	inline=$(jshon -Q -e inline_query <<< "$input")
 	callback=$(jshon -Q -e callback_query <<< "$input")
 	type=$(jshon -Q -e chat -e type -u <<< "$message")
 	chat_id=$(jshon -Q -e chat -e id -u <<< "$message")
-	username_id=$(jshon -Q -e from -e id -u <<< "$message")
 	if [[ "$type" = "private" ]] || [[ "$inline" != "" ]] || [[ "$callback" != "" ]]; then
 		bot_chat_dir="db/bot_chats/"
 		bot_chat_user_id=$username_id
@@ -322,10 +325,10 @@ process_reply() {
 	fi
 
 	# user database
-	username_tag=$(jshon -Q -e from -e username -u <<< "$message")
-	username_fname=$(jshon -Q -e from -e first_name -u <<< "$message")
-	username_lname=$(jshon -Q -e from -e last_name -u <<< "$message")
-	if [[ "$username_id" != "" ]]; then
+	if [[ "$username_id" != "" ]] && [[ "$(grep -w -- "777000\|1087968824" <<< "$username_id")" = "" ]]; then
+		username_tag=$(jshon -Q -e from -e username -u <<< "$message")
+		username_fname=$(jshon -Q -e from -e first_name -u <<< "$message")
+		username_lname=$(jshon -Q -e from -e last_name -u <<< "$message")
 		[[ ! -d db/users/ ]] && mkdir -p db/users/
 		file_user=db/users/"$username_id"
 		if [[ ! -e "$file_user" ]]; then
@@ -345,12 +348,16 @@ process_reply() {
 		if [[ "lname: $username_lname" != "$(grep -- "^lname" "$file_user")" ]]; then
 			sed -i "s/^lname: .*/lname: $username_lname/" "$file_user"
 		fi
+	else
+		username_id=$(jshon -Q -e sender_chat -e id -u <<< "$message")
+		username_tag=$(jshon -Q -e sender_chat -e username -u <<< "$message")
+		username_fname=$(jshon -Q -e sender_chat -e title -u <<< "$message")
 	fi
 	reply_to_message=$(jshon -Q -e reply_to_message <<< "$message")
 	if [[ "$reply_to_message" != "" ]]; then
 		reply_to_id=$(jshon -Q -e message_id -u <<< "$reply_to_message")
 		reply_to_user_id=$(jshon -Q -e from -e id -u <<< "$reply_to_message")
-		if [[ "$reply_to_user_id" = "777000" ]]; then
+		if [[ "$(grep -w -- "777000\|1087968824" <<< "$reply_to_user_id")" != "" ]]; then
 			reply_to_user_id=$(jshon -Q -e sender_chat -e id -u <<< "$reply_to_message")
 			reply_to_user_tag=$(jshon -Q -e sender_chat -e username -u <<< \
 				"$reply_to_message")
@@ -456,8 +463,14 @@ process_reply() {
 	fi
 }
 input=$1
+basedir=$(realpath .)
 tmpdir="/tmp/neekshell"
 [[ ! -d $tmpdir ]] && mkdir -p $tmpdir
 process_reply
 END_TIME=$(bc <<< "$(date +%s%N) / 1000000")
+if [[ ! -e "stats/$username_id-usage" ]] && [[ "$username_id" != "" ]]; then
+	printf '%s\n' "$(($END_TIME - $START_TIME)):$username_id ($username_fname)" > stats/"$username_id"-usage
+elif [[ "$username_id" != "" ]]; then
+	printf '%s\n' "$((($END_TIME - $START_TIME)+$(cut -f 1 -d : < "stats/$username_id-usage"))):$username_id ($username_fname)" > stats/"$username_id"-usage
+fi
 printf '%s\n' "[$(date "+%F %H:%M:%S")] elapsed time: $(($END_TIME - $START_TIME))ms"

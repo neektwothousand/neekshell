@@ -171,5 +171,10 @@ tg_method() {
 		get_me)
 			curl -s "$TELEAPI/getMe"
 		;;
+		kick_member)
+			curl -s "$TELEAPI/kickChatMember" \
+				$curl_f "chat_id=$chat_id" \
+				$curl_f "user_id=$kick_id"
+		;;
 	esac
 }

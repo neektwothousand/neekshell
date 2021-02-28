@@ -5,12 +5,12 @@ case "$inline_user_id" in
 				set -x
 				cd misc-shell/markov/
 				rand_messages=$(( ($(cat /dev/urandom | tr -dc '[:digit:]' 2>/dev/null | head -c 6) % 240000) + 1 ))
-				sed -n ${rand_messages},$((rand_messages + 4999))p recupero_text_full | tr -d [\'\"\)] > recupero_text
+				sed -n ${rand_messages},$((rand_messages + 4999))p recupero_text_full > recupero_text
 				markov_results=$(./markupero.py | grep -v '^None$')
 				while [[ "$markov_results" = "" ]] && [[ "$x" -le 5 ]]; do
 					x=$((x+1))
 					rand_messages=$(( ($(cat /dev/urandom | tr -dc '[:digit:]' 2>/dev/null | head -c 6) % 240000) + 1 ))
-					sed -n ${rand_messages},$((rand_messages + 4999))p recupero_text_full | tr -d [\'\"\)] > recupero_text
+					sed -n ${rand_messages},$((rand_messages + 4999))p recupero_text_full > recupero_text
 					markov_results=$(./markupero.py | grep -v '^None$')
 				done
 				if [[ "$markov_results" = "" ]]; then
