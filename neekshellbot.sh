@@ -468,6 +468,7 @@ tmpdir="/tmp/neekshell"
 [[ ! -d $tmpdir ]] && mkdir -p $tmpdir
 process_reply
 END_TIME=$(bc <<< "$(date +%s%N) / 1000000")
+[[ ! -d stats ]] && mkdir stats
 if [[ ! -e "stats/$username_id-usage" ]] && [[ "$username_id" != "" ]]; then
 	printf '%s\n' "$(($END_TIME - $START_TIME)):$username_id ($username_fname)" > stats/"$username_id"-usage
 elif [[ "$username_id" != "" ]]; then
