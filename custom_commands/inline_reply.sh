@@ -121,8 +121,7 @@ case "$inline_message" in
 				;;
 				esac
 				for j in $(seq 0 $((limit - 1))); do
-					photo_url[$j]=$(jshon -Q -e $y -e file_url -u <<< "$getbooru")
-					while [[ "$(grep 'jpg\|jpeg' <<< "${photo_url[$j]}")" = "" ]]; do
+					while [[ "$(grep "jpg$\|jpeg$\|png$" <<< "${photo_url[$j]}")" = "" ]]; do
 						y=$((y+1))
 						if [[ "$y" -gt "10" ]]; then
 							break

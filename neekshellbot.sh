@@ -298,6 +298,52 @@ get_button_reply() {
 		;;
 	esac
 }
+update_db() {
+	if [[ "$user_id" != "" ]]; then
+		[[ ! -d db/users/ ]] && mkdir -p db/users/
+		file_user=db/users/"$user_id"
+		if [[ ! -e "$file_user" ]]; then
+			printf '%s\n' \
+			"tag: $user_tag" \
+			"id: $user_id" \
+			"fname: $user_fname" \
+			"lname: $user_lname" > "$file_user"
+		fi
+		if [[ "tag: $user_tag" != "$(grep -- "^tag" "$file_user")" ]]; then
+			sed -i "s/^tag: .*/tag: $user_tag/" "$file_user"
+		fi
+		if [[ "fname: $user_fname" != "$(grep -- "^fname" "$file_user")" ]]; then
+			sed -i "s/^fname: .*/fname: $user_fname/" "$file_user"
+		fi
+		if [[ "lname: $user_lname" != "$(grep -- "^lname" "$file_user")" ]]; then
+			sed -i "s/^lname: .*/lname: $user_lname/" "$file_user"
+		fi
+	fi
+	if [[ "$reply_to_message" != "" ]]; then
+		[[ ! -d db/users/ ]] && mkdir -p db/users/
+		file_reply_user=db/users/"$reply_to_user_id"
+		if [[ ! -e "$file_reply_user" ]]; then
+			printf '%s\n' \
+			"tag: $reply_to_user_tag" \
+			"id: $reply_to_user_id" \
+			"fname: $reply_to_user_fname" \
+			"lname: $reply_to_user_lname" > "$file_reply_user"
+		fi
+	fi
+	if [[ "$chat_id" != "" ]]; then
+		[[ ! -d db/chats/ ]] && mkdir -p db/chats/
+		file_chat=db/chats/"$chat_id"
+		if [[ ! -e "$file_chat" ]]; then
+			printf '%s\n' \
+			"title: $chat_title" \
+			"id: $chat_id" \
+			"type: $type" > "$file_chat"
+		fi
+		if [[ "title: $chat_title" != "$(grep -- "^title" "$file_chat")" ]]; then
+			sed -i "s/^title: .*/title: $chat_title/" "$file_chat"
+		fi
+	fi
+}
 process_reply() {
 	message_type=$(jshon -Q <<< "$input" | sed -n 3p | sed -e 's/^\s"//' -e 's/".*//')
 	case "$message_type" in
@@ -313,38 +359,24 @@ process_reply() {
 	if [[ "$message" != "" ]]; then
 		message_id=$(jshon -Q -e message_id -u <<< "$message")
 		type=$(jshon -Q -e chat -e type -u <<< "$message")
+		chat_id=$(jshon -Q -e chat -e id -u <<< "$message")
+		chat_title=$(jshon -Q -e chat -e title -u <<< "$message")
 		user_id=$(jshon -Q -e from -e id -u <<< "$message")
+		reply_to_message=$(jshon -Q -e reply_to_message <<< "$message")
 		if [[ "$(grep -w -- "777000\|1087968824" <<< "$user_id")" = "" ]]; then
 			user_tag=$(jshon -Q -e from -e username -u <<< "$message")
 			user_fname=$(jshon -Q -e from -e first_name -u <<< "$message")
 			user_lname=$(jshon -Q -e from -e last_name -u <<< "$message")
-			[[ ! -d db/users/ ]] && mkdir -p db/users/
-			file_user=db/users/"$user_id"
-			if [[ ! -e "$file_user" ]]; then
-				printf '%s\n' \
-				"tag: $user_tag" \
-				"id: $user_id" \
-				"fname: $user_fname" \
-				"lname: $user_lname" > "$file_user"
-			fi
-			if [[ "tag: $user_tag" != "$(grep -- "^tag" "$file_user")" ]]; then
-				sed -i "s/^tag: .*/tag: $user_tag/" "$file_user"
-			fi
-			if [[ "fname: $user_fname" != "$(grep -- "^fname" "$file_user")" ]]; then
-				sed -i "s/^fname: .*/fname: $user_fname/" "$file_user"
-			fi
-			if [[ "lname: $user_lname" != "$(grep -- "^lname" "$file_user")" ]]; then
-				sed -i "s/^lname: .*/lname: $user_lname/" "$file_user"
-			fi
 		else
 			user_id=$(jshon -Q -e sender_chat -e id -u <<< "$message")
 			user_tag=$(jshon -Q -e sender_chat -e username -u <<< "$message")
 			user_fname=$(jshon -Q -e sender_chat -e title -u <<< "$message")
 		fi
-		reply_to_message=$(jshon -Q -e reply_to_message <<< "$message")
 		if [[ "$reply_to_message" != "" ]]; then
 			reply_to_id=$(jshon -Q -e message_id -u <<< "$reply_to_message")
 			reply_to_user_id=$(jshon -Q -e from -e id -u <<< "$reply_to_message")
+			reply_to_text=$(jshon -Q -e text -u <<< "$reply_to_message")
+			reply_to_caption=$(jshon -Q -e caption -u <<< "$reply_to_message")
 			if [[ "$(grep -w -- "777000\|1087968824" <<< "$reply_to_user_id")" != "" ]]; then
 				reply_to_user_id=$(jshon -Q -e sender_chat -e id -u <<< "$reply_to_message")
 				reply_to_user_tag=$(jshon -Q -e sender_chat -e username -u <<< "$reply_to_message")
@@ -353,32 +385,6 @@ process_reply() {
 				reply_to_user_tag=$(jshon -Q -e from -e username -u <<< "$reply_to_message")
 				reply_to_user_fname=$(jshon -Q -e from -e first_name -u <<< "$reply_to_message")
 				reply_to_user_lname=$(jshon -Q -e from -e last_name -u <<< "$reply_to_message")
-			fi
-			reply_to_text=$(jshon -Q -e text -u <<< "$reply_to_message")
-			reply_to_caption=$(jshon -Q -e caption -u <<< "$reply_to_message")
-			[[ ! -d db/users/ ]] && mkdir -p db/users/
-			file_reply_user=db/users/"$reply_to_user_id"
-			if [[ ! -e "$file_reply_user" ]]; then
-				printf '%s\n' \
-				"tag: $reply_to_user_tag" \
-				"id: $reply_to_user_id" \
-				"fname: $reply_to_user_fname" \
-				"lname: $reply_to_user_lname" > "$file_reply_user"
-			fi
-		fi
-		chat_id=$(jshon -Q -e chat -e id -u <<< "$message")
-		if [[ "$chat_id" != "" ]]; then
-			chat_title=$(jshon -Q -e chat -e title -u <<< "$message")
-			[[ ! -d db/chats/ ]] && mkdir -p db/chats/
-			file_chat=db/chats/"$chat_id"
-			if [[ ! -e "$file_chat" ]]; then
-				printf '%s\n' \
-				"title: $chat_title" \
-				"id: $chat_id" \
-				"type: $type" > "$file_chat"
-			fi
-			if [[ "title: $chat_title" != "$(grep -- "^title" "$file_chat")" ]]; then
-				sed -i "s/^title: .*/title: $chat_title/" "$file_chat"
 			fi
 		fi
 	elif [[ "$callback" != "" ]]; then
@@ -401,69 +407,71 @@ process_reply() {
 		im_arg=$(cut -f 2- -d ' ' <<< "$inline_message")
 		user_id=$inline_user_id user_fname=$inline_fname
 	fi
+	update_db
 	if [[ $(grep -w -- "^$user_id\|^$inline_user_id\|^$callback_user_id" banned) ]]; then
 		user_fname="banned"
 		return
-	fi
-	if [[ "$type" = "private" ]] || [[ "$inline" != "" ]] || [[ "$callback" != "" ]]; then
-		bot_chat_dir="db/bot_chats/"
-		bot_chat_user_id=$user_id
 	else
-		bot_chat_dir="db/bot_group_chats/"
-		bot_chat_user_id=$chat_id
-	fi
-	get_file_type
-	case "$file_type" in
-		text)
-			pf=$(grep -o '^.' <<< "$text_id")
-			case "$pf" in
-				"/"|"$"|"&"|"%"|";")
-					normal_message=$(sed "s|^[$pf]|!|" <<< "$text_id")
-				;;
-				*)
-					normal_message=$text_id
-			esac
-			unset text_id
-			fn_args=$(cut -f 2- -d ' ' <<< "$normal_message")
-			if [[ "$fn_args" != "$normal_message" ]]; then
-				for x in $(seq 0 $(( $(wc -l <<< "$(tr ' ' '\n' <<< "$fn_args")")-1))); do
-					fn_arg[$x]=$(cut -f $(($x+1)) -d ' ' <<< "$fn_args")
-				done
-			else
-				fn_args=""
-			fi
-		;;
-		photo)
-			normal_message=$photo_id
-		;;
-		animation)
-			normal_message=$animation_id
-		;;
-		video)
-			normal_message=$video_id
-		;;
-		sticker)
-			normal_message=$sticker_id
-		;;
-		audio)
-			normal_message=$audio_id
-		;;
-		voice)
-			normal_message=$voice_id
-		;;
-		document)
-			normal_message=$document_id
-		;;
-	esac
-	if [[ "$normal_message" != "" ]]; then
-		get_normal_reply
-		source custom_commands/normal_reply.sh
-	elif [[ "$inline_message" != "" ]]; then
-		get_inline_reply
-		source custom_commands/inline_reply.sh
-	elif [[ "$callback_data" != "" ]]; then
-		get_button_reply
-		source custom_commands/button_reply.sh
+		if [[ "$type" = "private" ]] || [[ "$inline" != "" ]] || [[ "$callback" != "" ]]; then
+			bot_chat_dir="db/bot_chats/"
+			bot_chat_user_id=$user_id
+		else
+			bot_chat_dir="db/bot_group_chats/"
+			bot_chat_user_id=$chat_id
+		fi
+		get_file_type
+		case "$file_type" in
+			text)
+				pf=$(grep -o '^.' <<< "$text_id")
+				case "$pf" in
+					"/"|"$"|"&"|"%"|";")
+						normal_message=$(sed "s|^[$pf]|!|" <<< "$text_id")
+					;;
+					*)
+						normal_message=$text_id
+				esac
+				unset text_id
+				fn_args=$(cut -f 2- -d ' ' <<< "$normal_message")
+				if [[ "$fn_args" != "$normal_message" ]]; then
+					for x in $(seq 0 $(( $(wc -l <<< "$(tr ' ' '\n' <<< "$fn_args")")-1))); do
+						fn_arg[$x]=$(cut -f $(($x+1)) -d ' ' <<< "$fn_args")
+					done
+				else
+					fn_args=""
+				fi
+			;;
+			photo)
+				normal_message=$photo_id
+			;;
+			animation)
+				normal_message=$animation_id
+			;;
+			video)
+				normal_message=$video_id
+			;;
+			sticker)
+				normal_message=$sticker_id
+			;;
+			audio)
+				normal_message=$audio_id
+			;;
+			voice)
+				normal_message=$voice_id
+			;;
+			document)
+				normal_message=$document_id
+			;;
+		esac
+		if [[ "$normal_message" != "" ]]; then
+			get_normal_reply
+			source custom_commands/normal_reply.sh
+		elif [[ "$inline_message" != "" ]]; then
+			get_inline_reply
+			source custom_commands/inline_reply.sh
+		elif [[ "$callback_data" != "" ]]; then
+			get_button_reply
+			source custom_commands/button_reply.sh
+		fi
 	fi
 }
 input=$1
