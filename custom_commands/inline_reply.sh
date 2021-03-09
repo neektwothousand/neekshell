@@ -2,7 +2,6 @@ case "$inline_user_id" in
 	160551211) # neek
 		case "$inline_message" in
 			"markov")
-				set -x
 				cd misc-shell/markov/
 				rand_messages=$(( ($(cat /dev/urandom | tr -dc '[:digit:]' 2>/dev/null | head -c 6) % 240000) + 1 ))
 				sed -n ${rand_messages},$((rand_messages + 4999))p recupero_text_full > recupero_text
@@ -16,7 +15,7 @@ case "$inline_user_id" in
 				if [[ "$markov_results" = "" ]]; then
 					message_text="error"
 					title="error"
-					return_query=$(inline_array article)
+					return_query=$(json_array inline article)
 					tg_method send_inline > /dev/null
 					return
 				fi
@@ -25,10 +24,9 @@ case "$inline_user_id" in
 					title[$j]=$((j+1))
 					description[$j]=${message_text[$j]}
 				done
-				return_query=$(inline_array article)
+				return_query=$(json_array inline article)
 				tg_method send_inline > /dev/null
 				return
-				set +x
 			;;
 		esac
 	;;
@@ -39,14 +37,14 @@ case "$inline_message" in
 		title="Cookie"
 		message_text=$(printf '%s\n' "Your fortune cookie states:" "$(/usr/bin/fortune fortunes paradoxum goedel linuxcookie | tr '\n' ' ' | awk '{$2=$2};1')")
 		description="Open your fortune cookie"
-		return_query=$(inline_array article)
+		return_query=$(json_array inline article)
 		tg_method send_inline > /dev/null
 	;;
 	d[0-9]*)
 		title="Result of $inline_message"
 		number=$(( ( RANDOM % $(sed 's/d//' <<< "$inline_message") )  + 1 ))
 		message_text=$(printf '%s\n' "$title" "$number")
-		return_query=$(inline_array article)
+		return_query=$(json_array inline article)
 		tg_method send_inline > /dev/null
 	;;
 	"figlet "*)
@@ -55,7 +53,7 @@ case "$inline_message" in
 		parse_mode=html
 		message_text=$(figlet -- "$figtext")
 		title="figlet $figtext"
-		return_query=$(inline_array article)
+		return_query=$(json_array inline article)
 		tg_method send_inline > /dev/null
 	;;
 	"jafw "*)
@@ -65,7 +63,7 @@ case "$inline_message" in
 		j_trans=$(trans :ja -j -b "$j_normal")
 		title="『 $j_trans — $j_fullw 』"
 		message_text=$title
-		return_query=$(inline_array article)
+		return_query=$(json_array inline article)
 		tg_method send_inline > /dev/null
 	;;
 	"booru "*)
@@ -138,20 +136,20 @@ case "$inline_message" in
 				done
 			;;
 		esac
-		return_query=$(inline_array photo)
+		return_query=$(json_array inline photo)
 		tg_method send_inline > /dev/null
 	;;
 	"search "*)
 		offset=$(($(jshon -Q -e offset -u <<< "$inline")+1))
 		search=$(sed 's/search //' <<< "$inline_message" | sed 's/\s/%20/g')
-		searx_results=$(curl -s "https://archneek.zapto.org/searx/?q=$search&pageno=$offset&categories=general&format=json")
+		searx_results=$(wget -q -O- "https://archneek.zapto.org/searx/?q=$search&pageno=$offset&categories=general&format=json")
 		for j in $(seq 0 $(($(jshon -Q -e results -l <<< "$searx_results")-1)) ); do
-			title[$j]=$(jshon -Q -e results -e "$j" -e title -u <<< "$searx_results" | sed 's/"/\\"/g')
-			url[$j]=$(jshon -Q -e results -e "$j" -e url -u <<< "$searx_results" | sed 's/"/\\"/g')
-			message_text[$j]="${title[$j]}\\n${url[$j]}"
-			description[$j]=$(jshon -Q -e results -e "$j" -e content -u <<< "$searx_results" | sed 's/"/\\"/g')
+			title[$j]=$(jshon -Q -e results -e "$j" -e title -u <<< "$searx_results")
+			url[$j]=$(jshon -Q -e results -e "$j" -e url -u <<< "$searx_results")
+			message_text[$j]=$(printf '%s\n' "${title[$j]}" "${url[$j]}")
+			description[$j]=$(jshon -Q -e results -e "$j" -e content -u <<< "$searx_results")
 		done
-		return_query=$(inline_array article)
+		return_query=$(json_array inline article)
 		tg_method send_inline > /dev/null
 	;;
 	"arch "*)
@@ -164,7 +162,7 @@ case "$inline_message" in
 		fi
 		message_text=$(printf '%s\n\n' "$wiki_link" "$extract")
 		description=$extract
-		return_query=$(inline_array article)
+		return_query=$(json_array inline article)
 		tg_method send_inline > /dev/null
 	;;
 	*" bin")
@@ -174,7 +172,7 @@ case "$inline_message" in
 			parse_mode=html
 			message_text=$(mksh -c "$command" 2>&1)
 			title="> $command"
-			return_query=$(inline_array article)
+			return_query=$(json_array inline article)
 			tg_method send_inline
 		fi
 	;;
@@ -194,7 +192,7 @@ case "$inline_message" in
 		
 		title=$(sed -e 's/[lr]/w/g' -e 's/[LR]/W/g' <<< "$fixed_text")
 		message_text=$title
-		return_query=$(inline_array article)
+		return_query=$(json_array inline article)
 		tg_method send_inline > /dev/null
 	;;
 esac

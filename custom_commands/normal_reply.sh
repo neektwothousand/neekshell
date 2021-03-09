@@ -197,7 +197,7 @@ case "$normal_message" in
 		if [[ "$fn_args" != "" ]]; then
 			subreddit=$(cut -f 1 -d ' ' <<< "$fn_args")
 			filter=$(cut -f 2 ' ' <<< "$fn_args")
-			r_subreddit "$subreddit" "$filter"
+			bin/r_subreddit.sh "$subreddit" "$filter"
 		else
 			text_id=$(cat help/reddit)
 			tg_method send_message > /dev/null
@@ -229,7 +229,7 @@ case "$normal_message" in
 			if [[ "$(sed -n 2p ig_list)" != "" ]]; then
 				button_text=(">")
 				button_data=("insta + $fn_args $chat_id")
-				markup_id=$(inline_array button)
+				markup_id=$(json_array inline button)
 			fi
 			printf '%s' "1" > ig_page
 			media_id="@$(sed -n 1p ig_list)"
@@ -400,7 +400,7 @@ case "$normal_message" in
 						grep "pictures.hentai" | \
 						sed "s/^/https:/")
 					caption="https://www.hentai-foundry.com$randh"
-					[[ "$(tg_method send_photo | jshon -Q -e ok)" = "true" ]] && return
+					[[ "$(tg_method send_photo | jshon -Q -e ok)" = "true" ]] && break
 				done
 			;;
 			2)
@@ -411,7 +411,7 @@ case "$normal_message" in
 						| sed -En 's/.*content="(.*)"\s.*/\1/p')
 					caption="https://rule34.xxx/index.php?page=post&s=view&$(grep 'action="index.php?' <<< "$randh" \
 					| sed -En 's/.*(id=.*)&.*/\1/p')"
-					[[ "$(tg_method send_photo | jshon -Q -e ok)" = "true" ]] && return
+					[[ "$(tg_method send_photo | jshon -Q -e ok)" = "true" ]] && break
 				done
 			;;
 			3)
@@ -422,7 +422,7 @@ case "$normal_message" in
 						| sed -En 's/.*content="(.*)"\s.*/\1/p')
 					caption="https://safebooru.org/index.php?page=post&s=view&$(grep '<form method="post" action="index.php?' <<< "$randh" \
 						| sed -En 's/.*(id=.*)&.*/\1/p')"
-					[[ "$(tg_method send_photo | jshon -Q -e ok)" = "true" ]] && return
+					[[ "$(tg_method send_photo | jshon -Q -e ok)" = "true" ]] && break
 				done
 			;;
 			4)
@@ -433,7 +433,7 @@ case "$normal_message" in
 						| sed -En 's/.*content="(.*)"\s.*/\1/p')
 					caption="https://gelbooru.com/index.php?page=post&s=view&$(grep '<form method="post" action="index.php' <<< "$randh" \
 						| sed -En 's/.*(id=.*)&.*/\1/p')"
-					[[ "$(tg_method send_photo | jshon -Q -e ok)" = "true" ]] && return
+					[[ "$(tg_method send_photo | jshon -Q -e ok)" = "true" ]] && break
 				done
 			;;
 		esac
@@ -516,7 +516,7 @@ case "$normal_message" in
 						for j in $(seq 0 $((num_bot_chat - 1))); do
 							button_text[$j]=$(sed -n $((j+1))p <<< "$list_bot_chat")
 						done
-						markup_id=$(inline_array button)
+						markup_id=$(json_array inline button)
 					elif [[ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" = "" ]] \
 					&& [[ "$type" != "private" ]];then
 						if [[ $(is_admin) ]]; then
@@ -543,7 +543,7 @@ case "$normal_message" in
 						for j in $(seq 0 $((num_bot_chat - 1))); do
 							button_text[$j]=$(sed -n $((j+1))p <<< "$list_bot_chat")
 						done
-						markup_id=$(inline_array button)
+						markup_id=$(json_array inline button)
 					elif [[ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" != "" ]] \
 					&& [[ "$type" != "private" ]];then
 						if [[ $(is_admin) ]]; then
@@ -848,7 +848,7 @@ case "$normal_message" in
 						#loading value "$p_offset/$numpages"
 						p_offset=$((p_offset + 1))
 					done
-					mediagroup_id=$(photo_array)
+					mediagroup_id=$(json_array mediagroup)
 					tg_method send_mediagroup > /dev/null
 				else
 					for p in $(seq $((numpages/maxpages))); do
@@ -859,7 +859,7 @@ case "$normal_message" in
 							#loading value "$p_offset/$numpages"
 							p_offset=$((p_offset + 1))
 						done
-						mediagroup_id=$(photo_array)
+						mediagroup_id=$(json_array mediagroup)
 						tg_method send_mediagroup > /dev/null
 					done
 					for j in $(seq 0 $(((numpages - ${p}0) - 1))); do
@@ -869,7 +869,7 @@ case "$normal_message" in
 						#loading value "$p_offset/$numpages"
 						p_offset=$((p_offset + 1))
 					done
-					mediagroup_id=$(photo_array)
+					mediagroup_id=$(json_array mediagroup)
 					tg_method send_mediagroup > /dev/null
 				fi
 				loading 3
@@ -959,7 +959,7 @@ case "$normal_message" in
 					button_text[$j]=$(sed -n $((j+1))p <<< "$files_selected_dir")
 					callback_data[$j]=${button_text[$j]}
 				done
-				markup_id=$(inline_array button)
+				markup_id=$(json_array inline button)
 			else
 				text_id=$(printf '%s\n' "selected directory: $selected_dir" "subdirs:" ; find "$selected_dir/" -maxdepth 1 -type d | sed "s:^./\|$selected_dir/::" | sed -e 1d | sed -e 's/^/-> /' -e 's|$|/|')
 			fi

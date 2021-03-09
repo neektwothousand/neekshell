@@ -93,7 +93,7 @@ tg_method() {
 		send_inline)
 			curl -s "$TELEAPI/answerInlineQuery" \
 				$curl_f "inline_query_id=$inline_id" \
-				$curl_f "results=$(sed 's/\\/\\\\/g' <<< "$return_query")" \
+				$curl_f "results=$return_query" \
 				$curl_f "next_offset=$offset" \
 				$curl_f "cache_time=0" \
 				$curl_f "is_personal=true"
@@ -110,7 +110,7 @@ tg_method() {
 				$curl_f "results=$return_query" \
 				$curl_f "next_offset=$offset" \
 				$curl_f "cache_time=100" \
-				$curl_f "is_personal=true" > /dev/null
+				$curl_f "is_personal=true"
 		;;
 		button_reply)
 			curl -s "$TELEAPI/answerCallbackQuery" \
