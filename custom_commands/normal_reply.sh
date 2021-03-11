@@ -196,8 +196,8 @@ case "$normal_message" in
 		get_reply_id self
 		if [[ "$fn_args" != "" ]]; then
 			subreddit=$(cut -f 1 -d ' ' <<< "$fn_args")
-			filter=$(cut -f 2 ' ' <<< "$fn_args")
-			bin/r_subreddit.sh "$subreddit" "$filter"
+			filter=$(cut -f 2 -d ' ' <<< "$fn_args")
+			source bin/r_subreddit.sh "$subreddit" "$filter"
 		else
 			text_id=$(cat help/reddit)
 			tg_method send_message > /dev/null
@@ -330,7 +330,7 @@ case "$normal_message" in
 					
 						loading 1
 					
-					ffmpeg -i video-"$request_id".mp4 -crf 50 video-low-"$request_id".mp4
+					ffmpeg -i video-"$request_id".mp4 -crf 50 -c:a aac -b:a 32k video-low-"$request_id".mp4
 					
 						loading 2
 					
@@ -696,11 +696,17 @@ case "$normal_message" in
 		get_reply_id self
 		tg_method send_message > /dev/null
 	;;
-	"!stats")
-		text_id=$(printf '%s\n' \
-			"users: $(wc -l <<< $(ls -1 db/users/))" \
-			"groups: $(wc -l <<< $(ls -1 db/chats/))")
+	"!stats "*|"!stats")
+		case "$fn_arg" in
+			today)
+				s_time=today
+			;;
+		esac
+		source bin/stats.sh
 		get_reply_id self
+		if [[ "$text_id" == "" ]]; then
+			text_id="stats not found"
+		fi
 		tg_method send_message > /dev/null
 	;;
 	
@@ -778,7 +784,7 @@ case "$normal_message" in
 	"!bin "*)
 		markdown=("<code>" "</code>")
 		parse_mode=html
-		if [[ $(is_admin) ]]; then
+		if [[ $(grep "160551211\|917684979" <<< "$user_id") ]]; then
 			command=$fn_args
 			text_id=$(mksh -c "$command" 2>&1)
 			if [[ "$text_id" = "" ]]; then

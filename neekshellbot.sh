@@ -1,5 +1,6 @@
 #!/bin/mksh
 set -a
+LC_ALL=C
 START_TIME=$(bc <<< "$(date +%s%N) / 1000000")
 PS4="[$(date "+%F %H:%M:%S")] "
 exec 1>>"log.log" 2>&1
@@ -31,10 +32,10 @@ update_db() {
 		file_reply_user=db/users/"$reply_to_user_id"
 		if [[ ! -e "$file_reply_user" ]]; then
 			printf '%s\n' \
-			"tag: $reply_to_user_tag" \
-			"id: $reply_to_user_id" \
-			"fname: $reply_to_user_fname" \
-			"lname: $reply_to_user_lname" > "$file_reply_user"
+				"tag: $reply_to_user_tag" \
+				"id: $reply_to_user_id" \
+				"fname: $reply_to_user_fname" \
+				"lname: $reply_to_user_lname" > "$file_reply_user"
 		fi
 	fi
 	if [[ "$chat_id" != "" ]]; then
@@ -42,9 +43,9 @@ update_db() {
 		file_chat=db/chats/"$chat_id"
 		if [[ ! -e "$file_chat" ]]; then
 			printf '%s\n' \
-			"title: $chat_title" \
-			"id: $chat_id" \
-			"type: $type" > "$file_chat"
+				"title: $chat_title" \
+				"id: $chat_id" \
+				"type: $type" > "$file_chat"
 		fi
 		if [[ "title: $chat_title" != "$(grep -- "^title" "$file_chat")" ]]; then
 			sed -i "s/^title: .*/title: $chat_title/" "$file_chat"
@@ -103,7 +104,7 @@ json_array() {
 			case "$2" in
 				article)
 					for x in $(seq 0 $j); do
-						message_text[$x]="${markdown[0]}$(sed -e 's/"/\\"/g' -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "${message_text[$x]}" | perl -pe 's/\n/\\n/g')${markdown[1]}"
+						message_text[$x]="${markdown[0]}$(sed -e "s/\\\\/\\\\\\\/g" -e 's/"/\\"/g' -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "${message_text[$x]}" | perl -pe 's/\n/\\n/g')${markdown[1]}"
 						title[$x]="$(sed -e 's/"/\\"/g' -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "${title[$x]}" | perl -pe 's/\n/\\n/g')"
 						description[$x]="$(sed -e 's/"/\\"/g' -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "${description[$x]}" | perl -pe 's/\n/\\n/g')"
 						obj[$x]=$(printf '%s' "{\"type\":\"article\"," \
@@ -384,10 +385,20 @@ tmpdir="/tmp/neekshell"
 [[ ! -d $tmpdir ]] && mkdir $tmpdir
 process_reply
 END_TIME=$(bc <<< "$(date +%s%N) / 1000000")
-[[ ! -d stats ]] && mkdir stats
-if [[ ! -e "stats/$user_id-usage" ]] && [[ "$user_id" != "" ]]; then
-	printf '%s\n' "$(($END_TIME - $START_TIME)):$user_id ($user_fname)" > stats/"$user_id"-usage
-elif [[ "$user_id" != "" ]]; then
-	printf '%s\n' "$((($END_TIME - $START_TIME)+$(cut -f 1 -d : < "stats/$user_id-usage"))):$user_id ($user_fname)" > stats/"$user_id"-usage
+[[ ! -d stats/users ]] && mkdir -p stats/users
+[[ ! -d stats/chats ]] && mkdir -p stats/chats
+if [[ "$user_id" != "" ]]; then # usage in ms per user
+	if [[ ! -e "stats/users/$user_id-usage" ]]; then
+		printf '%s\n' "$(($END_TIME - $START_TIME)):$user_id ($user_fname)" > "stats/users/$user_id-usage"
+	else
+		printf '%s\n' "$((($END_TIME - $START_TIME)+$(cut -f 1 -d : < "stats/users/$user_id-usage"))):$user_id ($user_fname)" > "stats/users/$user_id-usage"
+	fi
+fi
+if [[ "$chat_id" != "" ]]; then # usage in messages per chat
+	if [[ ! -e "stats/chats/$chat_id-usage" ]]; then
+		printf '%s\n' "1:$chat_id ($chat_title)" > "stats/chats/$chat_id-usage"
+	else
+		printf '%s\n' "$((1+$(cut -f 1 -d : < "stats/chats/$chat_id-usage"))):$chat_id ($chat_title)" > "stats/chats/$chat_id-usage"
+	fi
 fi
 printf '%s\n' "[$(date "+%F %H:%M:%S")] elapsed time: $(($END_TIME - $START_TIME))ms"

@@ -1,5 +1,9 @@
 Usage
-  !stats
+  !stats <time>
+
+Time
+  today - total count of current chat messages
+  (empty) - total count of yesterday chat messages
 
 Description
-  sends a message displaying a number of active users and chats
+  sends a message displaying the total count of messages
