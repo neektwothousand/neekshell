@@ -276,22 +276,22 @@ case "$normal_message" in
 						;;
 					esac
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
-					ext=$(grep -o "...$" <<< "$file_path")
+					ext=$(sed 's/.*\.//' <<< "$file_path")
 					case "$ext" in
 						png)
 							wget -q -O "pic-$request_id.$ext" "https://api.telegram.org/file/bot$TOKEN/$file_path"
 							convert "pic-$request_id.$ext" "pic-$request_id.jpg"
 							rm "pic-$request_id.$ext"
+							ext=jpg
 						;;
-						jpg)
+						jpg|jpeg)
 							wget -q -O "pic-$request_id.$ext" "https://api.telegram.org/file/bot$TOKEN/$file_path"
 						;;
-						*) return ;;
 					esac
-					magick "pic-$request_id.jpg" -quality 4 "pic-$request_id.jpg"
-					photo_id="@pic-$request_id.jpg"
+					magick "pic-$request_id.$ext" -quality 4 "pic-$request_id.$ext"
+					photo_id="@pic-$request_id.$ext"
 					tg_method send_photo upload > /dev/null
-					rm "pic-$request_id.jpg"
+					rm "pic-$request_id.$ext"
 				;;
 				sticker)
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$sticker_id" | jshon -Q -e result -e file_path -u)
@@ -376,6 +376,7 @@ case "$normal_message" in
 					rm voice-"$request_id".ogg voice-low-"$request_id".ogg
 				;;
 			esac
+			cd "$basedir"
 		else
 			text_id=$(cat help/jpg)
 			get_reply_id self
@@ -595,7 +596,7 @@ case "$normal_message" in
 		if [[ $tag_name = [0-9]* ]]; then
 			tag_id=$tag_name
 		else
-			tag_id=$(grep '^id:' $(grep -r -- "$(sed 's/@//' <<< "$tag_name")" db/users/ | cut -d : -f 1) | sed 's/^id: //')
+			tag_id=$(grep '^id:' $(grep -r -- "$(sed 's/@//' <<< "$tag_name")" db/users/ | cut -d : -f 1) | head -n 1 | sed 's/.*id: //')
 		fi
 		if [[ "$text_id" = "" ]]; then
 			text_id=$(cat help/tag)
@@ -809,7 +810,7 @@ case "$normal_message" in
 			if [[ "$ytdl_link" != "" ]]; then
 				ytdl_id=$RANDOM
 				loading 1
-				ytdl_json=$(youtube-dl --print-json --format mp4 -o ytdl-$ytdl_id.mp4 "$ytdl_link")
+				ytdl_json=$(youtube-dl --print-json --merge-output-format mp4 -o ytdl-$ytdl_id.mp4 "$ytdl_link")
 				if [[ "$ytdl_json" != "" ]]; then
 					caption=$(jshon -Q -e title -u <<< "$ytdl_json")
 					if [[ "$(du -m ytdl-$ytdl_id.mp4 | cut -f 1)" -ge 50 ]]; then
@@ -855,7 +856,12 @@ case "$normal_message" in
 						p_offset=$((p_offset + 1))
 					done
 					mediagroup_id=$(json_array mediagroup)
-					tg_method send_mediagroup > /dev/null
+					sleep 30
+					result=$(tg_method send_mediagroup)
+					if [[ "$(jshon -Q -e ok <<< "$result")" != "true" ]]; then
+						text_id=$(printf '%s\n' "$mediagroup_id" "$result")
+						tg_method send_message
+					fi
 				else
 					for p in $(seq $((numpages/maxpages))); do
 						for j in $(seq 0 $((maxpages - 1))); do
@@ -866,7 +872,12 @@ case "$normal_message" in
 							p_offset=$((p_offset + 1))
 						done
 						mediagroup_id=$(json_array mediagroup)
-						tg_method send_mediagroup > /dev/null
+						sleep 30
+						result=$(tg_method send_mediagroup)
+						if [[ "$(jshon -Q -e ok <<< "$result")" != "true" ]]; then
+							text_id=$(printf '%s\n' "$mediagroup_id" "$result")
+							tg_method send_message
+						fi
 					done
 					for j in $(seq 0 $(((numpages - ${p}0) - 1))); do
 						media[$j]=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/$p_offset/" \
@@ -876,7 +887,12 @@ case "$normal_message" in
 						p_offset=$((p_offset + 1))
 					done
 					mediagroup_id=$(json_array mediagroup)
-					tg_method send_mediagroup > /dev/null
+					sleep 30
+					result=$(tg_method send_mediagroup)
+					if [[ "$(jshon -Q -e ok <<< "$result")" != "true" ]]; then
+						text_id=$(printf '%s\n' "$mediagroup_id" "$result")
+						tg_method send_message
+					fi
 				fi
 				loading 3
 			else
