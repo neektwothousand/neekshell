@@ -794,7 +794,7 @@ case "$normal_message" in
 		else
 			text_id="Access denied"
 		fi
-		get_reply_id self
+		get_reply_id reply
 		tg_method send_message > /dev/null
 	;;
 	"!ytdl "*|"!ytdl")
@@ -1158,6 +1158,71 @@ case "$normal_message" in
 			cd "$basedir"
 		fi
 	;;
+	"!warn"|"!ban"|"!kick")
+		get_member_id=$user_id
+		if [[ "$(tg_method get_chat_member | jshon -Q -e result -e status -u | grep -w "creator\|administrator")" != "" ]] \
+		&& [[ "$reply_to_message" != "" ]] \
+		&& [[ "$reply_to_user_id" != "$user_id" ]]; then
+			get_member_id=$(jshon -Q -e result -e id -u < botinfo)
+			if [[ "$(tg_method get_chat_member | jshon -Q -e result -e status -u | grep -w "creator\|administrator")" != "" ]]; then
+				case "$normal_message" in
+					"!warn")
+						warns=$(grep "^warns-$chat_id:" db/users/"$reply_to_user_id" | sed 's/.*: //')
+						if [[ "$warns" == "" ]]; then
+							warns=1
+							printf '%s\n' "warns-$chat_id: $warns" >> db/users/"$reply_to_user_id"
+						elif [[ "$warns" -eq "1" ]]; then
+							warns=$(($warns+1))
+							sed -i "s/^warns-$chat_id: .*/warns-$chat_id: $warns/" db/users/"$reply_to_user_id"
+						elif [[ "$warns" -eq "2" ]]; then
+							warns=$(($warns+1))
+							sed -i "s/^warns-$chat_id: .*/warns-$chat_id: $warns/" db/users/"$reply_to_user_id"
+							can_send_messages="false"
+							can_send_media_messages="false"
+							can_send_other_messages="false"
+							can_send_polls="false"
+							can_add_web_page_previews="false"
+							restrict_id=$reply_to_user_id
+							result=$(tg_method restrict_member | jshon -Q -e ok)
+						fi
+						if [[ "$result" != "false" ]]; then
+							text_id="$reply_to_user_fname warned ($warns out of 3)"
+						else
+							text_id="error"
+						fi
+					;;
+					"!kick")
+						kick_id=$reply_to_user_id
+						result=$(tg_method kick_member | jshon -Q -e ok)
+						if [[ "$result" != "false" ]]; then
+							unban_id=$kick_id
+							result=$(tg_method unban_member | jshon -Q -e ok)
+							if [[ "$result" != "false" ]]; then
+								text_id="$reply_to_user_fname kicked"
+							else
+								text_id="error"
+							fi
+						else
+							text_id="error"
+						fi
+					;;
+					"!ban")
+						kick_id=$reply_to_user_id
+						result=$(tg_method kick_member | jshon -Q -e ok)
+						if [[ "$result" != "false" ]]; then
+							text_id="$reply_to_user_fname banned"
+						else
+							text_id="error"
+						fi
+					;;
+				esac
+			else
+				text_id="bot is not admin"
+			fi
+			get_reply_id reply
+			tg_method send_message > /dev/null
+		fi
+	;;
 	"!exit")
 		get_reply_id self
 		if [[ $(is_admin) ]]; then
@@ -1234,11 +1299,7 @@ case "$normal_message" in
 			bc_users=$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir" | sed 's/.*:\s//' | tr ' ' '\n' | grep -v -- "$bot_chat_user_id")
 			if [[ "$bc_users" != "" ]]; then
 				bc_users_num=$(wc -l <<< "$bc_users")
-			else
-				return
-			fi
-			if [[ "$file_type" = "text" ]]; then
-				if [[ "$reply_to_text" != "" ]]; then
+				if [[ "$file_type" = "text" ]] && [[ "$reply_to_text" != "" ]]; then
 					quote_reply=$(sed -n 1p <<< "$reply_to_text" | grep '^|')
 					if [[ "$quote_reply" != "" ]]; then
 						reply_to_text=$(sed '1,2d' <<< "$reply_to_text")
@@ -1249,27 +1310,21 @@ case "$normal_message" in
 						quote="$(head -c 30 <<< "$reply_to_text" | sed 's/^/| /g')"
 					fi
 					text_id=$(printf '%s\n' "$quote" "" "$normal_message")
-				elif [[ "$reply_to_message" != "" ]] && [[ "$reply_to_text" = "" ]]; then
-					get_file_type reply
-					text_id=$(printf '%s\n' "| [$file_type]" "" "$normal_message")
+					for c in $(seq "$bc_users_num"); do
+						chat_id=$(sed -n ${c}p <<< "$bc_users")
+						tg_method send_message > /dev/null &
+					done
+					wait
+				else
+					from_chat_id=$chat_id
+					copy_id=$message_id
+					for c in $(seq "$bc_users_num"); do
+						chat_id=$(sed -n ${c}p <<< "$bc_users")
+						tg_method copy_message > /dev/null &
+					done
+					wait
 				fi
-				for c in $(seq "$bc_users_num"); do
-					chat_id=$(sed -n ${c}p <<< "$bc_users")
-					send_message_id[$c]=$(tg_method send_message > /dev/null)
-				done
-			else
-				from_chat_id=$chat_id
-				copy_id=$message_id
-				for c in $(seq "$bc_users_num"); do
-					chat_id=$(sed -n ${c}p <<< "$bc_users")
-					send_message_id[$c]=$(tg_method copy_message > /dev/null)
-				done
 			fi
-			for c in $(seq "$bc_users_num"); do
-				if [[ "$(jshon -Q -e description -u <<< "${send_message_id[$c]}")" = "Forbidden: bot was blocked by the user" ]]; then
-					sed -i "s/$chat_id //" "$(grep -r -- "$bot_chat_user_id" $bot_chat_dir | cut -d : -f 1)"
-				fi
-			done
 		fi
 	;;
 esac

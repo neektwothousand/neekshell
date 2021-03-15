@@ -160,6 +160,30 @@ tg_method() {
 					"\"can_add_web_page_previews\":$can_add_web_page_previews}}")" \
 				-H 'Content-Type: application/json'
 		;;
+		restrict_member)
+			curl -s "$TELEAPI/restrictChatMember" \
+				-d "$(printf '%s' \
+					"{\"chat_id\":\"$chat_id\"," \
+					"\"user_id\":$restrict_id," \
+					"\"permissions\":{" \
+					"\"can_send_messages\":$can_send_messages," \
+					"\"can_send_media_messages\":$can_send_media_messages," \
+					"\"can_send_other_messages\":$can_send_other_messages," \
+					"\"can_send_polls\":$can_send_polls," \
+					"\"can_add_web_page_previews\":$can_add_web_page_previews}}")" \
+				-H 'Content-Type: application/json'
+		;;
+		kick_member)
+			curl -s "$TELEAPI/kickChatMember" \
+				$curl_f "chat_id=$chat_id" \
+				$curl_f "user_id=$kick_id"
+		;;
+		unban_member)
+			curl -s "$TELEAPI/unbanChatMember" \
+				$curl_f "chat_id=$chat_id" \
+				$curl_f "user_id=$unban_id" \
+				$curl_f "only_if_banned=true"
+		;;
 		leave_chat)
 			curl -s "$TELEAPI/leaveChat" \
 				$curl_f "chat_id=$chat_id"
@@ -167,6 +191,11 @@ tg_method() {
 		get_chat)
 			curl -s "$TELEAPI/getChat" \
 				$curl_f "chat_id=$get_chat_id"
+		;;
+		get_chat_member)
+			curl -s "$TELEAPI/getChatMember" \
+				$curl_f "chat_id=$chat_id" \
+				$curl_f "user_id=$get_member_id"
 		;;
 		get_me)
 			curl -s "$TELEAPI/getMe"

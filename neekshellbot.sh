@@ -16,15 +16,16 @@ update_db() {
 			"id: $user_id" \
 			"fname: $user_fname" \
 			"lname: $user_lname" > "$file_user"
-		fi
-		if [[ "tag: $user_tag" != "$(grep -- "^tag" "$file_user")" ]]; then
-			sed -i "s/^tag: .*/tag: $user_tag/" "$file_user"
-		fi
-		if [[ "fname: $user_fname" != "$(grep -- "^fname" "$file_user")" ]]; then
-			sed -i "s/^fname: .*/fname: $user_fname/" "$file_user"
-		fi
-		if [[ "lname: $user_lname" != "$(grep -- "^lname" "$file_user")" ]]; then
-			sed -i "s/^lname: .*/lname: $user_lname/" "$file_user"
+		else
+			if [[ "tag: $user_tag" != "$(grep -- "^tag" "$file_user")" ]]; then
+				sed -i "s/^tag: .*/tag: $user_tag/" "$file_user"
+			fi
+			if [[ "fname: $user_fname" != "$(grep -- "^fname" "$file_user")" ]]; then
+				sed -i "s/^fname: .*/fname: $user_fname/" "$file_user"
+			fi
+			if [[ "lname: $user_lname" != "$(grep -- "^lname" "$file_user")" ]]; then
+				sed -i "s/^lname: .*/lname: $user_lname/" "$file_user"
+			fi
 		fi
 	fi
 	if [[ "$reply_to_message" != "" ]]; then
@@ -46,9 +47,10 @@ update_db() {
 				"title: $chat_title" \
 				"id: $chat_id" \
 				"type: $type" > "$file_chat"
-		fi
-		if [[ "title: $chat_title" != "$(grep -- "^title" "$file_chat")" ]]; then
-			sed -i "s/^title: .*/title: $chat_title/" "$file_chat"
+		else
+			if [[ "title: $chat_title" != "$(grep -- "^title" "$file_chat")" ]]; then
+				sed -i "s/^title: .*/title: $chat_title/" "$file_chat"
+			fi
 		fi
 	fi
 }
@@ -264,7 +266,6 @@ process_reply() {
 		message_id=$(jshon -Q -e message_id -u <<< "$message")
 		type=$(jshon -Q -e chat -e type -u <<< "$message")
 		chat_id=$(jshon -Q -e chat -e id -u <<< "$message")
-		chat_title=$(jshon -Q -e chat -e title -u <<< "$message")
 		user_id=$(jshon -Q -e from -e id -u <<< "$message")
 		reply_to_message=$(jshon -Q -e reply_to_message <<< "$message")
 		if [[ "$(grep -w -- "777000\|1087968824" <<< "$user_id")" = "" ]]; then
@@ -291,6 +292,12 @@ process_reply() {
 				reply_to_user_lname=$(jshon -Q -e from -e last_name -u <<< "$reply_to_message")
 			fi
 		fi
+		if [[ "$type" == "private" ]]; then
+			chat_title=$user_fname
+		else
+			chat_title=$(jshon -Q -e chat -e title -u <<< "$message")
+		fi
+		update_db
 	elif [[ "$callback" != "" ]]; then
 		callback_user=$(jshon -Q -e from -e username -u <<< "$callback")
 		callback_user_id=$(jshon -Q -e from -e id -u <<< "$callback")
@@ -336,9 +343,7 @@ process_reply() {
 				unset text_id
 				fn_args=$(cut -f 2- -d ' ' <<< "$normal_message")
 				if [[ "$fn_args" != "$normal_message" ]]; then
-					for x in $(seq 0 $(( $(wc -l <<< "$(tr ' ' '\n' <<< "$fn_args")")-1))); do
-						fn_arg[$x]=$(cut -f $(($x+1)) -d ' ' <<< "$fn_args")
-					done
+					fn_arg=($fn_args)
 				else
 					fn_args=""
 				fi
@@ -365,7 +370,6 @@ process_reply() {
 				normal_message=$document_id
 			;;
 		esac
-		update_db
 		source tg_method.sh
 		if [[ "$normal_message" != "" ]]; then
 			get_normal_reply
