@@ -82,21 +82,26 @@ loading() {
 json_array() {
 	case "$1" in
 		mediagroup)
-			for x in $(seq 0 $j); do
-				if [ "${caption}" != "" ]; then
-					obj[$x]="{
+			if [[ "${caption}" != "" ]]; then
+				obj[0]="{
 					\"type\":\"photo\",
-					\"media\":\"${media[$x]}\",
+					\"media\":\"${media[0]}\",
 					\"caption\":\"${caption}\"
-					},"
-				else
+				},"
+				for x in $(seq 1 $j); do
 					obj[$x]="{
-					\"type\":\"photo\",
-					\"media\":\"${media[$x]}\"
+						\"type\":\"photo\",
+						\"media\":\"${media[$x]}\"
 					},"
-				fi
-				caption=""
-			done
+				done
+			else
+				for x in $(seq 0 $j); do
+					obj[$x]="{
+						\"type\":\"photo\",
+						\"media\":\"${media[$x]}\"
+					},"
+				done
+			fi
 			printf '%s' "[ $(printf '%s' "${obj[@]}" | head -c -1) ]"
 		;;
 		inline)
@@ -109,13 +114,24 @@ json_array() {
 						message_text[$x]="${markdown[0]}$(sed -e "s/\\\\/\\\\\\\/g" -e 's/"/\\"/g' -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "${message_text[$x]}" | perl -pe 's/\n/\\n/g')${markdown[1]}"
 						title[$x]="$(sed -e 's/"/\\"/g' -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "${title[$x]}" | perl -pe 's/\n/\\n/g')"
 						description[$x]="$(sed -e 's/"/\\"/g' -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "${description[$x]}" | perl -pe 's/\n/\\n/g')"
-						obj[$x]=$(printf '%s' "{\"type\":\"article\"," \
-							"\"id\":\"$RANDOM\"," \
-							"\"title\":\"${title[$x]}\"," \
-							"\"input_message_content\":" \
-								"{\"message_text\":\"${message_text[$x]}\"," \
-								"\"parse_mode\":\"html\"}," \
-							"\"description\":\"${description[$x]}\"},")
+						if [[ "${markup_id[$x]}" != "" ]]; then
+							obj[$x]=$(printf '%s' "{\"type\":\"article\"," \
+								"\"id\":\"$RANDOM\"," \
+								"\"title\":\"${title[$x]}\"," \
+								"\"input_message_content\":" \
+									"{\"message_text\":\"${message_text[$x]}\"," \
+									"\"parse_mode\":\"html\"}," \
+								"\"reply_markup\":${markup_id[$x]}," \
+								"\"description\":\"${description[$x]}\"},")
+						else
+							obj[$x]=$(printf '%s' "{\"type\":\"article\"," \
+								"\"id\":\"$RANDOM\"," \
+								"\"title\":\"${title[$x]}\"," \
+								"\"input_message_content\":" \
+									"{\"message_text\":\"${message_text[$x]}\"," \
+									"\"parse_mode\":\"html\"}," \
+								"\"description\":\"${description[$x]}\"},")
+						fi
 					done
 					printf '%s' "[ $(printf '%s' "${obj[@]}" | head -c -1) ]"
 				;;
@@ -140,11 +156,20 @@ json_array() {
 					printf '%s' "[ $(printf '%s' "${obj[@]}" | sed -E 's/(.*)},/\1}/') ]"
 				;;
 				button)
-					[[ "$button_data" = "" ]] && button_data=("${button_text[@]}")
-					for x in $(seq 0 $j); do
-						obj[$x]=$(printf '%s' "[{\"text\":\"${button_text[$x]}\"," \
-							"\"callback_data\":\"${button_data[$x]}\"}],")
-					done
+					if [[ "$button_data" == "" ]] && [[ "$button_url" == "" ]]; then
+						button_data=("${button_text[@]}")
+					fi
+					if [[ "$button_data" != "" ]]; then
+						for x in $(seq 0 $j); do
+							obj[$x]=$(printf '%s' "[{\"text\":\"${button_text[$x]}\"," \
+								"\"callback_data\":\"${button_data[$x]}\"}],")
+						done
+					elif [[ "$button_url" != "" ]]; then
+						for x in $(seq 0 $j); do
+							obj[$x]=$(printf '%s' "[{\"text\":\"${button_text[$x]}\"," \
+								"\"url\":\"${button_url[$x]}\"}],")
+						done
+					fi
 					printf '%s' "{\"inline_keyboard\":[$(sed -E 's/(.*)],/\1]/' <<< "${obj[@]}")]}"
 				;;
 			esac
@@ -206,6 +231,7 @@ get_normal_reply() {
 			text_id="this is a mksh bot, use !source to download"
 			get_reply_id self
 			tg_method send_message > /dev/null
+			return 1
 		;;
 		"!help"|"!help "*)
 			if [[ "$fn_args" = "" ]]; then
@@ -216,6 +242,7 @@ get_normal_reply() {
 			fi
 			get_reply_id self
 			tg_method send_message > /dev/null
+			return 1
 		;;
 		"!source")
 			source_id=$RANDOM
@@ -226,6 +253,7 @@ get_normal_reply() {
 			rm source-"$source_id".zip
 			text_id="https://gitlab.com/craftmallus/neekshell-telegrambot/"
 			tg_method send_message > /dev/null
+			return 1
 		;;
 	esac
 }
@@ -373,13 +401,13 @@ process_reply() {
 		source tg_method.sh
 		if [[ "$normal_message" != "" ]]; then
 			get_normal_reply
-			source custom_commands/normal_reply.sh
+			[[ $? != 1 ]] && source custom_commands/normal_reply.sh
 		elif [[ "$inline_message" != "" ]]; then
 			get_inline_reply
-			source custom_commands/inline_reply.sh
+			[[ $? != 1 ]] && source custom_commands/inline_reply.sh
 		elif [[ "$callback_data" != "" ]]; then
 			get_button_reply
-			source custom_commands/button_reply.sh
+			[[ $? != 1 ]] && source custom_commands/button_reply.sh
 		fi
 	fi
 }

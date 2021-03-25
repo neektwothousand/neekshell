@@ -51,7 +51,7 @@ case "$inline_message" in
 		figtext=$(sed 's/figlet //' <<< "$inline_message")
 		markdown=("<code>" "</code>")
 		parse_mode=html
-		message_text=$(figlet -- "$figtext")
+		message_text=$(figlet -- "$figtext" | sed 's/\s*$//' | sed '/^$/d')
 		title="figlet $figtext"
 		return_query=$(json_array inline article)
 		tg_method send_inline > /dev/null
@@ -152,18 +152,18 @@ case "$inline_message" in
 		return_query=$(json_array inline article)
 		tg_method send_inline > /dev/null
 	;;
-	"arch "*)
-		wiki_link="https://wiki.archlinux.org/index.php/$im_arg"
-		wiki=$(curl -s "$wiki_link")
-		title=$im_arg
-		extract=$(grep -m 3 '<p>' <<< "$wiki" | grep -v 'a id="logo"\|<p>Related articles</p>' | head -n 1 | sed -e 's|>|&\n|g' | grep -v '^<' | sed 's|<.*>||g' | tr '\n' ' ' | tr -s ' ' | sed 's/ \././g')
-		if [[ $(wc -c <<< "$extract") -gt 2096 ]]; then
-			extract="$(head -c 2093 <<< "$extract")..."
+	"invite")
+		if [[ $(is_admin) ]]; then
+			set -x
+			join_id="917684979"
+			button_text="click to join"
+			button_url="http://t.me/neekshellbot?start=join$join_id"
+			markup_id=$(json_array inline button)
+			title="anonymous group chat"
+			message_text="anonymous group chat"
+			return_query=$(json_array inline article)
+			tg_method send_inline
 		fi
-		message_text=$(printf '%s\n\n' "$wiki_link" "$extract")
-		description=$extract
-		return_query=$(json_array inline article)
-		tg_method send_inline > /dev/null
 	;;
 	*" bin")
 		if [[ $(is_admin) ]]; then
