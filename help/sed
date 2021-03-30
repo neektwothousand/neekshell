@@ -5,5 +5,5 @@ Description
   sends a message transformed and filtered based on <regex>
 
 Example (basic usage)
-  !sed hello/hi (transforms the first "hello" to "hi")
-  !sed hello/hi/g (transforms every "hello" to "hi")
+  !sed s/hello/hi (transforms the first "hello" to "hi")
+  !sed s/hello/hi/g (transforms every "hello" to "hi")

@@ -79,6 +79,7 @@ tg_method() {
 				$curl_f "chat_id=$chat_id" \
 				$curl_f "parse_mode=$parse_mode" \
 				$curl_f "reply_to_message_id=$reply_id" \
+				$curl_f "reply_markup=$markup_id" \
 				$curl_f "caption=$caption" \
 				$curl_f "animation=$animation_id"
 		;;

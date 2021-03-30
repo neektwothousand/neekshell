@@ -417,20 +417,21 @@ tmpdir="/tmp/neekshell"
 [[ ! -d $tmpdir ]] && mkdir $tmpdir
 process_reply
 END_TIME=$(bc <<< "$(date +%s%N) / 1000000")
-[[ ! -d stats/users ]] && mkdir -p stats/users
-[[ ! -d stats/chats ]] && mkdir -p stats/chats
+[[ ! -d stats/ ]] && mkdir stats/
 if [[ "$user_id" != "" ]]; then # usage in ms per user
-	if [[ ! -e "stats/users/$user_id-usage" ]]; then
-		printf '%s\n' "$(($END_TIME - $START_TIME)):$user_id ($user_fname)" > "stats/users/$user_id-usage"
+	user_usage=$(grep -w -- "$(date +%y%m%d):$user_id" stats/users-usage)
+	if [[ "$user_usage" == "" ]]; then
+		printf '%s\n' "$(date +%y%m%d):$user_id:$(($END_TIME - $START_TIME))" >> stats/users-usage
 	else
-		printf '%s\n' "$((($END_TIME - $START_TIME)+$(cut -f 1 -d : < "stats/users/$user_id-usage"))):$user_id ($user_fname)" > "stats/users/$user_id-usage"
+		sed -i "s/$user_usage/$(date +%y%m%d):$user_id:$(($(cut -f 3 -d ':' <<< "$user_usage")+($END_TIME - $START_TIME)))/" stats/users-usage
 	fi
 fi
 if [[ "$chat_id" != "" ]]; then # usage in messages per chat
-	if [[ ! -e "stats/chats/$chat_id-usage" ]]; then
-		printf '%s\n' "1:$chat_id ($chat_title)" > "stats/chats/$chat_id-usage"
+	chat_usage=$(grep -w -- "$(date +%y%m%d):$chat_id" stats/chats-usage)
+	if [[ "$chat_usage" == "" ]]; then
+		printf '%s\n' "$(date +%y%m%d):$chat_id:1" >> stats/chats-usage
 	else
-		printf '%s\n' "$((1+$(cut -f 1 -d : < "stats/chats/$chat_id-usage"))):$chat_id ($chat_title)" > "stats/chats/$chat_id-usage"
+		sed -i "s/$chat_usage/$(date +%y%m%d):$chat_id:$(($(cut -f 3 -d ':' <<< "$chat_usage")+1))/" stats/chats-usage
 	fi
 fi
 printf '%s\n' "[$(date "+%F %H:%M:%S")] elapsed time: $(($END_TIME - $START_TIME))ms"

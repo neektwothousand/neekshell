@@ -288,7 +288,9 @@ case "$normal_message" in
 							wget -q -O "pic-$request_id.$ext" "https://api.telegram.org/file/bot$TOKEN/$file_path"
 						;;
 					esac
-					magick "pic-$request_id.$ext" -quality 4 "pic-$request_id.$ext"
+					res=($(ffprobe -v error -show_streams "pic-$request_id.$ext" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
+					magick "pic-$request_id.$ext" -resize $(bc <<< "${res[0]}/1.5")x$(bc <<< "${res[1]}/1.5") "pic-$request_id.$ext"
+					magick "pic-$request_id.$ext" -quality 6 "pic-$request_id.$ext"
 					photo_id="@pic-$request_id.$ext"
 					tg_method send_photo upload > /dev/null
 					rm "pic-$request_id.$ext"
@@ -473,6 +475,13 @@ case "$normal_message" in
 						loading 3
 						rm -- "$song_file"
 					fi
+				else
+					loading 2
+					audio_id="@$song_file"
+					get_reply_id any
+					tg_method send_audio upload > /dev/null
+					loading 3
+					rm -- "$song_file"
 				fi
 				cd "$basedir"
 			fi
@@ -673,18 +682,11 @@ case "$normal_message" in
 	"!sed "*|"!sed")
 		[[ "$reply_to_caption" != "" ]] && reply_to_text=$reply_to_caption
 		if [[ "$reply_to_text" != "" ]]; then
-			regex=$fn_args
-			case "$regex" in 
-				"$(grep /g$ <<< "$regex")")
-					regex=$(sed 's|/g$||' <<< "$regex")
-					sed=$(sed -e "s/$regex/g" <<< "$reply_to_text")
-				;;
-				*)
-					sed=$(sed -e "s/$regex/" <<< "$reply_to_text")
-				;;
-			esac
-			get_reply_id reply
-			text_id=$(printf '%s\n' "$sed" "FTFY")
+			if [[ "$(cut -f 1 -d '/' <<< "$fn_args" | grep 'e')" == "" ]]; then
+				regex=$fn_args
+				text_id=$(sed "$regex" <<< "$reply_to_text")
+				get_reply_id reply
+			fi
 		else
 			text_id=$(cat help/sed)
 			get_reply_id self
@@ -711,9 +713,36 @@ case "$normal_message" in
 		fi
 		tg_method send_message > /dev/null
 	;;
+	"!trad"|"!trad "*)
+		if [[ "$reply_to_text" ]]; then
+			to_trad=$reply_to_text
+		elif [[ "$reply_to_caption" ]]; then
+			to_trad=$reply_to_caption
+		elif [[ "$fn_args" ]]; then
+			to_trad=$fn_args
+		fi
+		if [[ "$to_trad" ]]; then
+			text_id=$(trans :it -j -b "$to_trad")
+			get_reply_id self
+			tg_method send_message > /dev/null
+		fi
+	;;
 	
 	## administrative commands
 	
+	"!flush")
+		if [[ $(is_admin) ]] && [[ "$reply_to_message" != "" ]]; then
+			text_id="flushing..."
+			flush_id=$(tg_method send_message | jshon -Q -e result -e message_id -u)
+			for x in $(seq "$message_id" -1 "$reply_to_id"); do
+				to_delete_id=$x
+				tg_method delete_message > /dev/null &
+				sleep 0.1
+			done
+			to_delete_id=$flush_id
+			tg_method delete_message > /dev/null
+		fi
+	;;
 	"!db "*)
 		if [[ $(is_admin) ]]; then
 			case "${fn_arg[0]}" in
