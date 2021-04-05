@@ -9,23 +9,23 @@ case "$callback_message_text" in
 			button_text_reply="you're already in an existing chat"
 			text_id="you're already in an existing chat"
 		fi
-		tg_method button_reply > /dev/null
-		tg_method send_message > /dev/null
+		tg_method button_reply
+		tg_method send_message
 	;;
 	"Select chat to leave:")
 		sed -i "s/$callback_user_id //" $bot_chat_dir"$callback_data"
 		button_text_reply="bye"
-		tg_method button_reply > /dev/null
+		tg_method button_reply
 		chat_id=$callback_user_id
 		text_id="$callback_data is no more"
-		tg_method send_message > /dev/null
+		tg_method send_message
 	;;
 	"selected directory: "*)
 		button_text_reply="ok"
-		tg_method button_reply > /dev/null
+		tg_method button_reply
 		document_id="@$(sed -n 1p <<< "$callback_message_text" | sed 's/^selected directory: //')/$callback_data"
 		chat_id=$callback_user_id
-		tg_method send_document > /dev/null
+		tg_method send_document
 	;;
 esac
 case "$callback_data" in
@@ -55,18 +55,20 @@ case "$callback_data" in
 		markup_id=$(inline_array button)
 		media_id="@$(sed -n ${ig_page}p ig_list)"
 		to_delete_id=$(cat ig_id)
-		tg_method button_reply > /dev/null
+		tg_method button_reply
 		cd "$ig_tag"
-		tg_method delete_message > /dev/null
+		tg_method delete_message
 		ext=$(grep -o "...$" <<< "$media_id")
 		case "$ext" in
 			jpg)
 				photo_id=$media_id
-				ig_id=$(tg_method send_photo upload | jshon -Q -e result -e message_id -u)
+				tg_method send_photo upload
+				ig_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
 			;;
 			mp4)
 				video_id=$media_id
-				ig_id=$(tg_method send_video upload | jshon -Q -e result -e message_id -u)
+				tg_method send_video upload
+				ig_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
 			;;
 		esac
 		cd ..

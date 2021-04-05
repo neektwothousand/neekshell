@@ -15,7 +15,7 @@ tg_method() {
 			header="-H 'Content-Type: application/json'"
 		;;
 	esac
-	case $1 in
+	curl_result=$(case $1 in
 		send_message)
 			curl -s "${TELEAPI}/sendMessage" \
 				$curl_f "chat_id=$chat_id" \
@@ -206,5 +206,12 @@ tg_method() {
 				$curl_f "chat_id=$chat_id" \
 				$curl_f "user_id=$kick_id"
 		;;
-	esac
+	esac)
+	if [[ "$(jshon -Q -e parameters -e retry_after -u <<< "$curl_result")" != "" ]] \
+	|| [[ "$(jshon -Q -e description -u <<< "$curl_result")" == "Bad Request: group send failed" ]]; then
+		retry_after=$(jshon -Q -e parameters -e retry_after -u <<< "$curl_result")
+		[[ "$retry_after" == "" ]] && retry_after=60
+		sleep "$retry_after"
+		tg_method $@
+	fi
 }

@@ -1,5 +1,5 @@
 #!/bin/mksh
-set -a
+set -af
 LC_ALL=C
 START_TIME=$(bc <<< "$(date +%s%N) / 1000000")
 PS4="[$(date "+%F %H:%M:%S")] "
@@ -61,7 +61,8 @@ loading() {
 	case $1 in
 		1)
 			text_id="processing ..."
-			processing_id=$(tg_method send_message | jshon -Q -e result -e message_id -u)
+			tg_method send_message
+			processing_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
 		;;
 		value)
 			edit_id=$processing_id
@@ -71,11 +72,11 @@ loading() {
 		2)
 			edit_id=$processing_id
 			edit_text="sending..."
-			tg_method edit_text > /dev/null
+			tg_method edit_text
 		;;
 		3)
 			to_delete_id=$processing_id
-			tg_method delete_message > /dev/null
+			tg_method delete_message
 		;;
 	esac
 }
@@ -230,7 +231,7 @@ get_normal_reply() {
 		"!start")
 			text_id="this is a mksh bot, use !source to download"
 			get_reply_id self
-			tg_method send_message > /dev/null
+			tg_method send_message
 			return 1
 		;;
 		"!help"|"!help "*)
@@ -241,7 +242,7 @@ get_normal_reply() {
 				[[ "$text_id" = "" ]] && text_id="command not found"
 			fi
 			get_reply_id self
-			tg_method send_message > /dev/null
+			tg_method send_message
 			return 1
 		;;
 		"!source")
@@ -249,10 +250,10 @@ get_normal_reply() {
 			zip -r source-"$source_id".zip neekshellbot.sh custom_commands LICENSE README.md webhook.php
 			document_id="@source-$source_id.zip"
 			get_reply_id self
-			tg_method send_document upload > /dev/null
+			tg_method send_document upload
 			rm source-"$source_id".zip
 			text_id="https://gitlab.com/craftmallus/neekshell-telegrambot/"
-			tg_method send_message > /dev/null
+			tg_method send_message
 			return 1
 		;;
 	esac
@@ -264,7 +265,7 @@ get_inline_reply() {
 			message_text="Ok"
 			description="Alright"
 			return_query=$(json_array inline article)
-			tg_method send_inline > /dev/null
+			tg_method send_inline
 		;;
 	esac
 }
@@ -272,9 +273,9 @@ get_button_reply() {
 	case $callback_message_text in
 		test)
 			text_id="$callback_data"
-			tg_method button_reply > /dev/null
+			tg_method button_reply
 			chat_id=$callback_user_id
-			tg_method send_message > /dev/null
+			tg_method send_message
 		;;
 	esac
 }
@@ -399,7 +400,7 @@ process_reply() {
 			;;
 		esac
 		source tg_method.sh
-		if [[ "$normal_message" != "" ]]; then
+		if [[ "$message" != "" ]]; then
 			get_normal_reply
 			[[ $? != 1 ]] && source custom_commands/normal_reply.sh
 		elif [[ "$inline_message" != "" ]]; then

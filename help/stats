@@ -1,9 +1,5 @@
 Usage
-  !stats <time>
-
-Time
-  today - total count of current chat messages
-  (empty) - total count of yesterday chat messages
+  !stats
 
 Description
-  sends a message displaying the total count of messages
+  sends a picture displaying a plot of the last 7 days

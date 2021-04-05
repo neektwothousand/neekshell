@@ -1,3 +1,24 @@
+case "$chat_id" in
+	-1001295527578)
+		if [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]] \
+		&& [[ "$reply_to_message" == "" ]]; then
+			to_delete_id=$message_id
+			tg_method delete_message
+			kick_id=$user_id unban_id=$user_id
+			tg_method kick_member
+			kick_message=$(jshon -Q -e result -e message_id <<< "$curl_result")
+			tg_method unban_member
+			to_delete_id=$kick_message
+			tg_method delete_message
+		else
+			get_chat_id=$(jshon -Q -e sender_chat -e id -u <<< "$reply_to_message")
+			tg_method get_chat
+			chat_username=$(jshon -Q -e result -e username -u <<< "$curl_result")
+			chat_id=917684979
+			text_id="https://t.me/$chat_username/$(jshon -Q -e forward_from_message_id -u <<< "$reply_to_message")/?comment=$message_id"
+			tg_method send_message
+		fi
+esac
 case "$normal_message" in
 	"!top "*)
 		get_reply_id self
@@ -10,7 +31,7 @@ case "$normal_message" in
 			;;
 			*)
 				text_id=$(cat help/top)
-				tg_method send_message > /dev/null
+				tg_method send_message
 				return
 			;;
 		esac
@@ -27,7 +48,7 @@ case "$normal_message" in
 			enable_markdown=true
 			parse_mode=html
 			text_id=$(sort -nr <<< "$(printf '%s\n' "${user_entry[@]}")" | head -n 10)
-			tg_method send_message > /dev/null
+			tg_method send_message
 		fi
 	;;
 	"!my "*)
@@ -41,7 +62,7 @@ case "$normal_message" in
 			;;
 			*)
 				text_id=$(cat help/my)
-				tg_method send_message > /dev/null
+				tg_method send_message
 				return
 			;;
 		esac
@@ -57,18 +78,18 @@ case "$normal_message" in
 			parse_mode=html
 			text_id=$user_entry
 		fi
-		tg_method send_message > /dev/null
+		tg_method send_message
 	;;
 	"!me"|"!me "*)
 		if [[ "$fn_args" != "" ]]; then
 			text_id="> $user_fname $fn_args"
-			tg_method send_message > /dev/null
+			tg_method send_message
 			to_delete_id=$message_id
-			tg_method delete_message > /dev/null
+			tg_method delete_message
 		else
 			get_reply_id self
 			text_id=$(cat help/me)
-			tg_method send_message > /dev/null
+			tg_method send_message
 		fi
 	;;
 	"!fortune"|"!fortune "*)
@@ -79,11 +100,11 @@ case "$normal_message" in
 		fi
 		if [[ "$text_id" != "" ]]; then
 			get_reply_id any
-			tg_method send_message > /dev/null
+			tg_method send_message
 		else
 			get_reply_id self
 			text_id=$(cat help/fortune)
-			tg_method send_message > /dev/null
+			tg_method send_message
 		fi
 	;;
 	"!json")
@@ -92,14 +113,14 @@ case "$normal_message" in
 		printf '%s' "$input" | sed -e 's/{"/{\n"/g' -e 's/,"/,\n"/g' > decode-$update_id.json
 		document_id=@decode-$update_id.json
 		get_reply_id any
-		tg_method send_document upload > /dev/null
+		tg_method send_document upload
 		rm decode-$update_id.json
 		cd "$basedir"
 	;;
 	"!ping")
 		text_id=$(printf '%s\n' "pong" ; ping -c 1 api.telegram.org | grep time= | sed 's/.*time=//')
 		get_reply_id self
-		tg_method send_message > /dev/null
+		tg_method send_message
 	;;
 	"!d "*|"!dice "*|"!d"|"!dice")
 		get_reply_id self
@@ -119,11 +140,11 @@ case "$normal_message" in
 				text_id=${result[*]}
 				markdown=("<code>" "</code>")
 				parse_mode=html
-				tg_method send_message > /dev/null
+				tg_method send_message
 			;;
 			*)
 				text_id=$(cat help/dice)
-				tg_method send_message > /dev/null
+				tg_method send_message
 			;;
 		esac
 	;;
@@ -150,7 +171,8 @@ case "$normal_message" in
 		else
 			rm $lockfile
 			get_chat_id=$gs_id
-			gs_info="$user_fname $user_lname $(tg_method get_chat | jshon -Q -e result -e bio -u)"
+			tg_method get_chat
+			gs_info="$user_fname $user_lname $(jshon -Q -e result -e bio -u <<< "$curl_result")"
 			if [[ "$(grep 'admin\|bi\|gay\|🏳️‍🌈' <<< "$gs_info")" != "" ]]; then
 				gs_perc=$(((RANDOM % 51) + 50))
 			else
@@ -170,7 +192,7 @@ case "$normal_message" in
 			touch $lockfile
 		fi
 		get_reply_id any
-		tg_method send_message > /dev/null
+		tg_method send_message
 	;;
 	"!wr "*|"!wr")
 		get_reply_id self
@@ -186,10 +208,10 @@ case "$normal_message" in
 			else
 				text_id=$(printf '%s' "$search " "not found" | sed 's/%20/ /g')
 			fi
-			tg_method send_message > /dev/null
+			tg_method send_message
 		else
 			text_id=$(cat help/wr)
-			tg_method send_message > /dev/null
+			tg_method send_message
 		fi
 	;;
 	"!reddit "*|"!reddit")
@@ -200,7 +222,7 @@ case "$normal_message" in
 			source bin/r_subreddit.sh "$subreddit" "$filter"
 		else
 			text_id=$(cat help/reddit)
-			tg_method send_message > /dev/null
+			tg_method send_message
 		fi
 	;;
 	"!insta "*|"!insta")
@@ -239,11 +261,13 @@ case "$normal_message" in
 			case "$ext" in
 				jpg)
 					photo_id=$media_id
-					ig_id=$(tg_method send_photo upload | jshon -Q -e result -e message_id -u)
+					tg_method send_photo upload
+					ig_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
 				;;
 				mp4)
 					video_id=$media_id
-					ig_id=$(tg_method send_video upload | jshon -Q -e result -e message_id -u)
+					tg_method send_video upload
+					ig_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
 				;;
 			esac
 			cd ..
@@ -252,7 +276,7 @@ case "$normal_message" in
 		else
 			text_id=$(cat help/insta)
 			get_reply_id self
-			tg_method send_message > /dev/null
+			tg_method send_message
 		fi
 	;;
 	"!jpg")
@@ -264,7 +288,7 @@ case "$normal_message" in
 			case $file_type in
 				text|"")
 					text_id="reply to a media"
-					tg_method send_message > /dev/null
+					tg_method send_message
 				;;
 				photo|document)
 					case $file_type in
@@ -292,7 +316,7 @@ case "$normal_message" in
 					magick "pic-$request_id.$ext" -resize $(bc <<< "${res[0]}/1.5")x$(bc <<< "${res[1]}/1.5") "pic-$request_id.$ext"
 					magick "pic-$request_id.$ext" -quality 6 "pic-$request_id.$ext"
 					photo_id="@pic-$request_id.$ext"
-					tg_method send_photo upload > /dev/null
+					tg_method send_photo upload
 					rm "pic-$request_id.$ext"
 				;;
 				sticker)
@@ -304,7 +328,7 @@ case "$normal_message" in
 					convert "sticker-$request_id.jpg" "sticker-$request_id.webp"
 					
 					sticker_id="@sticker-$request_id.webp"
-					tg_method send_sticker upload > /dev/null
+					tg_method send_sticker upload
 					
 					rm "sticker-$request_id.webp" \
 						"sticker-$request_id.jpg"
@@ -320,7 +344,7 @@ case "$normal_message" in
 						loading 2
 					
 					animation_id="@animation-low-$request_id.mp4"
-					tg_method send_animation upload > /dev/null
+					tg_method send_animation upload
 					
 						loading 3
 					
@@ -332,12 +356,12 @@ case "$normal_message" in
 					
 						loading 1
 					
-					ffmpeg -i video-"$request_id".mp4 -crf 50 -c:a aac -b:a 32k video-low-"$request_id".mp4
+					ffmpeg -i video-"$request_id".mp4 -crf 50 -c:a aac -b:a 2k video-low-"$request_id".mp4
 					
 						loading 2
 					
 					video_id="@video-low-$request_id.mp4"
-					tg_method send_video upload > /dev/null
+					tg_method send_video upload
 					
 						loading 3
 					
@@ -354,7 +378,7 @@ case "$normal_message" in
 						loading 2
 					
 					audio_id="@audio-low-$request_id.mp3"
-					tg_method send_audio upload > /dev/null
+					tg_method send_audio upload
 					
 						loading 3
 					
@@ -371,7 +395,7 @@ case "$normal_message" in
 						loading 2
 					
 					voice_id="@voice-low-$request_id.ogg"
-					tg_method send_voice upload > /dev/null
+					tg_method send_voice upload
 					
 						loading 3
 					
@@ -382,7 +406,7 @@ case "$normal_message" in
 		else
 			text_id=$(cat help/jpg)
 			get_reply_id self
-			tg_method send_message > /dev/null
+			tg_method send_message
 		fi
 	;;
 	"!hf")
@@ -403,7 +427,8 @@ case "$normal_message" in
 						grep "pictures.hentai" | \
 						sed "s/^/https:/")
 					caption="https://www.hentai-foundry.com$randh"
-					[[ "$(tg_method send_photo | jshon -Q -e ok)" = "true" ]] && break
+					tg_method send_photo
+					[[ "$(jshon -Q -e ok -u <<< "$curl_result")" = "true" ]] && break
 				done
 			;;
 			2)
@@ -414,7 +439,8 @@ case "$normal_message" in
 						| sed -En 's/.*content="(.*)"\s.*/\1/p')
 					caption="https://rule34.xxx/index.php?page=post&s=view&$(grep 'action="index.php?' <<< "$randh" \
 					| sed -En 's/.*(id=.*)&.*/\1/p')"
-					[[ "$(tg_method send_photo | jshon -Q -e ok)" = "true" ]] && break
+					tg_method send_photo
+					[[ "$(jshon -Q -e ok -u <<< "$curl_result")" = "true" ]] && break
 				done
 			;;
 			3)
@@ -425,7 +451,8 @@ case "$normal_message" in
 						| sed -En 's/.*content="(.*)"\s.*/\1/p')
 					caption="https://safebooru.org/index.php?page=post&s=view&$(grep '<form method="post" action="index.php?' <<< "$randh" \
 						| sed -En 's/.*(id=.*)&.*/\1/p')"
-					[[ "$(tg_method send_photo | jshon -Q -e ok)" = "true" ]] && break
+					tg_method send_photo
+					[[ "$(jshon -Q -e ok -u <<< "$curl_result")" = "true" ]] && break
 				done
 			;;
 			4)
@@ -436,7 +463,8 @@ case "$normal_message" in
 						| sed -En 's/.*content="(.*)"\s.*/\1/p')
 					caption="https://gelbooru.com/index.php?page=post&s=view&$(grep '<form method="post" action="index.php' <<< "$randh" \
 						| sed -En 's/.*(id=.*)&.*/\1/p')"
-					[[ "$(tg_method send_photo | jshon -Q -e ok)" = "true" ]] && break
+					tg_method send_photo
+					[[ "$(jshon -Q -e ok -u <<< "$curl_result")" = "true" ]] && break
 				done
 			;;
 		esac
@@ -466,12 +494,12 @@ case "$normal_message" in
 						loading 3
 						rm -- "$song_file"
 						text_id="file size exceeded"
-						tg_method send_message > /dev/null
+						tg_method send_message
 					else
 						loading 2
 						audio_id="@$song_file"
 						get_reply_id any
-						tg_method send_audio upload > /dev/null
+						tg_method send_audio upload
 						loading 3
 						rm -- "$song_file"
 					fi
@@ -479,7 +507,7 @@ case "$normal_message" in
 					loading 2
 					audio_id="@$song_file"
 					get_reply_id any
-					tg_method send_audio upload > /dev/null
+					tg_method send_audio upload
 					loading 3
 					rm -- "$song_file"
 				fi
@@ -488,7 +516,7 @@ case "$normal_message" in
 		else
 			text_id=$(cat help/deemix)
 			get_reply_id self
-			tg_method send_message > /dev/null
+			tg_method send_message
 		fi
 	;;
 	"!chat "*|"!chat"|"!start join"*)
@@ -593,7 +621,7 @@ case "$normal_message" in
 					get_reply_id self
 				;;
 			esac
-			tg_method send_message > /dev/null
+			tg_method send_message
 		fi
 	;;
 	"!tag"|"!tag "*)
@@ -617,7 +645,7 @@ case "$normal_message" in
 			markdown=("<a href=\"tg://user?id=$tag_id\">" "</a>")
 			parse_mode=html
 		fi
-		tg_method send_message > /dev/null
+		tg_method send_message
 	;;
 	"!text2img"|"!text2img "*)
 		get_reply_id self
@@ -632,11 +660,11 @@ case "$normal_message" in
 			photo_id=$(curl -s "https://api.deepai.org/api/text2img" \
 				-F "text=$text2img" \
 				-H "api-key:$api_key" | jshon -e output_url -u)
-			tg_method send_photo > /dev/null
+			tg_method send_photo
 		else
 			text_id=$(cat help/text2img)
 			get_reply_id self
-			tg_method send_message > /dev/null
+			tg_method send_message
 		fi
 	;;
 	"!owoifer"|"!owo"|"!cringe")
@@ -674,9 +702,9 @@ case "$normal_message" in
 		if [[ "$reply_to_user_id" = "$(jshon -Q -e result -e id -u < botinfo)" ]]; then
 			edit_id=$reply_to_id
 			edit_text=$text_id
-			tg_method edit_text > /dev/null
+			tg_method edit_text
 		else
-			tg_method send_message > /dev/null
+			tg_method send_message
 		fi
 	;;
 	"!sed "*|"!sed")
@@ -691,27 +719,25 @@ case "$normal_message" in
 			text_id=$(cat help/sed)
 			get_reply_id self
 		fi
-		tg_method send_message > /dev/null
+		tg_method send_message
 	;;
 	"!neofetch")
 		text_id=$(neofetch --stdout)
 		markdown=("<code>" "</code>")
 		parse_mode=html
 		get_reply_id self
-		tg_method send_message > /dev/null
+		tg_method send_message
 	;;
 	"!stats "*|"!stats")
-		case "$fn_arg" in
-			today)
-				s_time=today
-			;;
-		esac
 		source bin/stats.sh
 		get_reply_id self
-		if [[ "$text_id" == "" ]]; then
+		if [[ "$photo_id" == "" ]]; then
 			text_id="stats not found"
+			tg_method send_message
+		else
+			tg_method send_photo upload
 		fi
-		tg_method send_message > /dev/null
+		cd "$basedir"
 	;;
 	"!trad"|"!trad "*)
 		if [[ "$reply_to_text" ]]; then
@@ -724,7 +750,7 @@ case "$normal_message" in
 		if [[ "$to_trad" ]]; then
 			text_id=$(trans :it -j -b "$to_trad")
 			get_reply_id self
-			tg_method send_message > /dev/null
+			tg_method send_message
 		fi
 	;;
 	
@@ -733,14 +759,15 @@ case "$normal_message" in
 	"!flush")
 		if [[ $(is_admin) ]] && [[ "$reply_to_message" != "" ]]; then
 			text_id="flushing..."
-			flush_id=$(tg_method send_message | jshon -Q -e result -e message_id -u)
+			tg_method send_message
+			flush_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
 			for x in $(seq "$message_id" -1 "$reply_to_id"); do
 				to_delete_id=$x
-				tg_method delete_message > /dev/null &
+				tg_method delete_message &
 				sleep 0.1
 			done
 			to_delete_id=$flush_id
-			tg_method delete_message > /dev/null
+			tg_method delete_message
 		fi
 	;;
 	"!db "*)
@@ -759,13 +786,13 @@ case "$normal_message" in
 					done
 					text_id=$(printf '%s\n' "${info[@]}" | sort -nr)
 					get_reply_id any
-					tg_method send_message > /dev/null
+					tg_method send_message
 				;;
 				"get")
 					if [[ "$reply_to_user_id" != "" ]]; then
 						text_id=$(cat db/users/"$reply_to_user_id")
 						get_reply_id any
-						tg_method send_message > /dev/null
+						tg_method send_message
 					fi
 			esac
 		fi
@@ -809,7 +836,7 @@ case "$normal_message" in
 			else
 				text_id="$set_username not found"
 			fi
-			[[ "$text_id" != "" ]] && tg_method send_message > /dev/null
+			[[ "$text_id" != "" ]] && tg_method send_message
 		fi
 	;;
 	"!bin "*)
@@ -825,7 +852,7 @@ case "$normal_message" in
 			text_id="Access denied"
 		fi
 		get_reply_id reply
-		tg_method send_message > /dev/null
+		tg_method send_message
 	;;
 	"!ytdl "*|"!ytdl")
 		get_reply_id self
@@ -850,7 +877,7 @@ case "$normal_message" in
 						ffmpeg -i ytdl-$ytdl_id.mp4 -ss 05 -frames:v 1 thumb-$ytdl_id.jpg
 						video_id="@ytdl-$ytdl_id.mp4" thumb="@thumb-$ytdl_id.jpg"
 						loading 2
-						tg_method send_video upload > /dev/null
+						tg_method send_video upload
 						loading 3
 						rm "ytdl-$ytdl_id.mp4" "thumb-$ytdl_id.jpg"
 					fi
@@ -863,7 +890,7 @@ case "$normal_message" in
 			markdown=("<code>" "</code>")
 			parse_mode=html
 			text_id="Access denied"
-			tg_method send_message > /dev/null
+			tg_method send_message
 		fi
 	;;
 	"!nh "*)
@@ -887,8 +914,8 @@ case "$normal_message" in
 					done
 					mediagroup_id=$(json_array mediagroup)
 					sleep 30
-					result=$(tg_method send_mediagroup)
-					if [[ "$(jshon -Q -e ok <<< "$result")" != "true" ]]; then
+					tg_method send_mediagroup
+					if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "true" ]]; then
 						text_id=$(printf '%s\n' "$mediagroup_id" "$result")
 						tg_method send_message
 					fi
@@ -903,8 +930,8 @@ case "$normal_message" in
 						done
 						mediagroup_id=$(json_array mediagroup)
 						sleep 30
-						result=$(tg_method send_mediagroup)
-						if [[ "$(jshon -Q -e ok <<< "$result")" != "true" ]]; then
+						tg_method send_mediagroup
+						if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "true" ]]; then
 							text_id=$(printf '%s\n' "$mediagroup_id" "$result")
 							tg_method send_message
 						fi
@@ -918,8 +945,8 @@ case "$normal_message" in
 					done
 					mediagroup_id=$(json_array mediagroup)
 					sleep 30
-					result=$(tg_method send_mediagroup)
-					if [[ "$(jshon -Q -e ok <<< "$result")" != "true" ]]; then
+					tg_method send_mediagroup
+					if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "true" ]]; then
 						text_id=$(printf '%s\n' "$mediagroup_id" "$result")
 						tg_method send_message
 					fi
@@ -927,14 +954,14 @@ case "$normal_message" in
 				loading 3
 			else
 				text_id="invalid id"
-				tg_method send_message > /dev/null
+				tg_method send_message
 			fi
 			cd "$basedir"
 		else
 			markdown=("<code>" "</code>")
 			parse_mode=html
 			text_id="Access denied"
-			tg_method send_message > /dev/null
+			tg_method send_message
 		fi
 	;;
 	"!nhzip "*)
@@ -973,31 +1000,31 @@ case "$normal_message" in
 						for x in $(seq $zip_num); do
 							zip_file=$(sed -n ${x}p <<< "$zip_list")
 							document_id="@$zip_file"
-							tg_method send_document upload > /dev/null
+							tg_method send_document upload
 							rm "$zip_file"
 						done
 						loading 3
 					else
 						document_id="@$nhentai_title-$nhzip_id.zip"
 						loading 2
-						tg_method send_document upload > /dev/null
+						tg_method send_document upload
 						loading 3
 						rm "$nhentai_title-$nhzip_id.zip"
 					fi
 				else
 					text_id="too many pages (max $maxpages)"
-					tg_method send_message > /dev/null
+					tg_method send_message
 				fi
 			else
 				text_id="invalid id"
-				tg_method send_message > /dev/null
+				tg_method send_message
 			fi
 			cd "$basedir"
 		else
 			markdown=("<code>" "</code>")
 			parse_mode=html
 			text_id="Access denied"
-			tg_method send_message > /dev/null
+			tg_method send_message
 		fi
 	;;
 	"!explorer "*)
@@ -1015,13 +1042,12 @@ case "$normal_message" in
 			else
 				text_id=$(printf '%s\n' "selected directory: $selected_dir" "subdirs:" ; find "$selected_dir/" -maxdepth 1 -type d | sed "s:^./\|$selected_dir/::" | sed -e 1d | sed -e 's/^/-> /' -e 's|$|/|')
 			fi
-			tg_method send_message > /dev/null
 		else
 			markdown=("<code>" "</code>")
 			parse_mode=html
 			text_id="Access denied"
 		fi
-		tg_method send_message > /dev/null
+		tg_method send_message
 	;;
 	"!broadcast "*|"!broadcast")
 		if [[ $(is_admin) ]]; then
@@ -1065,7 +1091,8 @@ case "$normal_message" in
 				can_send_polls="false"
 				can_add_web_page_previews="false"
 				
-				set_chat_permissions=$(tg_method set_chat_permissions | jshon -Q -e ok -u)
+				tg_method set_chat_permissions
+				set_chat_permissions=$(jshon -Q -e ok -u <<< "$curl_result")
 				
 				if [[ "$set_chat_permissions" = "true" ]]; then
 					text_id="no-media mode activated, send again to deactivate"
@@ -1079,7 +1106,8 @@ case "$normal_message" in
 				can_send_polls="true"
 				can_add_web_page_previews="true"
 				
-				set_chat_permissions=$(tg_method set_chat_permissions | jshon -Q -e ok -u)
+				tg_method set_chat_permissions
+				set_chat_permissions=$(jshon -Q -e ok -u <<< "$curl_result")
 				
 				if [[ "$set_chat_permissions" = "true" ]]; then
 					text_id="no-media mode deactivated"
@@ -1087,12 +1115,12 @@ case "$normal_message" in
 					text_id="error: bot is not admin"
 				fi
 			fi
-			tg_method send_message > /dev/null
+			tg_method send_message
 		else
 			markdown=("<code>" "</code>")
 			parse_mode=html
 			text_id="Access denied"
-			tg_method send_message > /dev/null
+			tg_method send_message
 		fi
 	;;
 	"!silence")
@@ -1106,7 +1134,8 @@ case "$normal_message" in
 				can_send_polls="false"
 				can_add_web_page_previews="false"
 				
-				set_chat_permissions=$(tg_method set_chat_permissions | jshon -Q -e ok -u)
+				tg_method set_chat_permissions
+				set_chat_permissions=$(jshon -Q -e ok -u <<< "$curl_result")
 				
 				if [[ "$set_chat_permissions" = "true" ]]; then
 					text_id="read-only mode activated, send again to deactivate"
@@ -1120,7 +1149,8 @@ case "$normal_message" in
 				can_send_polls="true"
 				can_add_web_page_previews="true"
 				
-				set_chat_permissions=$(tg_method set_chat_permissions | jshon -Q -e ok -u)
+				tg_method set_chat_permissions
+				set_chat_permissions=$(jshon -Q -e ok -u <<< "$curl_result")
 				
 				if [[ "$set_chat_permissions" = "true" ]]; then
 					text_id="read-only mode deactivated"
@@ -1128,18 +1158,18 @@ case "$normal_message" in
 					text_id="error: bot is not admin"
 				fi
 			fi
-			tg_method send_message > /dev/null
+			tg_method send_message
 		else
 			markdown=("<code>" "</code>")
 			parse_mode=html
 			text_id="Access denied"
-			tg_method send_message > /dev/null
+			tg_method send_message
 		fi
 	;;
 	"!del"|"!delete")
 		if [[ $(is_admin) ]]; then
 			to_delete_id=$reply_to_id
-			tg_method delete_message > /dev/null
+			tg_method delete_message
 		fi
 	;;
 	"!loading "*)
@@ -1150,7 +1180,8 @@ case "$normal_message" in
 					enable_markdown=true
 					parse_mode=html
 					text_id="<code>.. owo  owo ..</code>"
-					processing_id=$(tg_method send_message | jshon -Q -e result -e message_id -u)
+					tg_method send_message
+					processing_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
 					printf '%s' "$processing_id" > loading-$user_id-$chat_id
 					l_s=(" " "o" "w" "o" " " " " "o" "w" "o" " ")
 					[[ "$processing_id" != "" ]] && load_status=true
@@ -1172,11 +1203,13 @@ case "$normal_message" in
 								fi
 							done
 							sleep 3
-							load_status=$(loading value "<code>..${load_text}..</code>" | jshon -Q -e ok)
+							loading value "<code>..${load_text}..</code>"
+							load_status=$(jshon -Q -e ok -u <<< "$curl_result")
 							unset load_text
 						done
 						sleep 3
-						load_status=$(loading value "<code>.. owo  owo ..</code>" | jshon -Q -e ok)
+						loading value "<code>.. owo  owo ..</code>"
+						load_status=$(jshon -Q -e ok -u <<< "$curl_result")
 					done
 				;;
 				stop)
@@ -1189,7 +1222,8 @@ case "$normal_message" in
 	;;
 	"!warn "*|"!warn"|"!ban "*|"!ban"|"!kick "*|"!kick")
 		get_member_id=$user_id
-		if [[ "$(tg_method get_chat_member | jshon -Q -e result -e status -u | grep -w "creator\|administrator")" != "" ]]; then
+		tg_method get_chat_member
+		if [[ "$(jshon -Q -e result -e status -u <<< "$curl_result" | grep -w "creator\|administrator")" != "" ]]; then
 			if [[ "$reply_to_user_id" != "" ]]; then
 				if [[ "$reply_to_user_id" == "$user_id" ]]; then
 					return # if reply is self return
@@ -1214,11 +1248,13 @@ case "$normal_message" in
 				restrict_fname=$reply_to_user_fname
 			fi
 			get_member_id=$restrict_id
-			if [[ "$(tg_method get_chat_member | jshon -Q -e ok -u)" == "false" ]]; then
+			tg_method get_chat_member
+			if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" == "false" ]]; then
 				return # if cannot find user in chat return
 			fi
 			get_member_id=$(jshon -Q -e result -e id -u < botinfo)
-			if [[ "$(tg_method get_chat_member | jshon -Q -e result -e status -u | grep -w "creator\|administrator")" != "" ]]; then
+			tg_method get_chat_member
+			if [[ "$(jshon -Q -e result -e status -u <<< "$curl_result" | grep -w "creator\|administrator")" != "" ]]; then
 				case "$normal_message" in
 					"!warn "*|"!warn")
 						warns=$(grep "^warns-$chat_id:" db/users/"$restrict_id" | sed 's/.*: //')
@@ -1237,9 +1273,9 @@ case "$normal_message" in
 							can_send_other_messages="false"
 							can_send_polls="false"
 							can_add_web_page_previews="false"
-							result=$(tg_method restrict_member | jshon -Q -e ok)
+							tg_method restrict_member
 						fi
-						if [[ "$result" != "false" ]]; then
+						if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "false" ]]; then
 							text_id="$restrict_fname warned ($warns out of 3)"
 						else
 							text_id="error"
@@ -1247,11 +1283,11 @@ case "$normal_message" in
 					;;
 					"!kick "*|"!kick")
 						kick_id=$restrict_id
-						result=$(tg_method kick_member | jshon -Q -e ok)
-						if [[ "$result" != "false" ]]; then
+						tg_method kick_member
+						if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "false" ]]; then
 							unban_id=$kick_id
-							result=$(tg_method unban_member | jshon -Q -e ok)
-							if [[ "$result" != "false" ]]; then
+							tg_method unban_member
+							if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "false" ]]; then
 								text_id="$restrict_fname kicked"
 							else
 								text_id="error"
@@ -1262,8 +1298,8 @@ case "$normal_message" in
 					;;
 					"!ban "*|"!ban")
 						kick_id=$restrict_id
-						result=$(tg_method kick_member | jshon -Q -e ok)
-						if [[ "$result" != "false" ]]; then
+						tg_method kick_member
+						if [[ "$(jshon -Q -e ok <<< "$curl_result")" != "false" ]]; then
 							text_id="$restrict_fname banned"
 						else
 							text_id="error"
@@ -1274,20 +1310,20 @@ case "$normal_message" in
 				text_id="bot is not admin"
 			fi
 			get_reply_id reply
-			tg_method send_message > /dev/null
+			tg_method send_message
 		fi
 	;;
 	"!exit")
 		get_reply_id self
 		if [[ $(is_admin) ]]; then
 			text_id="goodbye"
-			tg_method send_message > /dev/null
-			tg_method leave_chat > /dev/null
+			tg_method send_message
+			tg_method leave_chat
 		else
 			markdown=("<code>" "</code>")
 			parse_mode=html
 			text_id="Access denied"
-			tg_method send_message > /dev/null
+			tg_method send_message
 		fi
 	;;
 	
@@ -1341,16 +1377,16 @@ case "$normal_message" in
 					case "$rep_sign" in
 						"+")
 							text_id="respect + to $rep_fname ($newrep)"
-							tg_method send_message > /dev/null
+							tg_method send_message
 						;;
 						"-")
 							text_id="respect - to $rep_fname ($newrep)"
-							tg_method send_message > /dev/null
+							tg_method send_message
 					esac
 				else
 					voice_id="https://archneek.zapto.org/webaudio/respect.ogg"
 					caption="respect + to $rep_fname ($newrep)"
-					tg_method send_voice > /dev/null
+					tg_method send_voice
 				fi
 				# create lock+
 				[[ ! -e $lockfile ]] && touch -- "$lockfile"
@@ -1375,7 +1411,7 @@ case "$normal_message" in
 					text_id=$(printf '%s\n' "$quote" "" "$normal_message")
 					for c in $(seq "$bc_users_num"); do
 						chat_id=$(sed -n ${c}p <<< "$bc_users")
-						tg_method send_message > /dev/null &
+						tg_method send_message &
 					done
 					wait
 				else
@@ -1383,7 +1419,7 @@ case "$normal_message" in
 					copy_id=$message_id
 					for c in $(seq "$bc_users_num"); do
 						chat_id=$(sed -n ${c}p <<< "$bc_users")
-						tg_method copy_message > /dev/null &
+						tg_method copy_message &
 					done
 					wait
 				fi
