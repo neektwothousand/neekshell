@@ -207,10 +207,8 @@ tg_method() {
 				$curl_f "user_id=$kick_id"
 		;;
 	esac)
-	if [[ "$(jshon -Q -e parameters -e retry_after -u <<< "$curl_result")" != "" ]] \
-	|| [[ "$(jshon -Q -e description -u <<< "$curl_result")" == "Bad Request: group send failed" ]]; then
+	if [[ "$(jshon -Q -e parameters -e retry_after -u <<< "$curl_result")" != "" ]]; then
 		retry_after=$(jshon -Q -e parameters -e retry_after -u <<< "$curl_result")
-		[[ "$retry_after" == "" ]] && retry_after=60
 		sleep "$retry_after"
 		tg_method $@
 	fi

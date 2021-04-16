@@ -1,6 +1,6 @@
 # neekshell-telegrambot
 
-This bot needs a web server to set a webhook pointing on webhook.php, to execute the script on request.<br />Example with current code: [@neekshellbot](https://t.me/neekshellbot)
+Using nginx proxy pass on port 14112 to execute the script on request.<br />Example with current code: [@neekshellbot](https://t.me/neekshellbot)
 
 Utilities used:
   - GNU sed, and various coreutils<br />

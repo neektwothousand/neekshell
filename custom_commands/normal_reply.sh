@@ -1,5 +1,5 @@
 case "$chat_id" in
-	-1001295527578)
+	-1001295527578) # NOVA Comments
 		if [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]] \
 		&& [[ "$reply_to_message" == "" ]]; then
 			to_delete_id=$message_id
@@ -10,11 +10,12 @@ case "$chat_id" in
 			tg_method unban_member
 			to_delete_id=$kick_message
 			tg_method delete_message
-		else
+		elif [[ "$reply_to_message" != "" ]] \
+		&& [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]]; then
 			get_chat_id=$(jshon -Q -e sender_chat -e id -u <<< "$reply_to_message")
 			tg_method get_chat
 			chat_username=$(jshon -Q -e result -e username -u <<< "$curl_result")
-			chat_id=917684979
+			chat_id="-1001312198683" # Custom N
 			text_id="https://t.me/$chat_username/$(jshon -Q -e forward_from_message_id -u <<< "$reply_to_message")/?comment=$message_id"
 			tg_method send_message
 		fi
@@ -38,12 +39,12 @@ case "$normal_message" in
 		list_top=$(grep -r "^$top_info: " db/users/ | cut -d : -f 1)
 		if [[ "$list_top" != "" ]]; then
 			for x in $(seq $(wc -l <<< "$list_top")); do
-				user_file[$x]=$(sed -n ${x}p <<< "$list_top")
-				user_info[$x]=$(grep "^fname\|^lname\|^$top_info" "${user_file[$x]}")
-				user_top[$x]=$(grep "^$top_info" <<< "${user_info[$x]}" | cut -f 2- -d ' ')
-				user_fname[$x]=$(grep '^fname' <<< "${user_info[$x]}" | cut -f 2- -d ' ' | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
-				user_lname[$x]=$(grep '^lname' <<< "${user_info[$x]}" | cut -f 2- -d ' ' | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
-				user_entry[$x]="${user_top[$x]}<b> ☆ ${user_fname[$x]} ${user_lname[$x]}</b>"
+				user_file=$(sed -n ${x}p <<< "$list_top")
+				user_info=$(grep "^fname\|^lname\|^$top_info" "$user_file")
+				user_top=$(grep "^$top_info" <<< "$user_info" | cut -f 2- -d ' ')
+				user_fname=$(grep '^fname' <<< "$user_info" | cut -f 2- -d ' ' | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
+				user_lname=$(grep '^lname' <<< "$user_info" | cut -f 2- -d ' ' | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
+				user_entry[$x]="$user_top<b> ☆ $user_fname $user_lname</b>"
 			done
 			enable_markdown=true
 			parse_mode=html
@@ -839,12 +840,18 @@ case "$normal_message" in
 			[[ "$text_id" != "" ]] && tg_method send_message
 		fi
 	;;
-	"!bin "*)
+	"!bin "*|"!archbin "*)
 		markdown=("<code>" "</code>")
 		parse_mode=html
 		if [[ $(grep "160551211\|917684979" <<< "$user_id") ]]; then
-			command=$fn_args
-			text_id=$(mksh -c "$command" 2>&1)
+			case "$normal_message" in
+				"!bin "*)
+					text_id=$(mksh -c "$fn_args" 2>&1)
+				;;
+				"!archbin "*)
+					text_id=$(ssh neek@192.168.1.35 -p 24 "$fn_args")
+				;;
+			esac
 			if [[ "$text_id" = "" ]]; then
 				text_id="[no output]"
 			fi

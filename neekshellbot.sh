@@ -236,7 +236,9 @@ get_normal_reply() {
 		;;
 		"!help"|"!help "*)
 			if [[ "$fn_args" = "" ]]; then
-				text_id=$(printf '%s\n' "$(cat help/* | grep -A 1 '^Usage' | grep -v '^Usage\|--' | sed 's/^  //' | sort)" "" "send !help <command> for details")
+				set +f
+				text_id=$(printf '%s\n' "$(cat help/* | grep -A 1 '^Usage' | grep -v '^Usage\|--' | sed 's/^  //' | sort)" "" 'send !help <command> for details')
+				set -f
 			else
 				text_id=$(cat help/"$fn_args")
 				[[ "$text_id" = "" ]] && text_id="command not found"
