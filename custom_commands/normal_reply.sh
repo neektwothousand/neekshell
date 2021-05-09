@@ -1,5 +1,5 @@
 case "$chat_id" in
-	-1001295527578) # NOVA Comments
+	-1001295527578|-1001402125530) # NOVA Comments
 		if [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]] \
 		&& [[ "$reply_to_message" == "" ]]; then
 			to_delete_id=$message_id
@@ -11,12 +11,11 @@ case "$chat_id" in
 			to_delete_id=$kick_message
 			tg_method delete_message
 		elif [[ "$reply_to_message" != "" ]] \
-		&& [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]]; then
-			get_chat_id=$(jshon -Q -e sender_chat -e id -u <<< "$reply_to_message")
-			tg_method get_chat
-			chat_username=$(jshon -Q -e result -e username -u <<< "$curl_result")
-			chat_id="-1001312198683" # Custom N
-			text_id="https://t.me/$chat_username/$(jshon -Q -e forward_from_message_id -u <<< "$reply_to_message")/?comment=$message_id"
+		&& [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]] \
+		&& [[ "$user_id" != "160551211" ]] \
+		&& [[ "$user_id" != "917684979" ]]; then
+			text_id="https://t.me/c/$(tail -c +5 <<< "$chat_id")/$(jshon -Q -e message_id -u <<< "$reply_to_message")/?comment=$message_id"
+			chat_id="-1001312198683"
 			tg_method send_message
 		fi
 esac
@@ -25,7 +24,7 @@ case "$normal_message" in
 		get_reply_id self
 		case "$fn_args" in
 			+|rep)
-				top_info="rep"
+				top_info="totalrep"
 			;;
 			gs|gayscale)
 				top_info="gs"
@@ -36,7 +35,7 @@ case "$normal_message" in
 				return
 			;;
 		esac
-		list_top=$(grep -r "^$top_info: " db/users/ | cut -d : -f 1)
+		list_top=$(grep -r "^$top_info" db/users/ | cut -d : -f 1)
 		if [[ "$list_top" != "" ]]; then
 			for x in $(seq $(wc -l <<< "$list_top")); do
 				user_file=$(sed -n ${x}p <<< "$list_top")
@@ -56,7 +55,7 @@ case "$normal_message" in
 		get_reply_id self
 		case "$fn_args" in
 			+|rep)
-				top_info="rep"
+				top_info="totalrep"
 			;;
 			gs|gayscale)
 				top_info="gs"
@@ -68,18 +67,26 @@ case "$normal_message" in
 			;;
 		esac
 		user_info=$(grep "^fname\|^lname\|^$top_info" "$file_user")
+		if [[ "$top_info" == "totalrep" ]]; then
+			p_rep_list=$(grep "^rep" "$file_user")
+			for x in $(seq $(wc -l <<< "$p_rep_list")); do
+				p_rep_fname=$(grep '^fname' db/users/"$(sed -n ${x}p <<< "$p_rep_list" | sed -e "s/^rep-//" -e "s/:.*//")" \
+					| cut -f 2- -d ' ' | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
+				p_rep=$(sed -n ${x}p <<< "$p_rep_list" | sed "s/^.*: //")
+				p_user_entry[$x]="$p_rep from $p_rep_fname"
+			done
+		fi
 		user_top=$(grep "^$top_info" <<< "$user_info" | cut -f 2- -d ' ')
-		user_fname=$(grep '^fname' <<< "$user_info" | cut -f 2- -d ' ' | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
-		user_lname=$(grep '^lname' <<< "$user_info" | cut -f 2- -d ' ' | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
-		user_entry="$user_top<b> ☆ $user_fname $user_lname</b>"
-		if [[ "$user_top" = "" ]]; then
-			return
-		else
+		if [[ "$user_top" != "" ]]; then
 			enable_markdown=true
 			parse_mode=html
-			text_id=$user_entry
+			user_fname=$(grep '^fname' <<< "$user_info" | cut -f 2- -d ' ' | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
+			user_lname=$(grep '^lname' <<< "$user_info" | cut -f 2- -d ' ' | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
+			user_entry="$user_top<b> ☆ $user_fname $user_lname</b>"
+			p_user_top=$(printf '%s\n' "${p_user_entry[@]}" | sort -n | head -n 10)
+			text_id=$(printf '%s\n' "$user_entry" "$p_user_top")
+			tg_method send_message
 		fi
-		tg_method send_message
 	;;
 	"!me"|"!me "*)
 		if [[ "$fn_args" != "" ]]; then
@@ -287,9 +294,11 @@ case "$normal_message" in
 			get_reply_id reply
 			get_file_type reply
 			case $file_type in
-				text|"")
-					text_id="reply to a media"
+				text)
+					set -x
+					text_id=$(sed -E 's/( )(.)(.)/\1\3\2/g' <<< "$reply_to_text" | sed -E 's/(.)(.)( )/\2\1\3/g')
 					tg_method send_message
+					set +x
 				;;
 				photo|document)
 					case $file_type in
@@ -302,23 +311,42 @@ case "$normal_message" in
 					esac
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
 					ext=$(sed 's/.*\.//' <<< "$file_path")
-					case "$ext" in
-						png)
-							wget -q -O "pic-$request_id.$ext" "https://api.telegram.org/file/bot$TOKEN/$file_path"
-							convert "pic-$request_id.$ext" "pic-$request_id.jpg"
-							rm "pic-$request_id.$ext"
-							ext=jpg
-						;;
-						jpg|jpeg)
-							wget -q -O "pic-$request_id.$ext" "https://api.telegram.org/file/bot$TOKEN/$file_path"
-						;;
-					esac
-					res=($(ffprobe -v error -show_streams "pic-$request_id.$ext" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
-					magick "pic-$request_id.$ext" -resize $(bc <<< "${res[0]}/1.5")x$(bc <<< "${res[1]}/1.5") "pic-$request_id.$ext"
-					magick "pic-$request_id.$ext" -quality 6 "pic-$request_id.$ext"
-					photo_id="@pic-$request_id.$ext"
-					tg_method send_photo upload
-					rm "pic-$request_id.$ext"
+					if [[ "$(grep "png\|jpg\|jpeg" <<< "$ext")" != "" ]]; then
+						case "$ext" in
+							png)
+								wget -q -O "pic-$request_id.$ext" "https://api.telegram.org/file/bot$TOKEN/$file_path"
+								convert "pic-$request_id.$ext" "pic-$request_id.jpg"
+								rm "pic-$request_id.$ext"
+								ext=jpg
+							;;
+							jpg|jpeg)
+								wget -q -O "pic-$request_id.$ext" "https://api.telegram.org/file/bot$TOKEN/$file_path"
+							;;
+						esac
+						res=($(ffprobe -v error -show_streams "pic-$request_id.$ext" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
+						magick "pic-$request_id.$ext" -resize $(bc <<< "${res[0]}/1.5")x$(bc <<< "${res[1]}/1.5") "pic-$request_id.$ext"
+						magick "pic-$request_id.$ext" -quality 6 "pic-$request_id.$ext"
+						photo_id="@pic-$request_id.$ext"
+						tg_method send_photo upload
+						rm "pic-$request_id.$ext"
+					elif [[ "$(grep "wav\|mp3\|ogg" <<< "$ext")" != "" ]]; then
+						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$document_id" | jshon -Q -e result -e file_path -u)
+						ext=$(sed 's/.*\.//' <<< "$file_path")
+						wget -O audio-"$request_id".$ext "https://api.telegram.org/file/bot$TOKEN/$file_path"
+						
+							loading 1
+						
+						ffmpeg -i audio-"$request_id".$ext -vn -acodec libmp3lame -b:a 6k audio-low-"$request_id".mp3
+						
+							loading 2
+						
+						audio_id="@audio-low-$request_id.mp3"
+						tg_method send_audio upload
+						
+							loading 3
+						
+						rm audio-"$request_id".$ext audio-low-"$request_id".mp3
+					fi
 				;;
 				sticker)
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$sticker_id" | jshon -Q -e result -e file_path -u)
@@ -357,7 +385,7 @@ case "$normal_message" in
 					
 						loading 1
 					
-					ffmpeg -i video-"$request_id".mp4 -crf 50 -c:a aac -b:a 2k video-low-"$request_id".mp4
+					ffmpeg -i video-"$request_id".mp4 -crf 50 -c:a aac -b:a 16k video-low-"$request_id".mp4
 					
 						loading 2
 					
@@ -370,11 +398,12 @@ case "$normal_message" in
 				;;
 				audio)
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$audio_id" | jshon -Q -e result -e file_path -u)
-					wget -O audio-"$request_id".mp3 "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					ext=$(sed 's/.*\.//' <<< "$file_path")
+					wget -O audio-"$request_id".$ext "https://api.telegram.org/file/bot$TOKEN/$file_path"
 					
 						loading 1
 					
-					ffmpeg -i audio-"$request_id".mp3 -vn -acodec libmp3lame -b:a 6k audio-low-"$request_id".mp3
+					ffmpeg -i audio-"$request_id".$ext -vn -acodec libmp3lame -b:a 6k audio-low-"$request_id".mp3
 					
 						loading 2
 					
@@ -383,7 +412,7 @@ case "$normal_message" in
 					
 						loading 3
 					
-					rm audio-"$request_id".mp3 audio-low-"$request_id".mp3
+					rm audio-"$request_id".$ext audio-low-"$request_id".mp3
 				;;
 				voice)
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$voice_id" | jshon -Q -e result -e file_path -u)
@@ -753,6 +782,15 @@ case "$normal_message" in
 			get_reply_id self
 			tg_method send_message
 		fi
+	;;
+	"!tuxi "*)
+		text_id=$(PATH=~/go/bin:~/.local/bin:$PATH tuxi -q -r -- "$fn_args")
+# 		if [[ $? != 0 ]]; then
+# 			query=$(sed -n 's/> did you mean "\(.*\)".*/\1/p' <<< "$text_id")
+# 			text_id=$(PATH=~/go/bin:~/.local/bin:$PATH tuxi -r -- "$query")
+# 		fi
+		get_reply_id self
+		tg_method send_message
 	;;
 	
 	## administrative commands
@@ -1337,9 +1375,10 @@ case "$normal_message" in
 	## no prefix
 	
 	"respect+"|"respect+ "*|"+"|"-"|"+"[0-9]*|"-"[0-9]*|"+ "*|"- "*|"+"[0-9]*" "*|"-"[0-9]*" "*)
+		get_reply_id self
 		if [[ "${fn_arg[0]}" != "" ]]; then
-			if [[ "${fn_arg[0]}" != [0-9]* ]]; then
-				rep_id=$(grep '^id:' $(grep -ri -- "$(sed 's/@//' <<< "${fn_arg[0]}")" db/users/ | cut -d : -f 1) | head -n 1 | sed 's/.*id: //')
+			if [[ "$(grep -o "[^0-9]*" <<< "${fn_arg[0]}")" != "" ]]; then
+				rep_id=$(grep '^id:' $(grep -rwi -- "$(sed 's/@//' <<< "${fn_arg[0]}")" db/users/ | cut -d : -f 1) | head -n 1 | sed 's/.*id: //')
 			else
 				if [[ -e db/users/"${fn_arg[0]}" ]]; then
 					rep_id=${fn_arg[0]}
@@ -1365,21 +1404,31 @@ case "$normal_message" in
 				rep_fname=$(grep -w -- "^fname" db/users/"$rep_id" | sed 's/.*fname: //')
 				rep_sign=$(grep -o "^." <<< "$(sed 's/^respect//' <<< "$normal_message")")
 				rep_n=$(cut -f 1 -d ' ' <<< "$normal_message" | grep -o "[0-9]*")
-				prevrep=$(grep "^rep" db/users/"$rep_id" | sed 's/rep: //')
+				prevrep=$(grep "^totalrep" db/users/"$rep_id" | sed 's/^totalrep: //')
 				if [[ "$prevrep" = "" ]]; then
-					printf '%s\n' "rep: 0" >> db/users/"$rep_id"
+					printf '%s\n' "totalrep: 0" >> db/users/"$rep_id"
 					prevrep=0
 				fi
-				reply_id=$reply_to_id
-				if [[ "$rep_n" = "" ]]; then
-					sed -i "s/rep: .*/rep: $(bc <<< "$prevrep $rep_sign 1")/" db/users/"$rep_id"
+				if [[ "$rep_n" == "" ]]; then
+					sed -i "s/^totalrep: .*/totalrep: $(bc <<< "$prevrep $rep_sign 1")/" db/users/"$rep_id"
 				elif [[ $(is_admin) ]]; then
-					[[ $rep_n = [0-9]* ]] || return
-					sed -i "s/rep: .*/rep: $(bc <<< "$prevrep $rep_sign $rep_n")/" db/users/"$rep_id"
+					sed -i "s/^totalrep: .*/totalrep: $(bc <<< "$prevrep $rep_sign $rep_n")/" db/users/"$rep_id"
 				else
 					return
 				fi
-				newrep=$(grep "^rep:" db/users/"$rep_id" | sed 's/rep: //')
+				newrep=$(grep "^totalrep:" db/users/"$rep_id" | sed 's/^totalrep: //')
+				prevrep_user=$(sed -n "s/^rep-$user_id: //p" db/users/"$rep_id")
+				if [[ "$prevrep_user" = "" ]]; then
+					printf '%s\n' "rep-$user_id: 0" >> db/users/"$rep_id"
+					prevrep_user=0
+				fi
+				if [[ "$rep_n" == "" ]]; then
+					sed -i "s/^rep-$user_id: .*/rep-$user_id: $(bc <<< "$prevrep_user $rep_sign 1")/" db/users/"$rep_id"
+				elif [[ $(is_admin) ]]; then
+					sed -i "s/^rep-$user_id: .*/rep-$user_id: $(bc <<< "$prevrep_user $rep_sign $rep_n")/" db/users/"$rep_id"
+				else
+					return
+				fi
 				if [[ "$(grep respect <<< "$normal_message")" = "" ]]; then
 					case "$rep_sign" in
 						"+")
@@ -1432,5 +1481,12 @@ case "$normal_message" in
 				fi
 			fi
 		fi
+	;;
+esac
+case "$file_type" in
+	"new_members")
+		voice_id="https://archneek.zapto.org/webaudio/fanfare.ogg"
+		get_reply_id self
+		tg_method send_voice
 	;;
 esac

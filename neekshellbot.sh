@@ -1,6 +1,5 @@
 #!/bin/mksh
 set -af
-LC_ALL=C
 START_TIME=$(bc <<< "$(date +%s%N) / 1000000")
 PS4="[$(date "+%F %H:%M:%S")] "
 exec 1>>"log.log" 2>&1
@@ -21,10 +20,10 @@ update_db() {
 				sed -i "s/^tag: .*/tag: $user_tag/" "$file_user"
 			fi
 			if [[ "fname: $user_fname" != "$(grep -- "^fname" "$file_user")" ]]; then
-				sed -i "s/^fname: .*/fname: $user_fname/" "$file_user"
+				sed -i "s/^fname: .*/fname: $(sed 's|/|\\/|'<<< "$user_fname")/" "$file_user"
 			fi
 			if [[ "lname: $user_lname" != "$(grep -- "^lname" "$file_user")" ]]; then
-				sed -i "s/^lname: .*/lname: $user_lname/" "$file_user"
+				sed -i "s/^lname: .*/lname: $(sed 's|/|\\/|'<<< "$user_lname")/" "$file_user"
 			fi
 		fi
 	fi
@@ -224,6 +223,9 @@ get_file_type() {
 	elif [[ "$(jshon -Q -e document -e file_id -u <<< "$message")" != "" ]]; then
 		document_id=$(jshon -Q -e document -e file_id -u <<< "$message")
 		file_type="document"
+	elif [[ "$(jshon -Q -e new_chat_members <<< "$message")" != "" ]]; then
+		document_id=$(jshon -Q -e new_chat_members <<< "$message")
+		file_type="new_members"
 	fi
 }
 get_normal_reply() {
