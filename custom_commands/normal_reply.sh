@@ -1,5 +1,5 @@
 case "$chat_id" in
-	-1001295527578|-1001402125530) # NOVA Comments
+	-1001295527578|-1001402125530)
 		if [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]] \
 		&& [[ "$reply_to_message" == "" ]]; then
 			to_delete_id=$message_id
@@ -18,6 +18,28 @@ case "$chat_id" in
 			chat_id="-1001312198683"
 			tg_method send_message
 		fi
+	;;
+	-1001332912452)
+		if [[ "$normal_message" != "" ]]; then
+			message_link="https://t.me/c/$(tail -c +5 <<< "$chat_id")/$message_id/"
+			text_id="Y-Hell: $message_link"
+			o_chat_id=$chat_id
+			chat_id="-1001067362020"
+			tg_method send_message
+			chat_id=$o_chat_id
+		fi
+	;;
+	-1001497062361)
+		case "$normal_message" in
+			"!rules"|"!regole"|"!lvx"|"!dvxtime"|"!dvxdocet"|"!dvxsofia")
+				parse_mode=html
+				markdown=("<a href=\"https://t.me/c/1497062361/38916\">" "</a>")
+				text_id="Allora praticamente Sofia disse:"
+				get_reply_id self
+				tg_method send_message
+			;;
+		esac
+	;;
 esac
 case "$normal_message" in
 	"!top "*)
@@ -83,7 +105,7 @@ case "$normal_message" in
 			user_fname=$(grep '^fname' <<< "$user_info" | cut -f 2- -d ' ' | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
 			user_lname=$(grep '^lname' <<< "$user_info" | cut -f 2- -d ' ' | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
 			user_entry="$user_top<b> ☆ $user_fname $user_lname</b>"
-			p_user_top=$(printf '%s\n' "${p_user_entry[@]}" | sort -n | head -n 10)
+			p_user_top=$(printf '%s\n' "${p_user_entry[@]}" | sort -nr | head -n 10)
 			text_id=$(printf '%s\n' "$user_entry" "$p_user_top")
 			tg_method send_message
 		fi

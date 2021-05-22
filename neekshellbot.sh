@@ -236,11 +236,17 @@ get_normal_reply() {
 			tg_method send_message
 			return 1
 		;;
-		"!help"|"!help "*)
-			if [[ "$fn_args" = "" ]]; then
-				set +f
-				text_id=$(printf '%s\n' "$(cat help/* | grep -A 1 '^Usage' | grep -v '^Usage\|--' | sed 's/^  //' | sort)" "" 'send !help <command> for details')
-				set -f
+		"!start help"|"!help")
+			if [[ "$fn_args" == "help" ]] || [[ "$fn_args" == "" ]]; then
+				if [[ "$type" == "private" ]]; then
+					set +f
+					text_id=$(printf '%s\n' "$(cat help/* | grep -A 1 '^Usage' | grep -v '^Usage\|--' | sed 's/^  //' | sort)" "" 'send !help <command> for details')
+					set -f
+				else
+					parse_mode=html
+					markdown=('<a href="http://t.me/neekshellbot?start=help">' '</a>')
+					text_id="command list"
+				fi
 			else
 				text_id=$(cat help/"$fn_args")
 				[[ "$text_id" = "" ]] && text_id="command not found"
