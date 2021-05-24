@@ -1,3 +1,8 @@
+if [[ "$(grep "^chan_unpin" "db/chats/$chat_id")" ]]; then
+	if [[ "$(jshon -Q -e from -e id -u <<< "$message")" == "777000" ]]; then
+		curl -s "$TELEAPI/unpinChatMessage" --form-string "message_id=$message_id" --form-string "chat_id=$chat_id"
+	fi
+fi
 case "$chat_id" in
 	-1001295527578|-1001402125530)
 		if [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]] \
@@ -1378,6 +1383,22 @@ case "$normal_message" in
 			fi
 			get_reply_id reply
 			tg_method send_message
+		fi
+	;;
+	"!autounpin")
+		get_member_id=$user_id
+		tg_method get_chat_member
+		if [[ "$(jshon -Q -e result -e status -u <<< "$curl_result" | grep -w "creator\|administrator")" != "" ]]; then
+			get_reply_id self
+			if [[ "$(grep "^chan_unpin" "db/chats/$chat_id")" ]]; then
+				sed -i '/^chan_unpin/d' "db/chats/$chat_id"
+				text_id="autounpin disabled"
+				tg_method send_message
+			else
+				printf '%s\n' "chan_unpin" >> "db/chats/$chat_id"
+				text_id="autounpin enabled"
+				tg_method send_message
+			fi
 		fi
 	;;
 	"!exit")
