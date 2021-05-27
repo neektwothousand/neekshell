@@ -4,7 +4,7 @@ START_TIME=$(bc <<< "$(date +%s%N) / 1000000")
 PS4="[$(date "+%F %H:%M:%S")] "
 exec 1>>"log.log" 2>&1
 TOKEN=$(cat ./token)
-TELEAPI="https://api.telegram.org/bot${TOKEN}"
+TELEAPI="http://192.168.1.15:8081/bot${TOKEN}"
 update_db() {
 	if [[ "$user_id" != "" ]]; then
 		[[ ! -d db/users/ ]] && mkdir -p db/users/
@@ -357,7 +357,7 @@ process_reply() {
 		im_arg=$(cut -f 2- -d ' ' <<< "$inline_message")
 		user_id=$inline_user_id user_fname=$inline_fname
 	fi
-	if [[ $(grep -w -- "^$user_id\|^$inline_user_id\|^$callback_user_id" banned) ]]; then
+	if [[ $(grep -w -- "^$user_id\|^$inline_user_id\|^$callback_user_id" banned 2>/dev/null) ]]; then
 		user_fname="banned"
 		return
 	else

@@ -1,5 +1,5 @@
 if [[ "$(grep "^chan_unpin" "db/chats/$chat_id")" ]]; then
-	if [[ "$(jshon -Q -e from -e id -u <<< "$message")" == "777000" ]]; then
+	if [[ "$(jshon -Q -e sender_chat -e type -u <<< "$message")" == "channel" ]]; then
 		curl -s "$TELEAPI/unpinChatMessage" --form-string "message_id=$message_id" --form-string "chat_id=$chat_id"
 	fi
 fi
@@ -153,7 +153,7 @@ case "$normal_message" in
 		cd "$basedir"
 	;;
 	"!ping")
-		text_id=$(printf '%s\n' "pong" ; ping -c 1 api.telegram.org | grep time= | sed 's/.*time=//')
+		text_id=$(printf '%s\n' "pong" ; ping -c 1 192.168.1.15 | grep time= | sed 's/.*time=//')
 		get_reply_id self
 		tg_method send_message
 	;;
@@ -341,13 +341,11 @@ case "$normal_message" in
 					if [[ "$(grep "png\|jpg\|jpeg" <<< "$ext")" != "" ]]; then
 						case "$ext" in
 							png)
-								wget -q -O "pic-$request_id.$ext" "https://api.telegram.org/file/bot$TOKEN/$file_path"
-								convert "pic-$request_id.$ext" "pic-$request_id.jpg"
-								rm "pic-$request_id.$ext"
+								convert "$file_path" "pic-$request_id.jpg"
 								ext=jpg
 							;;
 							jpg|jpeg)
-								wget -q -O "pic-$request_id.$ext" "https://api.telegram.org/file/bot$TOKEN/$file_path"
+								cp "$file_path" "pic-$request_id.jpg"
 							;;
 						esac
 						res=($(ffprobe -v error -show_streams "pic-$request_id.$ext" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
@@ -359,11 +357,11 @@ case "$normal_message" in
 					elif [[ "$(grep "wav\|mp3\|ogg" <<< "$ext")" != "" ]]; then
 						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$document_id" | jshon -Q -e result -e file_path -u)
 						ext=$(sed 's/.*\.//' <<< "$file_path")
-						wget -O audio-"$request_id".$ext "https://api.telegram.org/file/bot$TOKEN/$file_path"
+						cp "$file_path" "audio-$request_id.$ext"
 						
 							loading 1
 						
-						ffmpeg -i audio-"$request_id".$ext -vn -acodec libmp3lame -b:a 6k audio-low-"$request_id".mp3
+						ffmpeg -i "audio-$request_id.$ext" -vn -acodec libmp3lame -b:a 6k "audio-low-$request_id.mp3"
 						
 							loading 2
 						
@@ -372,12 +370,12 @@ case "$normal_message" in
 						
 							loading 3
 						
-						rm audio-"$request_id".$ext audio-low-"$request_id".mp3
+						rm "audio-$request_id.$ext" "audio-low-$request_id.mp3"
 					fi
 				;;
 				sticker)
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$sticker_id" | jshon -Q -e result -e file_path -u)
-					wget -O "sticker-$request_id.webp" "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					cp "$file_path" "sticker-$request_id.webp"
 					convert "sticker-$request_id.webp" "sticker-$request_id.jpg"
 					magick "sticker-$request_id.jpg" -quality 10 "sticker-$request_id.jpg"
 					magick "sticker-$request_id.jpg" -resize 512x512 "sticker-$request_id.jpg"
@@ -391,7 +389,7 @@ case "$normal_message" in
 				;;
 				animation)
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$animation_id" | jshon -Q -e result -e file_path -u)
-					wget -O animation-"$request_id".mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					cp "$file_path" "animation-$request_id.mp4"
 					
 						loading 1
 					
@@ -408,7 +406,7 @@ case "$normal_message" in
 				;;
 				video)
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$video_id" | jshon -Q -e result -e file_path -u)
-					wget -O video-"$request_id".mp4 "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					cp "$file_path" "video-$request_id.mp4"
 					
 						loading 1
 					
@@ -426,7 +424,7 @@ case "$normal_message" in
 				audio)
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$audio_id" | jshon -Q -e result -e file_path -u)
 					ext=$(sed 's/.*\.//' <<< "$file_path")
-					wget -O audio-"$request_id".$ext "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					cp "$file_path" "audio-$request_id.$ext"
 					
 						loading 1
 					
@@ -443,7 +441,7 @@ case "$normal_message" in
 				;;
 				voice)
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$voice_id" | jshon -Q -e result -e file_path -u)
-					wget -O voice-"$request_id".ogg "https://api.telegram.org/file/bot$TOKEN/$file_path"
+					cp "$file_path" "voice-$request_id.ogg"
 					
 						loading 1
 					
@@ -542,12 +540,12 @@ case "$normal_message" in
 				song_title=$(~/.local/bin/deemix -b flac -p ./ "$deemix_link" 2>&1 | tail -n 4 | sed -n 1p)
 				song_file="$(basename -s .flac -- "$song_title")-$deemix_id.flac"
 				mv -- "$song_title" "$song_file"
-				if [[ "$(du -m -- "$song_file" | cut -f 1)" -ge 50 ]]; then
+				if [[ "$(du -m -- "$song_file" | cut -f 1)" -ge 2000 ]]; then
 					rm -- "$song_file"
 					song_title=$(~/.local/bin/deemix -b mp3 -p ./ "$deemix_link" 2>&1 | tail -n 4 | sed -n 1p)
 					song_file="$(basename -s .mp3 -- "$song_title")-$deemix_id.mp3"
 					mv -- "$song_title" "$song_file"
-					if [[ "$(du -m -- "$song_file" | cut -f 1)" -ge 50 ]]; then
+					if [[ "$(du -m -- "$song_file" | cut -f 1)" -ge 2000 ]]; then
 						loading 3
 						rm -- "$song_file"
 						text_id="file size exceeded"
@@ -942,7 +940,7 @@ case "$normal_message" in
 				ytdl_json=$(youtube-dl --print-json --merge-output-format mp4 -o ytdl-$ytdl_id.mp4 "$ytdl_link")
 				if [[ "$ytdl_json" != "" ]]; then
 					caption=$(jshon -Q -e title -u <<< "$ytdl_json")
-					if [[ "$(du -m ytdl-$ytdl_id.mp4 | cut -f 1)" -ge 50 ]]; then
+					if [[ "$(du -m ytdl-$ytdl_id.mp4 | cut -f 1)" -ge 2000 ]]; then
 						loading value "error"
 						rm ytdl-$ytdl_id.mp4
 					else
@@ -1065,7 +1063,7 @@ case "$normal_message" in
 					done
 					zip "$nhentai_title-$nhzip_id.zip" "nhentai-$nhzip_id/"* > /dev/null
 					rm -r "nhentai-$nhzip_id"
-					if [[ "$(du -m "$nhentai_title-$nhzip_id.zip" | cut -f 1)" -ge 50 ]]; then
+					if [[ "$(du -m "$nhentai_title-$nhzip_id.zip" | cut -f 1)" -ge 2000 ]]; then
 						zip_list=$(zipsplit -qn 51380220 "$nhentai_title-$nhzip_id.zip" | grep creating | sed 's/creating: //')
 						zip_num=$(wc -l <<< "$zip_list")
 						loading 2
