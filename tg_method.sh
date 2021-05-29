@@ -42,12 +42,21 @@ tg_method() {
 				$curl_f "document=$document_id"
 		;;
 		send_video)
+			if [[ "$2" == "upload" ]]; then
+				video_info=$(ffprobe -v error -show_entries stream=width,height -of default=noprint_wrappers=1 "${video_id/@/}")
+				width=$(sed -n 's/^width=//p' <<< "$video_info")
+				height=$(sed -n 's/^height=//p' <<< "$video_info")
+				ffmpeg -i "${video_id/@/}" -ss 01 -frames:v 1 -vf scale=320:-1 "${thumb/@/}"
+			fi
 			curl -s "$TELEAPI/sendVideo" \
 				$curl_f "chat_id=$chat_id" \
 				$curl_f "parse_mode=$parse_mode" \
 				$curl_f "reply_to_message_id=$reply_id" \
 				$curl_f "reply_markup=$markup_id" \
 				$curl_f "thumb=$thumb" \
+				$curl_f "supports_streaming=true" \
+				$curl_f "width=$width" \
+				$curl_f "height=$height" \
 				$curl_f "caption=$caption" \
 				$curl_f "video=$video_id"
 		;;

@@ -1,5 +1,5 @@
 #!/bin/mksh
-set -af
+set -f
 START_TIME=$(bc <<< "$(date +%s%N) / 1000000")
 PS4="[$(date "+%F %H:%M:%S")] "
 exec 1>>"log.log" 2>&1

@@ -1,6 +1,6 @@
 if [[ "$(grep "^chan_unpin" "db/chats/$chat_id")" ]]; then
 	if [[ "$(jshon -Q -e sender_chat -e type -u <<< "$message")" == "channel" ]]; then
-		curl -s "$TELEAPI/unpinChatMessage" --form-string "message_id=$message_id" --form-string "chat_id=$chat_id"
+		curl -s "$TELEAPI/unpinChatMessage" --form-string "message_id=$message_id" --form-string "chat_id=$chat_id" > /dev/null
 	fi
 fi
 case "$chat_id" in
@@ -944,7 +944,6 @@ case "$normal_message" in
 						loading value "error"
 						rm ytdl-$ytdl_id.mp4
 					else
-						ffmpeg -i ytdl-$ytdl_id.mp4 -ss 05 -frames:v 1 thumb-$ytdl_id.jpg
 						video_id="@ytdl-$ytdl_id.mp4" thumb="@thumb-$ytdl_id.jpg"
 						loading 2
 						tg_method send_video upload
@@ -1041,49 +1040,45 @@ case "$normal_message" in
 			nhentai_id=$(cut -d / -f 5 <<< "$fn_args")
 			nhentai_check=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/1/")
 			if [[ "$nhentai_check" != "" ]]; then
-				maxpages=200
+				loading 1
+				nhzip_id=$RANDOM
+				nhentai_title=$(wget -q -O- "https://nhentai.net/g/$nhentai_id" \
+					| grep 'meta itemprop="name"' \
+					| sed -e 's/.*<meta itemprop="name" content="//' -e 's/".*//' \
+					| sed -e 's/[[:punct:]]//g' -e 's/\s/_/g')
 				numpages=$(grep 'num-pages' <<< "$nhentai_check" \
 					| sed -e 's/.*<span class="num-pages">//' -e 's/<.*//')
-				if [[ "$numpages" -le "$maxpages" ]]; then
-					loading 1
-					nhzip_id=$RANDOM
-					nhentai_title=$(wget -q -O- "https://nhentai.net/g/$nhentai_id" \
-						| grep 'meta itemprop="name"' \
-						| sed -e 's/.*<meta itemprop="name" content="//' -e 's/".*//' \
-						| sed -e 's/[[:punct:]]//g' -e 's/\s/_/g')
-					nhentai_ext=$(grep 'img src' <<< "$nhentai_check" \
-						| sed -e 's/.*<img src="//' -e 's/".*//' \
-						| sed 's/.*\.//')
-					mkdir "nhentai-$nhzip_id"
-					for x in $(seq $numpages); do
-						nhentai_pic=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/$x/" \
-							| grep 'img src' \
-							| sed -e 's/.*<img src="//' -e 's/".*//')
-						wget -q -O "nhentai-$nhzip_id/pic-$x.$nhentai_ext" "$nhentai_pic"
-					done
-					zip "$nhentai_title-$nhzip_id.zip" "nhentai-$nhzip_id/"* > /dev/null
-					rm -r "nhentai-$nhzip_id"
-					if [[ "$(du -m "$nhentai_title-$nhzip_id.zip" | cut -f 1)" -ge 2000 ]]; then
-						zip_list=$(zipsplit -qn 51380220 "$nhentai_title-$nhzip_id.zip" | grep creating | sed 's/creating: //')
-						zip_num=$(wc -l <<< "$zip_list")
-						loading 2
-						for x in $(seq $zip_num); do
-							zip_file=$(sed -n ${x}p <<< "$zip_list")
-							document_id="@$zip_file"
-							tg_method send_document upload
-							rm "$zip_file"
-						done
-						loading 3
-					else
-						document_id="@$nhentai_title-$nhzip_id.zip"
-						loading 2
+				nhentai_ext=$(grep 'img src' <<< "$nhentai_check" \
+					| sed -e 's/.*<img src="//' -e 's/".*//' \
+					| sed 's/.*\.//')
+				mkdir "nhentai-$nhzip_id"
+				for x in $(seq $numpages); do
+					nhentai_pic=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/$x/" \
+						| grep 'img src' \
+						| sed -e 's/.*<img src="//' -e 's/".*//')
+					wget -q -O "nhentai-$nhzip_id/pic-$x.$nhentai_ext" "$nhentai_pic"
+				done
+				set +f
+				zip "$nhentai_title-$nhzip_id.zip" "nhentai-$nhzip_id/"* > /dev/null
+				set -f
+				rm -r "nhentai-$nhzip_id"
+				if [[ "$(du -m "$nhentai_title-$nhzip_id.zip" | cut -f 1)" -ge 2000 ]]; then
+					zip_list=$(zipsplit -qn 51380220 "$nhentai_title-$nhzip_id.zip" | grep creating | sed 's/creating: //')
+					zip_num=$(wc -l <<< "$zip_list")
+					loading 2
+					for x in $(seq $zip_num); do
+						zip_file=$(sed -n ${x}p <<< "$zip_list")
+						document_id="@$zip_file"
 						tg_method send_document upload
-						loading 3
-						rm "$nhentai_title-$nhzip_id.zip"
-					fi
+						rm "$zip_file"
+					done
+					loading 3
 				else
-					text_id="too many pages (max $maxpages)"
-					tg_method send_message
+					document_id="@$nhentai_title-$nhzip_id.zip"
+					loading 2
+					tg_method send_document upload
+					loading 3
+					rm "$nhentai_title-$nhzip_id.zip"
 				fi
 			else
 				text_id="invalid id"
