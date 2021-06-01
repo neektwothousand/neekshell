@@ -376,8 +376,10 @@ case "$normal_message" in
 				sticker)
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$sticker_id" | jshon -Q -e result -e file_path -u)
 					cp "$file_path" "sticker-$request_id.webp"
+					res=($(ffprobe -v error -show_streams "sticker-$request_id.webp" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
 					convert "sticker-$request_id.webp" "sticker-$request_id.jpg"
-					magick "sticker-$request_id.jpg" -quality 10 "sticker-$request_id.jpg"
+					magick "sticker-$request_id.jpg" -resize $(bc <<< "${res[0]}/1.5")x$(bc <<< "${res[1]}/1.5") "sticker-$request_id.jpg"
+					magick "sticker-$request_id.jpg" -quality 6 "sticker-$request_id.jpg"
 					magick "sticker-$request_id.jpg" -resize 512x512 "sticker-$request_id.jpg"
 					convert "sticker-$request_id.jpg" "sticker-$request_id.webp"
 					
@@ -387,30 +389,21 @@ case "$normal_message" in
 					rm "sticker-$request_id.webp" \
 						"sticker-$request_id.jpg"
 				;;
-				animation)
-					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$animation_id" | jshon -Q -e result -e file_path -u)
-					cp "$file_path" "animation-$request_id.mp4"
-					
-						loading 1
-					
-					ffmpeg -i animation-"$request_id".mp4 -crf 50 -an animation-low-"$request_id".mp4
-					
-						loading 2
-					
-					animation_id="@animation-low-$request_id.mp4"
-					tg_method send_animation upload
-					
-						loading 3
-					
-					rm animation-"$request_id".mp4 animation-low-"$request_id".mp4
-				;;
-				video)
-					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$video_id" | jshon -Q -e result -e file_path -u)
+				video|animation)
+					[[ "$file_type" == "video" ]] && media_id=$video_id || media_id=$animation_id
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
 					cp "$file_path" "video-$request_id.mp4"
 					
 						loading 1
 					
-					ffmpeg -i video-"$request_id".mp4 -crf 50 -c:a aac -b:a 16k video-low-"$request_id".mp4
+					res=($(ffprobe -v error -show_streams "video-$request_id.mp4" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
+					res[0]=$(bc <<< "${res[0]}/1.5")
+					res[1]=$(bc <<< "${res[1]}/1.5")
+					[[ "$((${res[0]}%2))" -eq "0" ]] || res[0]=$((${res[0]}-1))
+					[[ "$((${res[1]}%2))" -eq "0" ]] || res[1]=$((${res[1]}-1))
+					ffmpeg -i video-"$request_id".mp4 \
+						-vf "scale=${res[0]}:${res[1]}" -sws_flags fast_bilinear \
+						-crf 50 -c:a aac -b:a 24k video-low-"$request_id".mp4
 					
 						loading 2
 					
@@ -531,41 +524,51 @@ case "$normal_message" in
 			elif [[ "$fn_args" != "" ]]; then
 				deemix_link=$fn_args
 			fi
-			if [[ "$(grep 'track' <<< "$deemix_link")" != "" ]]; then
+			if [[ "$(grep 'track\|album\|deezer.page.link' <<< "$deemix_link")" != "" ]]; then
 				cd $tmpdir
 				deemix_id=$RANDOM
+				mkdir "$deemix_id" ; cd "$deemix_id"
 				loading 1
 				export LC_ALL=C.UTF-8
 				export LANG=C.UTF-8
-				song_title=$(~/.local/bin/deemix -b flac -p ./ "$deemix_link" 2>&1 | tail -n 4 | sed -n 1p)
-				song_file="$(basename -s .flac -- "$song_title")-$deemix_id.flac"
-				mv -- "$song_title" "$song_file"
-				if [[ "$(du -m -- "$song_file" | cut -f 1)" -ge 2000 ]]; then
-					rm -- "$song_file"
-					song_title=$(~/.local/bin/deemix -b mp3 -p ./ "$deemix_link" 2>&1 | tail -n 4 | sed -n 1p)
-					song_file="$(basename -s .mp3 -- "$song_title")-$deemix_id.mp3"
-					mv -- "$song_title" "$song_file"
-					if [[ "$(du -m -- "$song_file" | cut -f 1)" -ge 2000 ]]; then
-						loading 3
-						rm -- "$song_file"
-						text_id="file size exceeded"
-						tg_method send_message
-					else
-						loading 2
-						audio_id="@$song_file"
-						get_reply_id any
-						tg_method send_audio upload
-						loading 3
-						rm -- "$song_file"
-					fi
+				~/.local/bin/deemix -b flac -p ./ "$deemix_link" 2>&1 > /dev/null
+				downloaded=$(dir -N1)
+				if [[ "$(dir -N1 "$downloaded" | wc -l)" -gt "1" ]]; then
+					up_type=archive
+					set +f
+					zip "$downloaded.zip" "$downloaded/"* > /dev/null
+					set -f
+					document_id="@$downloaded.zip"
 				else
-					loading 2
-					audio_id="@$song_file"
-					get_reply_id any
-					tg_method send_audio upload
-					loading 3
-					rm -- "$song_file"
+					up_type=audio
+					audio_id="@$downloaded"
 				fi
+				get_reply_id any
+				case "$up_type" in
+					archive)
+						if [[ "$(du -m -- "$downloaded.zip" | cut -f 1)" -ge 2000 ]]; then
+							loading 3
+							text_id="file size exceeded"
+							tg_method send_message
+						else
+							loading 2
+							tg_method send_document upload
+							loading 3
+						fi
+					;;
+					audio)
+						if [[ "$(du -m -- "$downloaded" | cut -f 1)" -ge 2000 ]]; then
+							loading 3
+							text_id="file size exceeded"
+							tg_method send_message
+						else
+							loading 2
+							tg_method send_audio upload
+							loading 3
+						fi
+					;;
+				esac
+				cd .. ; rm -rf "$deemix_id/"
 				cd "$basedir"
 			fi
 		else

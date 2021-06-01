@@ -1,7 +1,7 @@
 Usage
-  !deemix <deezer track link>
+  !deemix <deezer link>
  or
-  !deemix (on reply to a deezer track link)
+  !deemix (on reply to a deezer link)
 
 Description
-  sends a music track from deezer
+  sends a track/album/artist from deezer
