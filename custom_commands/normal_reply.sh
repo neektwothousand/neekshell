@@ -393,25 +393,28 @@ case "$normal_message" in
 					[[ "$file_type" == "video" ]] && media_id=$video_id || media_id=$animation_id
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
 					cp "$file_path" "video-$request_id.mp4"
-					
-						loading 1
-					
+					loading 1
 					res=($(ffprobe -v error -show_streams "video-$request_id.mp4" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
 					res[0]=$(bc <<< "${res[0]}/1.5")
 					res[1]=$(bc <<< "${res[1]}/1.5")
 					[[ "$((${res[0]}%2))" -eq "0" ]] || res[0]=$((${res[0]}-1))
 					[[ "$((${res[1]}%2))" -eq "0" ]] || res[1]=$((${res[1]}-1))
-					ffmpeg -i video-"$request_id".mp4 \
-						-vf "scale=${res[0]}:${res[1]}" -sws_flags fast_bilinear \
-						-crf 50 -c:a aac -b:a 24k video-low-"$request_id".mp4
-					
+					if [[ "$file_type" == "video" ]]; then
+						ffmpeg -i video-"$request_id".mp4 \
+							-vf "scale=${res[0]}:${res[1]}" -sws_flags fast_bilinear \
+							-crf 50 -c:a aac -b:a 24k video-low-"$request_id".mp4
 						loading 2
-					
-					video_id="@video-low-$request_id.mp4"
-					tg_method send_video upload
-					
-						loading 3
-					
+						video_id="@video-low-$request_id.mp4"
+						tg_method send_video upload
+					else
+						ffmpeg -i video-"$request_id".mp4 \
+							-vf "scale=${res[0]}:${res[1]}" -sws_flags fast_bilinear \
+							-crf 50 -an video-low-"$request_id".mp4
+						loading 2
+						animation_id="@video-low-$request_id.mp4"
+						tg_method send_animation upload
+					fi
+					loading 3
 					rm video-"$request_id".mp4 video-low-"$request_id".mp4
 				;;
 				audio)
@@ -929,112 +932,70 @@ case "$normal_message" in
 	;;
 	"!ytdl "*|"!ytdl")
 		get_reply_id self
-		if [[ $(is_admin) ]]; then
-			cd $tmpdir
-			if [[ "$reply_to_text" != "" ]]; then
-				ytdl_link=$reply_to_text
-			else
-				ytdl_link=$fn_args
-			fi
-			ytdl_link=$(sed -e 's/.*\(https\)/\1/' -e 's/ .*//' <<< "$ytdl_link")
-			if [[ "$ytdl_link" != "" ]]; then
-				ytdl_id=$RANDOM
-				loading 1
-				ytdl_json=$(youtube-dl --print-json --merge-output-format mp4 -o ytdl-$ytdl_id.mp4 "$ytdl_link")
-				if [[ "$ytdl_json" != "" ]]; then
-					caption=$(jshon -Q -e title -u <<< "$ytdl_json")
-					if [[ "$(du -m ytdl-$ytdl_id.mp4 | cut -f 1)" -ge 2000 ]]; then
-						loading value "error"
-						rm ytdl-$ytdl_id.mp4
-					else
-						video_id="@ytdl-$ytdl_id.mp4" thumb="@thumb-$ytdl_id.jpg"
-						loading 2
-						tg_method send_video upload
-						loading 3
-						rm "ytdl-$ytdl_id.mp4" "thumb-$ytdl_id.jpg"
-					fi
-				else
-					loading value "error"
-				fi
-			fi
-			cd "$basedir"
+		cd $tmpdir
+		if [[ "$reply_to_text" != "" ]]; then
+			ytdl_link=$reply_to_text
 		else
-			markdown=("<code>" "</code>")
-			parse_mode=html
-			text_id="Access denied"
-			tg_method send_message
+			ytdl_link=$fn_args
 		fi
+		ytdl_link=$(sed -e 's/.*\(https\)/\1/' -e 's/ .*//' <<< "$ytdl_link")
+		if [[ "$ytdl_link" != "" ]]; then
+			ytdl_id=$RANDOM
+			loading 1
+			ytdl_json=$(youtube-dl --print-json --merge-output-format mp4 -o ytdl-$ytdl_id.mp4 "$ytdl_link")
+			if [[ "$ytdl_json" != "" ]]; then
+				caption=$(jshon -Q -e title -u <<< "$ytdl_json")
+				if [[ "$(du -m ytdl-$ytdl_id.mp4 | cut -f 1)" -ge 2000 ]]; then
+					loading value "error"
+					rm ytdl-$ytdl_id.mp4
+				else
+					video_id="@ytdl-$ytdl_id.mp4" thumb="@thumb-$ytdl_id.jpg"
+					loading 2
+					tg_method send_video upload
+					loading 3
+					rm "ytdl-$ytdl_id.mp4" "thumb-$ytdl_id.jpg"
+				fi
+			else
+				loading value "error"
+			fi
+		fi
+		cd "$basedir"
 	;;
 	"!nh "*)
 		get_reply_id self
-		if [[ $(is_admin) ]]; then
-			cd $tmpdir
-			nhentai_id=$(cut -d / -f 5 <<< "$fn_args")
-			nhentai_check=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/1/")
-			loading 1
-			if [[ "$nhentai_check" != "" ]]; then
-				maxpages=10 p_offset=1
-				numpages=$(grep 'num-pages' <<< "$nhentai_check" \
-					| sed -e 's/.*<span class="num-pages">//' -e 's/<.*//')
-				if [[ "$numpages" -le "$maxpages" ]]; then
-					for j in $(seq 0 $((numpages - 1))); do
-						media[$j]=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/$p_offset/" \
-							| grep 'img src' \
-							| sed -e 's/.*<img src="//' -e 's/".*//')
-						#loading value "$p_offset/$numpages"
-						p_offset=$((p_offset + 1))
-					done
-					mediagroup_id=$(json_array mediagroup)
-					sleep 30
-					tg_method send_mediagroup
-					if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "true" ]]; then
-						text_id=$(printf '%s\n' "$mediagroup_id" "$result")
-						tg_method send_message
-					fi
-				else
-					for p in $(seq $((numpages/maxpages))); do
-						for j in $(seq 0 $((maxpages - 1))); do
-							media[$j]=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/$p_offset/" \
-								| grep 'img src' \
-								| sed -e 's/.*<img src="//' -e 's/".*//')
-							#loading value "$p_offset/$numpages"
-							p_offset=$((p_offset + 1))
-						done
-						mediagroup_id=$(json_array mediagroup)
-						sleep 30
-						tg_method send_mediagroup
-						if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "true" ]]; then
-							text_id=$(printf '%s\n' "$mediagroup_id" "$result")
-							tg_method send_message
-						fi
-					done
-					for j in $(seq 0 $(((numpages - ${p}0) - 1))); do
-						media[$j]=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/$p_offset/" \
-							| grep 'img src' \
-							| sed -e 's/.*<img src="//' -e 's/".*//')
-						#loading value "$p_offset/$numpages"
-						p_offset=$((p_offset + 1))
-					done
-					mediagroup_id=$(json_array mediagroup)
-					sleep 30
-					tg_method send_mediagroup
-					if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "true" ]]; then
-						text_id=$(printf '%s\n' "$mediagroup_id" "$result")
-						tg_method send_message
-					fi
-				fi
-				loading 3
-			else
-				text_id="invalid id"
-				tg_method send_message
-			fi
-			cd "$basedir"
-		else
-			markdown=("<code>" "</code>")
-			parse_mode=html
-			text_id="Access denied"
+		cd $tmpdir
+		nhentai_id=$(cut -d / -f 5 <<< "$fn_args")
+		nhentai_check=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/1/")
+		loading 1
+		if [[ "$nhentai_check" != "" ]]; then
+			request_id=$RANDOM
+			mkdir "$request_id" ; cd "$request_id"
+			p_offset=1
+			numpages=$(grep 'num-pages' <<< "$nhentai_check" \
+				| sed -e 's/.*<span class="num-pages">//' -e 's/<.*//')
+			for j in $(seq 0 $((numpages - 1))); do
+				wget -q -O pic.jpg "$(wget -q -O- "https://nhentai.net/g/$nhentai_id/$p_offset/" \
+					| grep 'img src' \
+					| sed -e 's/.*<img src="//' -e 's/".*//')"
+				graph_element[$j]=$(curl -s "https://telegra.ph/upload" -F "file=@pic.jpg" | jshon -Q -e 0 -e src -u)
+				rm -f pic.jpg
+				p_offset=$((p_offset + 1))
+			done
+			graph_title=$(wget -q -O- "https://nhentai.net/g/$nhentai_id" \
+				| grep 'meta itemprop="name"' \
+				| sed -e 's/.*<meta itemprop="name" content="//' -e 's/".*//')
+			loading 2
+			json_array telegraph
+			text_id=$(curl -s "$GRAPHAPI/createPage" -X POST -H 'Content-Type: application/json' \
+				-d "{\"access_token\":\"$GRAPHTOKEN\",\"title\":\"$graph_title\",\"content\":${graph_content}}" \
+				| jshon -Q -e result -e url -u)
+			loading 3
 			tg_method send_message
+			cd .. ; rm -rf "$request_id/"
+		else
+			loading value "invalid id"
 		fi
+		cd "$basedir"
 	;;
 	"!nhzip "*)
 		get_reply_id self
@@ -1099,16 +1060,16 @@ case "$normal_message" in
 		if [[ $(is_admin) ]] && [[ "$type" = "private" ]]; then
 			get_reply_id self
 			selected_dir=$(sed 's|/$||' <<< "$fn_args")
-			files_selected_dir=$(find "$selected_dir/" -maxdepth 1 -type f | sed "s:^./\|$selected_dir/::")
+			files_selected_dir=$(dir -N1 --file-type -- "$selected_dir" | sed '/\/$/d')
+			text_id=$(printf '%s\n' "selected directory: $selected_dir" \
+					"select a file to download" "subdirs:" \
+					; dir -N1 --file-type -- "$selected_dir" | sed -n '/\/$/p')
 			if [[ "$files_selected_dir" != "" ]]; then
-				text_id=$(printf '%s\n' "selected directory: $selected_dir" "select a file to download" "subdirs:" ; find "$selected_dir/" -maxdepth 1 -type d | sed "s:^./\|$selected_dir/::" | sed -e 1d | sed -e 's/^/-> /' -e 's|$|/|')
 				for j in $(seq 0 $(( $(wc -l <<< "$files_selected_dir") -1 )) ); do
 					button_text[$j]=$(sed -n $((j+1))p <<< "$files_selected_dir")
-					button_data[$j]=${button_text[$j]}
+					button_data[$j]="$((j+1))"
 				done
 				markup_id=$(json_array inline button)
-			else
-				text_id=$(printf '%s\n' "selected directory: $selected_dir" "subdirs:" ; find "$selected_dir/" -maxdepth 1 -type d | sed "s:^./\|$selected_dir/::" | sed -e 1d | sed -e 's/^/-> /' -e 's|$|/|')
 			fi
 		else
 			markdown=("<code>" "</code>")

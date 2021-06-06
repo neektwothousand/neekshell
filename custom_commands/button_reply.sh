@@ -23,9 +23,11 @@ case "$callback_message_text" in
 	"selected directory: "*)
 		button_text_reply="ok"
 		tg_method button_reply
-		document_id="@$(sed -n 1p <<< "$callback_message_text" | sed 's/^selected directory: //')/$callback_data"
+		selected_dir=$(sed -n 1p <<< "$callback_message_text" | sed 's/^selected directory: //')
+		selected_file=$(dir -N1 --file-type -- "$selected_dir" | sed '/\/$/d' | sed -n ${callback_data}p)
+		document_id="@$selected_dir/$selected_file"
 		chat_id=$callback_user_id
-		tg_method send_document
+		tg_method send_document upload
 	;;
 esac
 case "$callback_data" in

@@ -174,6 +174,14 @@ json_array() {
 				;;
 			esac
 		;;
+		telegraph)
+			GRAPHTOKEN=$(jshon -Q -e result -e access_token -u < "$basedir/telegraph_data")
+			GRAPHAPI="https://api.telegra.ph"
+			for x in $(seq 0 $j); do
+				graph_content[$x]="{\"tag\":\"img\",\"attrs\":{\"src\":\"${graph_element[$x]}\"}},"
+			done
+			graph_content="[$(printf '%s' "${graph_content[*]}" | head -c -1)]"
+		;;
 	esac
 }
 get_reply_id() {
