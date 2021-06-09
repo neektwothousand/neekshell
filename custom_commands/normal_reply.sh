@@ -3,6 +3,21 @@ if [[ "$(grep "^chan_unpin" "db/chats/$chat_id")" ]]; then
 		curl -s "$TELEAPI/unpinChatMessage" --form-string "message_id=$message_id" --form-string "chat_id=$chat_id" > /dev/null
 	fi
 fi
+case "$file_type" in
+	sticker)
+		sticker_unique_id=$(jshon -Q -e sticker -e file_unique_id -u <<< "$message")
+		case "$sticker_unique_id" in
+			AgADAwADf3BGHA) # https://t.me/addstickers/PoohSocialCredit
+				normal_message="-20"
+				lock_sticker="604800"
+			;;
+			AgADAgADf3BGHA) # https://t.me/addstickers/PoohSocialCredit
+				normal_message="+20"
+				lock_sticker="604800"
+			;;
+		esac
+	;;
+esac
 case "$chat_id" in
 	-1001295527578|-1001402125530)
 		if [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]] \
@@ -823,6 +838,73 @@ case "$normal_message" in
 		get_reply_id self
 		tg_method send_message
 	;;
+	"!ytdl "*|"!ytdl")
+		get_reply_id self
+		cd $tmpdir
+		if [[ "$reply_to_text" != "" ]]; then
+			ytdl_link=$reply_to_text
+		else
+			ytdl_link=$fn_args
+		fi
+		ytdl_link=$(sed -e 's/.*\(https\)/\1/' -e 's/ .*//' <<< "$ytdl_link")
+		if [[ "$ytdl_link" != "" ]]; then
+			ytdl_id=$RANDOM
+			loading 1
+			ytdl_json=$(youtube-dl --print-json --merge-output-format mp4 -o ytdl-$ytdl_id.mp4 "$ytdl_link")
+			if [[ "$ytdl_json" != "" ]]; then
+				caption=$(jshon -Q -e title -u <<< "$ytdl_json")
+				if [[ "$(du -m ytdl-$ytdl_id.mp4 | cut -f 1)" -ge 2000 ]]; then
+					loading value "error"
+					rm ytdl-$ytdl_id.mp4
+				else
+					video_id="@ytdl-$ytdl_id.mp4" thumb="@thumb-$ytdl_id.jpg"
+					loading 2
+					tg_method send_video upload
+					loading 3
+					rm "ytdl-$ytdl_id.mp4" "thumb-$ytdl_id.jpg"
+				fi
+			else
+				loading value "error"
+			fi
+		fi
+		cd "$basedir"
+	;;
+	"!nh "*)
+		get_reply_id self
+		cd $tmpdir
+		nhentai_id=$(cut -d / -f 5 <<< "$fn_args")
+		nhentai_check=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/1/")
+		loading 1
+		if [[ "$nhentai_check" != "" ]]; then
+			request_id=$RANDOM
+			mkdir "$request_id" ; cd "$request_id"
+			p_offset=1
+			numpages=$(grep 'num-pages' <<< "$nhentai_check" \
+				| sed -e 's/.*<span class="num-pages">//' -e 's/<.*//')
+			for j in $(seq 0 $((numpages - 1))); do
+				wget -q -O pic.jpg "$(wget -q -O- "https://nhentai.net/g/$nhentai_id/$p_offset/" \
+					| grep 'img src' \
+					| sed -e 's/.*<img src="//' -e 's/".*//')"
+				graph_element[$j]=$(curl -s "https://telegra.ph/upload" -F "file=@pic.jpg" | jshon -Q -e 0 -e src -u)
+				rm -f pic.jpg
+				p_offset=$((p_offset + 1))
+			done
+			graph_title=$(wget -q -O- "https://nhentai.net/g/$nhentai_id" \
+				| grep 'meta itemprop="name"' \
+				| sed -e 's/.*<meta itemprop="name" content="//' -e 's/".*//')
+			loading 2
+			json_array telegraph
+			text_id=$(curl -s "$GRAPHAPI/createPage" -X POST -H 'Content-Type: application/json' \
+				-d "{\"access_token\":\"$GRAPHTOKEN\",\"title\":\"$graph_title\",\"content\":${graph_content}}" \
+				| jshon -Q -e result -e url -u)
+			loading 3
+			tg_method send_message
+			cd .. ; rm -rf "$request_id/"
+		else
+			loading value "invalid id"
+		fi
+		cd "$basedir"
+	;;
 	
 	## administrative commands
 	
@@ -929,73 +1011,6 @@ case "$normal_message" in
 		fi
 		get_reply_id reply
 		tg_method send_message
-	;;
-	"!ytdl "*|"!ytdl")
-		get_reply_id self
-		cd $tmpdir
-		if [[ "$reply_to_text" != "" ]]; then
-			ytdl_link=$reply_to_text
-		else
-			ytdl_link=$fn_args
-		fi
-		ytdl_link=$(sed -e 's/.*\(https\)/\1/' -e 's/ .*//' <<< "$ytdl_link")
-		if [[ "$ytdl_link" != "" ]]; then
-			ytdl_id=$RANDOM
-			loading 1
-			ytdl_json=$(youtube-dl --print-json --merge-output-format mp4 -o ytdl-$ytdl_id.mp4 "$ytdl_link")
-			if [[ "$ytdl_json" != "" ]]; then
-				caption=$(jshon -Q -e title -u <<< "$ytdl_json")
-				if [[ "$(du -m ytdl-$ytdl_id.mp4 | cut -f 1)" -ge 2000 ]]; then
-					loading value "error"
-					rm ytdl-$ytdl_id.mp4
-				else
-					video_id="@ytdl-$ytdl_id.mp4" thumb="@thumb-$ytdl_id.jpg"
-					loading 2
-					tg_method send_video upload
-					loading 3
-					rm "ytdl-$ytdl_id.mp4" "thumb-$ytdl_id.jpg"
-				fi
-			else
-				loading value "error"
-			fi
-		fi
-		cd "$basedir"
-	;;
-	"!nh "*)
-		get_reply_id self
-		cd $tmpdir
-		nhentai_id=$(cut -d / -f 5 <<< "$fn_args")
-		nhentai_check=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/1/")
-		loading 1
-		if [[ "$nhentai_check" != "" ]]; then
-			request_id=$RANDOM
-			mkdir "$request_id" ; cd "$request_id"
-			p_offset=1
-			numpages=$(grep 'num-pages' <<< "$nhentai_check" \
-				| sed -e 's/.*<span class="num-pages">//' -e 's/<.*//')
-			for j in $(seq 0 $((numpages - 1))); do
-				wget -q -O pic.jpg "$(wget -q -O- "https://nhentai.net/g/$nhentai_id/$p_offset/" \
-					| grep 'img src' \
-					| sed -e 's/.*<img src="//' -e 's/".*//')"
-				graph_element[$j]=$(curl -s "https://telegra.ph/upload" -F "file=@pic.jpg" | jshon -Q -e 0 -e src -u)
-				rm -f pic.jpg
-				p_offset=$((p_offset + 1))
-			done
-			graph_title=$(wget -q -O- "https://nhentai.net/g/$nhentai_id" \
-				| grep 'meta itemprop="name"' \
-				| sed -e 's/.*<meta itemprop="name" content="//' -e 's/".*//')
-			loading 2
-			json_array telegraph
-			text_id=$(curl -s "$GRAPHAPI/createPage" -X POST -H 'Content-Type: application/json' \
-				-d "{\"access_token\":\"$GRAPHTOKEN\",\"title\":\"$graph_title\",\"content\":${graph_content}}" \
-				| jshon -Q -e result -e url -u)
-			loading 3
-			tg_method send_message
-			cd .. ; rm -rf "$request_id/"
-		else
-			loading value "invalid id"
-		fi
-		cd "$basedir"
 	;;
 	"!nhzip "*)
 		get_reply_id self
@@ -1392,13 +1407,18 @@ case "$normal_message" in
 		if [[ "$rep_id" != "$user_id" ]] && [[ "$rep_id" != "" ]]; then
 			# check existing lock+
 			[[ ! -d .lock+/respect/ ]] && mkdir -p .lock+/respect/
-			lockfile=.lock+/respect/"$user_id"-lock
+			if [[ "$lock_sticker" == "" ]]; then
+				lockfile=.lock+/respect/"$user_id"-lock
+				lock_time=$((60 + (RANDOM % 60)))
+			else
+				lockfile=.lock+/respect/"$user_id"-sticker-lock
+				lock_time=$((60 + (RANDOM % 60) + lock_sticker))
+			fi
 			if [[ -e "$lockfile" ]]; then
 				lock_age=$(bc <<< "$(date +%s) - $(stat -c "%W" $lockfile)")
 			else
 				lock_age="999999"
 			fi
-			lock_time=$((60 + (RANDOM % 60)))
 			if [[ $lock_age -ge $lock_time ]]; then
 				rm -- "$lockfile"
 				rep_fname=$(grep -w -- "^fname" db/users/"$rep_id" | sed 's/.*fname: //')
@@ -1411,7 +1431,7 @@ case "$normal_message" in
 				fi
 				if [[ "$rep_n" == "" ]]; then
 					sed -i "s/^totalrep: .*/totalrep: $(bc <<< "$prevrep $rep_sign 1")/" db/users/"$rep_id"
-				elif [[ $(is_admin) ]]; then
+				elif [[ $(is_admin) ]] || [[ "$file_type" == "sticker" ]]; then
 					sed -i "s/^totalrep: .*/totalrep: $(bc <<< "$prevrep $rep_sign $rep_n")/" db/users/"$rep_id"
 				else
 					return
@@ -1424,7 +1444,7 @@ case "$normal_message" in
 				fi
 				if [[ "$rep_n" == "" ]]; then
 					sed -i "s/^rep-$user_id: .*/rep-$user_id: $(bc <<< "$prevrep_user $rep_sign 1")/" db/users/"$rep_id"
-				elif [[ $(is_admin) ]]; then
+				elif [[ $(is_admin) ]] || [[ "$file_type" == "sticker" ]]; then
 					sed -i "s/^rep-$user_id: .*/rep-$user_id: $(bc <<< "$prevrep_user $rep_sign $rep_n")/" db/users/"$rep_id"
 				else
 					return
