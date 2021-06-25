@@ -220,5 +220,7 @@ tg_method() {
 		retry_after=$(jshon -Q -e parameters -e retry_after -u <<< "$curl_result")
 		sleep "$retry_after"
 		tg_method $@
+	elif [[ "$(jshon -Q -e ok -u <<< "$curl_result")" == "false" ]]; then
+		printf '%s\n' "$curl_result" >> method_error.log
 	fi
 }

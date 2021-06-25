@@ -38,7 +38,7 @@ case "$callback_data" in
 		chat_id=$(cut -f 4 -d ' ' <<< "$callback_data")
 		request_id="${ig_tag}_${chat_id}"
 		cd "$request_id"
-		if [ "$callback_user_id" != "$(cat ig_userid)" ]; then
+		if [[ "$callback_user_id" != "$(cat ig_userid)" ]]; then
 			return
 		fi
 		ig_page=$(($(cat ig_page) $sign 1))
@@ -75,5 +75,6 @@ case "$callback_data" in
 		esac
 		cd ..
 		printf '%s' "$ig_id" > ig_id
+		cd "$basedir"
 	;;
 esac
