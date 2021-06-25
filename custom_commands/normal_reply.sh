@@ -889,7 +889,10 @@ case "$normal_message" in
 	## administrative commands
 	
 	"!flush")
-		if [[ $(is_admin) ]] && [[ "$reply_to_message" != "" ]]; then
+		get_member_id=$user_id
+		tg_method get_chat_member
+		if [[ "$(jshon -Q -e result -e status -u <<< "$curl_result" | grep -w "creator\|administrator")" != "" ]] \
+		&& [[ "$reply_to_message" != "" ]]; then
 			text_id="flushing..."
 			tg_method send_message
 			flush_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
