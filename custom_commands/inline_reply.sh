@@ -178,21 +178,14 @@ case "$inline_message" in
 	;;
 	*)
 		owoarray=("owo" "ewe" "uwu" ":3" "x3" "🥵" "🙈" "🤣" "😘" "🥺" "💁‍♀️" "OwO" "😳" "🤠" "🤪" "😜" "🤬" "🤧" "🦹‍♂" "🍌" "😏" "😒" "😎" "🙄" "🧐" "😈" "👐🏻" "👏🏻" "👀" "👅" "🍆" "🤢" "🤮" "🤡" "💯" "👌" "😂" "🅱️" "💦")
-		numberspace=$(tr -dc ' ' <<< "$inline_message" | wc -c)
-		if [[ "$numberspace" = "" ]]; then
-			return
-		fi
-		for x in $(seq $(((numberspace / 8)+1))); do
-			inline_message=$(sed "s/\s/\n/$(((RANDOM % numberspace)+1))" <<< "$inline_message")
+		numberspace=$(tr -dc ' ' <<< "$reply" | wc -c)
+		[[ "$numberspace" -eq "0" ]] && reply="$reply " && numberspace=1
+		for x in $(seq $(((numberspace / 16)+1))); do
+			inline_message=$(sed "s/\s/ ${owoarray[$((RANDOM % ${#owoarray[@]}))]} /$(((RANDOM % numberspace)+1))" <<< "$inline_message")
 		done
-		for x in $(seq $(($(wc -l <<< "$inline_message") - 1))); do
-			fixed_part[$x]=$(sed -n "${x}"p <<< "$inline_message" | sed "s/$/ ${owoarray[$((RANDOM % ${#owoarray[@]}))]} /")
-		done
-		fixed_text=$(printf '%s' "${fixed_part[*]}" "$(tail -1 <<< "$inline_message")" | tr -s ' ')
-		
-		title=$(sed -e 's/[lr]/w/g' -e 's/[LR]/W/g' <<< "$fixed_text")
+		title=$(sed -e 's/[lr]/w/g' -e 's/[LR]/W/g' <<< "$inline_message")
 		message_text=$title
 		return_query=$(json_array inline article)
-		tg_method send_inline > /dev/null
+		tg_method send_inline
 	;;
 esac

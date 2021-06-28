@@ -681,28 +681,22 @@ case "$normal_message" in
 		if [[ "$reply" != "" ]]; then
 			numberspace=$(tr -dc ' ' <<< "$reply" | wc -c)
 			
-			[[ "$numberspace" = "" ]] && return
+			[[ "$numberspace" -eq "0" ]] && reply="$reply " && numberspace=1
 			
 			case $normal_message in
 				"!cringe")
-					owoarray=("🥵" "🙈" "🤣" "😘" "🥺" "💁‍♀️" "OwO" "😳" "🤠" "🤪" "😜" "🤬" "🤧" "🦹‍♂" "🍌" "😏" "😒" "😎" "🙄" "🧐" "😈" "👐🏻" "👏🏻" "👀" "👅" "🍆" "🤢" "🤮" "🤡" "💯" "👌" "😂" "🅱️" "💦")
+					owoarray=("🥵" "🙈" "🤣" "😘" "🥺" "💁‍♀️" "😳" "🤠" "🤪" "😜" "🤬" "🤧" "🦹‍♂" "🍌" "😏" "😒" "😎" "🙄" "🧐" "😈" "👐🏻" "👏🏻" "👀" "👅" "🍆" "🤢" "🤮" "🤡" "💯" "👌" "😂" "🅱️" "💦")
 				;;
 				"!owoifer"|"!owoifier"|"!owo")
 					owoarray=("owo" "ewe" "uwu" ":3" "x3")
 				;;
 			esac
 			
-			for x in $(seq $(((numberspace / 8)+1))); do
-				reply=$(sed "s/\s/\n/$(((RANDOM % numberspace)+1))" <<< "$reply")
+			for x in $(seq $(((numberspace / 16)+1))); do
+				reply=$(sed "s/\s/ ${owoarray[$((RANDOM % ${#owoarray[@]}))]} /$(((RANDOM % numberspace)+1))" <<< "$reply")
 			done
 			
-			for x in $(seq $(($(wc -l <<< "$reply") - 1))); do
-				fixed_part[$x]=$(sed -n "${x}"p <<< "$reply" | sed "s/$/ ${owoarray[$((RANDOM % ${#owoarray[@]}))]} /")
-			done
-			
-			fixed_text=$(printf '%s' "${fixed_part[*]}" "$(tail -1 <<< "$reply")" | tr -s ' ')
-			
-			text_id=$(sed -e 's/[lr]/w/g' -e 's/[LR]/W/g' <<< "$fixed_text")
+			text_id=$(sed -e 's/[lr]/w/g' -e 's/[LR]/W/g' <<< "$reply")
 			get_reply_id reply
 		else
 			text_id=$(cat help/owo)
