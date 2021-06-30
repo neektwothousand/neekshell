@@ -436,20 +436,12 @@ case "$normal_message" in
 			get_file_type reply
 			case $file_type in
 				text)
-					set -x
-					text_id=$(sed -E 's/( )(.)(.)/\1\3\2/g' <<< "$reply_to_text" | sed -E 's/(.)(.)( )/\2\1\3/g')
+					list_char[0]=$(sed -E 's/(.)/\1 /g' <<< "$reply_to_text" | tr -s ' ' | tr ' ' '\n' | sort -u | sed '/^$/d' | sort -R | tr '\n' ' ' | tr -d ' ')
+					list_char[1]=$(sed -E 's/(.)/\1 /g' <<< "$reply_to_text" | tr -s ' ' | tr ' ' '\n' | sort -u | sed '/^$/d' | sort -R | tr '\n' ' ' | tr -d ' ')
+					text_id=$(sed "y/${list_char[0]}/${list_char[1]}/" <<< "$reply_to_text")
 					tg_method send_message
-					set +x
 				;;
-				photo|document)
-					case $file_type in
-						photo)
-							media_id=$photo_id
-						;;
-						document)
-							media_id=$document_id
-						;;
-					esac
+				photo)
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
 					ext=$(sed 's/.*\.//' <<< "$file_path")
 					if [[ "$(grep "png\|jpg\|jpeg" <<< "$ext")" != "" ]]; then
@@ -468,23 +460,6 @@ case "$normal_message" in
 						photo_id="@pic-$request_id.$ext"
 						tg_method send_photo upload
 						rm "pic-$request_id.$ext"
-					elif [[ "$(grep "wav\|mp3\|ogg" <<< "$ext")" != "" ]]; then
-						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$document_id" | jshon -Q -e result -e file_path -u)
-						ext=$(sed 's/.*\.//' <<< "$file_path")
-						cp "$file_path" "audio-$request_id.$ext"
-						
-							loading 1
-						
-						ffmpeg -i "audio-$request_id.$ext" -vn -acodec libmp3lame -b:a 6k "audio-low-$request_id.mp3"
-						
-							loading 2
-						
-						audio_id="@audio-low-$request_id.mp3"
-						tg_method send_audio upload
-						
-							loading 3
-						
-						rm "audio-$request_id.$ext" "audio-low-$request_id.mp3"
 					fi
 				;;
 				sticker)
@@ -504,9 +479,18 @@ case "$normal_message" in
 						"sticker-$request_id.jpg"
 				;;
 				video|animation)
-					[[ "$file_type" == "video" ]] && media_id=$video_id || media_id=$animation_id
+					if [[ "$file_type" == "video" ]]; then
+						media_id=$video_id
+					elif [[ "$file_type" == "animation" ]]; then
+						media_id=$animation_id
+					fi
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
-					cp "$file_path" "video-$request_id.mp4"
+					ext=$(sed 's/.*\.//' <<< "$file_path")
+					if [[ "$ext" == "gif" ]]; then
+						ffmpeg -i "$file_path" "video-$request_id.mp4"
+					else
+						cp "$file_path" "video-$request_id.mp4"
+					fi
 					loading 1
 					res=($(ffprobe -v error -show_streams "video-$request_id.mp4" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
 					res[0]=$(bc <<< "${res[0]}/1.5")
@@ -535,35 +519,23 @@ case "$normal_message" in
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$audio_id" | jshon -Q -e result -e file_path -u)
 					ext=$(sed 's/.*\.//' <<< "$file_path")
 					cp "$file_path" "audio-$request_id.$ext"
-					
-						loading 1
-					
+					loading 1
 					ffmpeg -i audio-"$request_id".$ext -vn -acodec libmp3lame -b:a 6k audio-low-"$request_id".mp3
-					
-						loading 2
-					
+					loading 2
 					audio_id="@audio-low-$request_id.mp3"
 					tg_method send_audio upload
-					
-						loading 3
-					
+					loading 3
 					rm audio-"$request_id".$ext audio-low-"$request_id".mp3
 				;;
 				voice)
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$voice_id" | jshon -Q -e result -e file_path -u)
 					cp "$file_path" "voice-$request_id.ogg"
-					
-						loading 1
-					
+					loading 1
 					ffmpeg -i voice-"$request_id".ogg -vn -acodec opus -b:a 6k -strict -2 voice-low-"$request_id".ogg
-					
-						loading 2
-					
+					loading 2
 					voice_id="@voice-low-$request_id.ogg"
 					tg_method send_voice upload
-					
-						loading 3
-					
+					loading 3
 					rm voice-"$request_id".ogg voice-low-"$request_id".ogg
 				;;
 			esac

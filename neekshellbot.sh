@@ -230,7 +230,29 @@ get_file_type() {
 		file_type="voice"
 	elif [[ "$(jshon -Q -e document -e file_id -u <<< "$message")" != "" ]]; then
 		document_id=$(jshon -Q -e document -e file_id -u <<< "$message")
-		file_type="document"
+		file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$document_id" | jshon -Q -e result -e file_path -u)
+		ext=$(sed 's/.*\.//' <<< "$file_path")
+		case "$ext" in
+			jpg|png|jpeg)
+				file_type=photo
+				photo_id=$document_id
+			;;
+			gif)
+				file_type=animation
+				animation_id=$document_id
+			;;
+			mp4)
+				file_type=video
+				video_id=$document_id
+			;;
+			mp3|ogg|flac|wav)
+				file_type=audio
+				audio_id=$document_id
+			;;
+			*)
+				file_type=document
+			;;
+		esac
 	elif [[ "$(jshon -Q -e new_chat_members <<< "$message")" != "" ]]; then
 		document_id=$(jshon -Q -e new_chat_members <<< "$message")
 		file_type="new_members"
