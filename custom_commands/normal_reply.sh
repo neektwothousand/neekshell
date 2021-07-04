@@ -1,6 +1,8 @@
 if [[ "$(grep "^chan_unpin" "db/chats/$chat_id")" ]]; then
 	if [[ "$(jshon -Q -e sender_chat -e type -u <<< "$message")" == "channel" ]]; then
-		curl -s "$TELEAPI/unpinChatMessage" --form-string "message_id=$message_id" --form-string "chat_id=$chat_id" > /dev/null
+		curl -s "$TELEAPI/unpinChatMessage" \
+		--form-string "message_id=$message_id" \
+		--form-string "chat_id=$chat_id" > /dev/null
 	fi
 fi
 case "$file_type" in
@@ -436,13 +438,11 @@ case "$normal_message" in
 			get_file_type reply
 			case $file_type in
 				text)
-					list_char[0]=$(sed -E 's/(.)/\1 /g' <<< "$reply_to_text" | tr -s ' ' | tr ' ' '\n' | sort -u | sed '/^$/d' | sort -R | tr '\n' ' ' | tr -d ' ')
-					list_char[1]=$(sed -E 's/(.)/\1 /g' <<< "$reply_to_text" | tr -s ' ' | tr ' ' '\n' | sort -u | sed '/^$/d' | sort -R | tr '\n' ' ' | tr -d ' ')
-					text_id=$(sed "y/${list_char[0]}/${list_char[1]}/" <<< "$reply_to_text")
+					text_id=$(sed -E 's/(.).(.)/\1\2/g' <<< "$reply_to_text")
 					tg_method send_message
 				;;
 				photo)
-					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$photo_id" | jshon -Q -e result -e file_path -u)
 					ext=$(sed 's/.*\.//' <<< "$file_path")
 					if [[ "$(grep "png\|jpg\|jpeg" <<< "$ext")" != "" ]]; then
 						case "$ext" in
@@ -859,16 +859,52 @@ case "$normal_message" in
 		tg_method get_chat_member
 		if [[ "$(jshon -Q -e result -e status -u <<< "$curl_result" | grep -w "creator\|administrator")" != "" ]] \
 		&& [[ "$reply_to_message" != "" ]]; then
-			text_id="flushing..."
-			tg_method send_message
-			flush_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
-			for x in $(seq "$message_id" -1 "$reply_to_id"); do
-				to_delete_id=$x
-				tg_method delete_message &
-				sleep 0.1
-			done
-			to_delete_id=$flush_id
-			tg_method delete_message
+			get_member_id=$(jshon -Q -e result -e id -u < botinfo)
+			tg_method get_chat_member
+			if [[ "$(jshon -Q -e result -e status -u <<< "$curl_result" | grep -w "creator\|administrator")" != "" ]]; then
+				text_id="flushing..."
+				tg_method send_message
+				flush_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
+				for x in $(seq "$message_id" -1 "$reply_to_id"); do
+					to_delete_id=$x
+					tg_method delete_message &
+					sleep 0.1
+				done
+				to_delete_id=$flush_id
+				tg_method delete_message
+			else
+				text_id="bot is not admin"
+				tg_method send_message
+			fi
+		fi
+	;;
+	"!autodel "*|"!autodel")
+		get_member_id=$user_id
+		tg_method get_chat_member
+		if [[ "$(jshon -Q -e result -e status -u <<< "$curl_result" | grep -w "creator\|administrator")" != "" ]]; then
+			if [[ "${fn_arg[0]}" != "" ]]; then
+				get_member_id=$(jshon -Q -e result -e id -u < botinfo)
+				tg_method get_chat_member
+				if [[ "$(jshon -Q -e result -e status -u <<< "$curl_result" | grep -w "creator\|administrator")" != "" ]]; then
+					if [[ "$(grep -o "^[0-9]*" <<< "${fn_arg[0]}")" != "" ]] \
+					&& [[ "${fn_arg[0]/s/}" -lt "172800" ]] \
+					&& [[ "${fn_arg[0]/s/}" -ge "5" ]]; then
+						text_id="autodel set to ${fn_arg[0]}"
+						printf '%s\n' "autodel: ${fn_arg[0]}" >> "db/chats/$chat_id"
+					else
+						text_id="invalid time specified"
+					fi
+				else
+					text_id="bot is not admin"
+				fi
+				tg_method send_message
+			else
+				if [[ "$(grep "^autodel" "db/chats/$chat_id")" ]]; then
+					sed -i "/^autodel: /d" "db/chats/$chat_id"
+					text_id="autodel disabled"
+					tg_method send_message
+				fi
+			fi
 		fi
 	;;
 	"!db "*)
@@ -1459,3 +1495,19 @@ case "$file_type" in
 		tg_method send_voice
 	;;
 esac
+if [[ "$(grep "^autodel" "db/chats/$chat_id")" ]]; then
+	if [[ "$curl_result" == "" ]]; then
+		(sleep $(sed -n "s/^autodel: //p" "db/chats/$chat_id")  \
+		&& curl -s "$TELEAPI/deleteMessage" \
+			--form-string "message_id=$message_id" \
+			--form-string "chat_id=$chat_id" > /dev/null) &
+	else
+		(sleep $(sed -n "s/^autodel: //p" "db/chats/$chat_id")  \
+		&& curl -s "$TELEAPI/deleteMessage" \
+			--form-string "message_id=$message_id" \
+			--form-string "chat_id=$chat_id" > /dev/null
+			curl -s "$TELEAPI/deleteMessage" \
+			--form-string "message_id=$(jshon -Q -e result -e message_id <<< "$curl_result")" \
+			--form-string "chat_id=$chat_id" > /dev/null) &
+	fi
+fi
