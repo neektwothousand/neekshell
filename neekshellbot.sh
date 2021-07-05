@@ -17,15 +17,12 @@ update_db() {
 			"lname: $user_lname" > "$file_user"
 		else
 			if [[ "tag: $user_tag" != "$(grep -- "^tag" "$file_user")" ]]; then
-				old_data=$(sed -n 's/^tag: //p' "$file_user")
 				sed -i "s/^tag: .*/tag: $user_tag/" "$file_user"
 			fi
 			if [[ "fname: $user_fname" != "$(grep -- "^fname" "$file_user")" ]]; then
-				old_data=$(sed -n 's/^fname: //p' "$file_user")
 				sed -i "s/^fname: .*/fname: $(sed 's|/|\\/|'<<< "$user_fname")/" "$file_user"
 			fi
 			if [[ "lname: $user_lname" != "$(grep -- "^lname" "$file_user")" ]]; then
-				old_data=$(sed -n 's/^lname: //p' "$file_user")
 				sed -i "s/^lname: .*/lname: $(sed 's|/|\\/|'<<< "$user_lname")/" "$file_user"
 			fi
 		fi
