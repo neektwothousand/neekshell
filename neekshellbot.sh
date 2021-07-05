@@ -217,7 +217,8 @@ get_file_type() {
 		animation_id=$(jshon -Q -e animation -e file_id -u <<< "$message")
 		file_type="animation"
 	elif [[ "$(jshon -Q -e photo -e 0 -e file_id -u <<< "$message")" != "" ]]; then
-		photo_id=$(jshon -Q -e photo -e 0 -e file_id -u <<< "$message")
+		last_photo=$(($(jshon -Q -e photo -l <<< "$message") - 1))
+		photo_id=$(jshon -Q -e photo -e $last_photo -e file_id -u <<< "$message")
 		file_type="photo"
 	elif [[ "$(jshon -Q -e video -e file_id -u <<< "$message")" != "" ]]; then
 		video_id=$(jshon -Q -e video -e file_id -u <<< "$message")

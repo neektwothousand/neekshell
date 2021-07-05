@@ -455,8 +455,8 @@ case "$normal_message" in
 							;;
 						esac
 						res=($(ffprobe -v error -show_streams "pic-$request_id.$ext" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
-						magick "pic-$request_id.$ext" -resize $(bc <<< "${res[0]}/1.5")x$(bc <<< "${res[1]}/1.5") "pic-$request_id.$ext"
-						magick "pic-$request_id.$ext" -quality 6 "pic-$request_id.$ext"
+						magick "pic-$request_id.$ext" -resize $(printf '%.0f\n' "$(bc -l <<< "${res[0]}/2.5")")x$(printf '%.0f\n' "$(bc -l <<< "${res[1]}/2.5")") "pic-$request_id.$ext"
+						magick "pic-$request_id.$ext" -quality 4 "pic-$request_id.$ext"
 						photo_id="@pic-$request_id.$ext"
 						tg_method send_photo upload
 						rm "pic-$request_id.$ext"
