@@ -255,7 +255,7 @@ get_file_type() {
 			;;
 		esac
 	elif [[ "$(jshon -Q -e new_chat_members <<< "$message")" != "" ]]; then
-		document_id=$(jshon -Q -e new_chat_members <<< "$message")
+		new_members=$(jshon -Q -e new_chat_members <<< "$message")
 		file_type="new_members"
 	fi
 }
@@ -454,6 +454,7 @@ process_reply() {
 	fi
 }
 input=$1
+mksh ./save_update.sh "$input" &
 basedir=$(realpath .)
 tmpdir="/tmp/neekshell"
 [[ ! -d $tmpdir ]] && mkdir $tmpdir

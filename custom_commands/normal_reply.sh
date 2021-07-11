@@ -5,21 +5,6 @@ if [[ "$(grep "^chan_unpin" "db/chats/$chat_id")" ]]; then
 		--form-string "chat_id=$chat_id" > /dev/null
 	fi
 fi
-case "$file_type" in
-	sticker)
-		sticker_unique_id=$(jshon -Q -e sticker -e file_unique_id -u <<< "$message")
-		case "$sticker_unique_id" in
-			AgADAwADf3BGHA) # https://t.me/addstickers/PoohSocialCredit
-				normal_message="-20"
-				lock_sticker="604800"
-			;;
-			AgADAgADf3BGHA) # https://t.me/addstickers/PoohSocialCredit
-				normal_message="+20"
-				lock_sticker="604800"
-			;;
-		esac
-	;;
-esac
 case "$chat_id" in
 	-1001295527578|-1001402125530)
 		if [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]] \
@@ -571,9 +556,6 @@ case "$normal_message" in
 	"!my "*)
 		get_reply_id self
 		case "$fn_args" in
-			+|rep)
-				top_info="totalrep"
-			;;
 			gs|gayscale)
 				top_info="gs"
 			;;
@@ -712,7 +694,7 @@ case "$normal_message" in
 		fi
 		tg_method send_message
 	;;
-	"!stats "*|"!stats")
+	"!stats")
 		source bin/stats.sh
 		get_reply_id self
 		if [[ "$photo_id" == "" ]]; then
@@ -769,9 +751,6 @@ case "$normal_message" in
 	"!top "*)
 		get_reply_id self
 		case "$fn_args" in
-			+|rep)
-				top_info="totalrep"
-			;;
 			gs|gayscale)
 				top_info="gs"
 			;;
@@ -1390,67 +1369,49 @@ case "$normal_message" in
 			fi
 		fi
 		if [[ "$rep_id" != "$user_id" ]] && [[ "$rep_id" != "" ]]; then
-			# check existing lock+
-			[[ ! -d .lock+/respect/ ]] && mkdir -p .lock+/respect/
-			if [[ "$lock_sticker" == "" ]]; then
-				lockfile=.lock+/respect/"$user_id"-lock
-				lock_time=$((60 + (RANDOM % 60)))
-			else
-				lockfile=.lock+/respect/"$user_id"-sticker-lock
-				lock_time=$((60 + (RANDOM % 60) + lock_sticker))
+			rep_fname=$(grep -w -- "^fname" db/users/"$rep_id" | sed 's/.*fname: //')
+			rep_sign=$(grep -o "^." <<< "$(sed 's/^respect//' <<< "$normal_message")")
+			rep_n=$(cut -f 1 -d ' ' <<< "$normal_message" | grep -o "[0-9]*")
+			prevrep=$(grep "^totalrep" db/users/"$rep_id" | sed 's/^totalrep: //')
+			if [[ "$prevrep" = "" ]]; then
+				printf '%s\n' "totalrep: 0" >> db/users/"$rep_id"
+				prevrep=0
 			fi
-			if [[ -e "$lockfile" ]]; then
-				lock_age=$(bc <<< "$(date +%s) - $(stat -c "%W" $lockfile)")
+			if [[ "$rep_n" == "" ]]; then
+				sed -i "s/^totalrep: .*/totalrep: $(bc <<< "$prevrep $rep_sign 1")/" db/users/"$rep_id"
+				newrep="${rep_sign}1"
+			elif [[ $(is_admin) ]] || [[ "$file_type" == "sticker" ]]; then
+				sed -i "s/^totalrep: .*/totalrep: $(bc <<< "$prevrep $rep_sign $rep_n")/" db/users/"$rep_id"
+				newrep="${rep_sign}${rep_n}"
 			else
-				lock_age="999999"
+				return
 			fi
-			if [[ $lock_age -ge $lock_time ]]; then
-				rm -- "$lockfile"
-				rep_fname=$(grep -w -- "^fname" db/users/"$rep_id" | sed 's/.*fname: //')
-				rep_sign=$(grep -o "^." <<< "$(sed 's/^respect//' <<< "$normal_message")")
-				rep_n=$(cut -f 1 -d ' ' <<< "$normal_message" | grep -o "[0-9]*")
-				prevrep=$(grep "^totalrep" db/users/"$rep_id" | sed 's/^totalrep: //')
-				if [[ "$prevrep" = "" ]]; then
-					printf '%s\n' "totalrep: 0" >> db/users/"$rep_id"
-					prevrep=0
-				fi
-				if [[ "$rep_n" == "" ]]; then
-					sed -i "s/^totalrep: .*/totalrep: $(bc <<< "$prevrep $rep_sign 1")/" db/users/"$rep_id"
-				elif [[ $(is_admin) ]] || [[ "$file_type" == "sticker" ]]; then
-					sed -i "s/^totalrep: .*/totalrep: $(bc <<< "$prevrep $rep_sign $rep_n")/" db/users/"$rep_id"
-				else
-					return
-				fi
-				newrep=$(grep "^totalrep:" db/users/"$rep_id" | sed 's/^totalrep: //')
-				prevrep_user=$(sed -n "s/^rep-$user_id: //p" db/users/"$rep_id")
-				if [[ "$prevrep_user" = "" ]]; then
-					printf '%s\n' "rep-$user_id: 0" >> db/users/"$rep_id"
-					prevrep_user=0
-				fi
-				if [[ "$rep_n" == "" ]]; then
-					sed -i "s/^rep-$user_id: .*/rep-$user_id: $(bc <<< "$prevrep_user $rep_sign 1")/" db/users/"$rep_id"
-				elif [[ $(is_admin) ]] || [[ "$file_type" == "sticker" ]]; then
-					sed -i "s/^rep-$user_id: .*/rep-$user_id: $(bc <<< "$prevrep_user $rep_sign $rep_n")/" db/users/"$rep_id"
-				else
-					return
-				fi
-				if [[ "$(grep respect <<< "$normal_message")" = "" ]]; then
-					case "$rep_sign" in
-						"+")
-							text_id="respect + to $rep_fname ($newrep)"
-							tg_method send_message
-						;;
-						"-")
-							text_id="respect - to $rep_fname ($newrep)"
-							tg_method send_message
-					esac
-				else
-					voice_id="https://archneek.zapto.org/webaudio/respect.ogg"
-					caption="respect + to $rep_fname ($newrep)"
-					tg_method send_voice
-				fi
-				# create lock+
-				[[ ! -e $lockfile ]] && touch -- "$lockfile"
+			prevrep_user=$(sed -n "s/^rep-$user_id: //p" db/users/"$rep_id")
+			if [[ "$prevrep_user" = "" ]]; then
+				printf '%s\n' "rep-$user_id: 0" >> db/users/"$rep_id"
+				prevrep_user=0
+			fi
+			if [[ "$rep_n" == "" ]]; then
+				sed -i "s/^rep-$user_id: .*/rep-$user_id: $(bc <<< "$prevrep_user $rep_sign 1")/" db/users/"$rep_id"
+			elif [[ $(is_admin) ]] || [[ "$file_type" == "sticker" ]]; then
+				sed -i "s/^rep-$user_id: .*/rep-$user_id: $(bc <<< "$prevrep_user $rep_sign $rep_n")/" db/users/"$rep_id"
+			else
+				return
+			fi
+			if [[ "$(grep respect <<< "$normal_message")" = "" ]]; then
+				case "$rep_sign" in
+					"+")
+						text_id="respect + to $rep_fname ($newrep)"
+						tg_method send_message
+					;;
+					"-")
+						text_id="respect - to $rep_fname ($newrep)"
+						tg_method send_message
+				esac
+			else
+				voice_id="https://archneek.zapto.org/webaudio/respect.ogg"
+				caption="respect + to $rep_fname ($newrep)"
+				tg_method send_voice
 			fi
 		fi
 	;;
@@ -1490,7 +1451,11 @@ case "$normal_message" in
 esac
 case "$file_type" in
 	"new_members")
-		voice_id="https://archneek.zapto.org/webaudio/fanfare.ogg"
+		if [[ "$(jshon -Q -e 0 -e id -u <<< "$new_members")" == "$(jshon -Q -e result -e id -u < botinfo)" ]]; then
+			voice_id="https://archneek.zapto.org/webaudio/oh_my.ogg"
+		else
+			voice_id="https://archneek.zapto.org/webaudio/fanfare.ogg"
+		fi
 		get_reply_id self
 		tg_method send_voice
 	;;
