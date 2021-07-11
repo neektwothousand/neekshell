@@ -454,7 +454,6 @@ process_reply() {
 	fi
 }
 input=$1
-mksh ./save_update.sh "$input" &
 basedir=$(realpath .)
 tmpdir="/tmp/neekshell"
 [[ ! -d $tmpdir ]] && mkdir $tmpdir
