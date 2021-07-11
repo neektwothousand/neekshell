@@ -1379,10 +1379,8 @@ case "$normal_message" in
 			fi
 			if [[ "$rep_n" == "" ]]; then
 				sed -i "s/^totalrep: .*/totalrep: $(bc <<< "$prevrep $rep_sign 1")/" db/users/"$rep_id"
-				newrep="${rep_sign}1"
 			elif [[ $(is_admin) ]] || [[ "$file_type" == "sticker" ]]; then
 				sed -i "s/^totalrep: .*/totalrep: $(bc <<< "$prevrep $rep_sign $rep_n")/" db/users/"$rep_id"
-				newrep="${rep_sign}${rep_n}"
 			else
 				return
 			fi
@@ -1401,16 +1399,16 @@ case "$normal_message" in
 			if [[ "$(grep respect <<< "$normal_message")" = "" ]]; then
 				case "$rep_sign" in
 					"+")
-						text_id="respect + to $rep_fname ($newrep)"
+						text_id="respect + to $rep_fname"
 						tg_method send_message
 					;;
 					"-")
-						text_id="respect - to $rep_fname ($newrep)"
+						text_id="respect - to $rep_fname"
 						tg_method send_message
 				esac
 			else
 				voice_id="https://archneek.zapto.org/webaudio/respect.ogg"
-				caption="respect + to $rep_fname ($newrep)"
+				caption="respect + to $rep_fname"
 				tg_method send_voice
 			fi
 		fi
