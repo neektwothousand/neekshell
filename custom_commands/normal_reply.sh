@@ -8,7 +8,8 @@ fi
 case "$chat_id" in
 	-1001295527578|-1001402125530)
 		if [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]] \
-		&& [[ "$reply_to_message" == "" ]]; then
+		&& [[ "$reply_to_message" == "" ]] \
+		&& [[ "$chat_id" != "-1001402125530" ]]; then
 			to_delete_id=$message_id
 			tg_method delete_message
 			kick_id=$user_id unban_id=$user_id
@@ -19,6 +20,7 @@ case "$chat_id" in
 			tg_method delete_message
 		elif [[ "$reply_to_message" != "" ]] \
 		&& [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]] \
+		&& [[ "$(jshon -Q -e sender_chat <<< "$reply_to_message")" != "" ]] \
 		&& [[ "$user_id" != "160551211" ]] \
 		&& [[ "$user_id" != "917684979" ]]; then
 			text_id="https://t.me/c/$(tail -c +5 <<< "$chat_id")/$(jshon -Q -e message_id -u <<< "$reply_to_message")/?comment=$message_id"
@@ -1424,9 +1426,9 @@ case "$normal_message" in
 						reply_to_text=$(sed '1,2d' <<< "$reply_to_text")
 					fi
 					if [[ "$(wc -c <<< "$reply_to_text")" -gt 30 ]]; then
-						quote="$(head -c 30 <<< "$reply_to_text" | sed 's/^/| /g')..."
+						quote="$(head -n 1 <<< "$reply_to_text" | head -c 30 | sed 's/^/| /g')..."
 					else
-						quote="$(head -c 30 <<< "$reply_to_text" | sed 's/^/| /g')"
+						quote="$(head -n 1 <<< "$reply_to_text" | head -c 30 | sed 's/^/| /g')"
 					fi
 					text_id=$(printf '%s\n' "$quote" "" "$normal_message")
 					for c in $(seq "$bc_users_num"); do

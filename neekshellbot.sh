@@ -460,20 +460,12 @@ tmpdir="/tmp/neekshell"
 process_reply
 END_TIME=$(bc <<< "$(date +%s%N) / 1000000")
 [[ ! -d stats/ ]] && mkdir stats/
-if [[ "$user_id" != "" ]]; then # usage in ms per user
-	user_usage=$(grep -w -- "$(date +%y%m%d):$user_id" stats/users-usage)
-	if [[ "$user_usage" == "" ]]; then
-		printf '%s\n' "$(date +%y%m%d):$user_id:$(($END_TIME - $START_TIME))" >> stats/users-usage
-	else
-		sed -i "s/$user_usage/$(date +%y%m%d):$user_id:$(($(cut -f 3 -d ':' <<< "$user_usage")+($END_TIME - $START_TIME)))/" stats/users-usage
-	fi
-fi
 if [[ "$chat_id" != "" ]]; then # usage in messages per chat
 	chat_usage=$(grep -w -- "$(date +%y%m%d):$chat_id" stats/chats-usage)
 	if [[ "$chat_usage" == "" ]]; then
 		printf '%s\n' "$(date +%y%m%d):$chat_id:1" >> stats/chats-usage
 	else
-		sed -i "s/$chat_usage/$(date +%y%m%d):$chat_id:$(($(cut -f 3 -d ':' <<< "$chat_usage")+1))/" stats/chats-usage
+		sed -i "s/$chat_usage/$(date +%y%m%d):$chat_id:$(bc <<< "$(cut -f 3 -d ':' <<< "$chat_usage")+1")/" stats/chats-usage
 	fi
 fi
-printf '%s\n' "[$(date "+%F %H:%M:%S")] elapsed time: $(($END_TIME - $START_TIME))ms"
+printf '%s\n' "[$(date "+%F %H:%M:%S")] elapsed time: $(bc <<< "$END_TIME - $START_TIME")ms"
