@@ -59,7 +59,7 @@ is_admin() {
 loading() {
 	case $1 in
 		1)
-			text_id="processing ..."
+			text_id="processing..."
 			tg_method send_message
 			processing_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
 		;;

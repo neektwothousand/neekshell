@@ -632,6 +632,31 @@ case "$normal_message" in
 		fi
 		cd "$basedir"
 	;;
+	"!ocr")
+		if [[ "$reply_to_message" ]]; then
+			get_file_type reply
+			case $file_type in
+				photo|sticker)
+					cd "$tmpdir"
+					get_reply_id self
+					ocr_id=$RANDOM
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$photo_id" | jshon -Q -e result -e file_path -u)
+					ext=$(sed 's/.*\.//' <<< "$file_path")
+					cp "$file_path" "ocr-$ocr_id.$ext"
+					loading 1
+					text_id=$(~/.local/bin/easyocr -l en -f "ocr-$ocr_id.$ext" --gpu=False --verbose=True --detail=0 2>/dev/null)
+					if [[ "$text_id" == "" ]]; then
+						text_id="error"
+					fi
+					loading 2
+					tg_method send_message
+					loading 3
+					rm -f -- "ocr-$ocr_id.$ext"
+					cd "$basedir"
+				;;
+			esac
+		fi
+	;;
 	"!owoifer"|"!owo"|"!cringe")
 		reply=$(jshon -Q -e reply_to_message -e text -u <<< "$message")
 		if [[ "$reply" != "" ]]; then

@@ -221,6 +221,6 @@ tg_method() {
 		sleep "$retry_after"
 		tg_method $@
 	elif [[ "$(jshon -Q -e ok -u <<< "$curl_result")" == "false" ]]; then
-		printf '%s\n' "$curl_result" >> method_error.log
+		printf '%s\n' "$chat_id:" "$curl_result" >> method_error.log
 	fi
 }
