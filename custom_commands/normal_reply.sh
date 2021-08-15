@@ -156,6 +156,25 @@ case "$normal_message" in
 			tg_method send_message
 		fi
 	;;
+	"!custom "*|"!custom")
+		get_reply_id self
+		if [[ "$fn_args" != "" ]]; then
+			if [[ "$(grep "^!" <<< "${fn_arg[0]}")" ]]; then
+				user_command=${fn_arg[0]}
+			else
+				user_command="!${fn_arg[0]}"
+			fi
+			user_command=$(tr -d '/' <<< "$user_command")
+			[[ ! -d custom_commands/user_generated/ ]] && mkdir custom_commands/user_generated/
+			printf '%s\n' "$(cut -f 2- -d ' ' <<< "${fn_arg[@]}")" \
+				> "custom_commands/user_generated/$chat_id-$user_command"
+			text_id="$user_command set"
+			tg_method send_message
+		else
+			text_id=$(cat help/custom)
+			tg_method send_message
+		fi
+	;;
 	"!deemix "*|"!deemix")
 		if [[ "$reply_to_text" != "" ]] || [[ "$fn_args" != "" ]]; then
 			if [[ "$reply_to_text" != "" ]]; then
@@ -1485,6 +1504,12 @@ case "$file_type" in
 		tg_method send_voice
 	;;
 esac
+if [[ "$is_command" ]] \
+&& [[ -e "custom_commands/user_generated/$chat_id-$normal_message" ]]; then
+	text_id=$(cat -- "custom_commands/user_generated/$chat_id-$normal_message")
+	get_reply_id self
+	tg_method send_message
+fi
 if [[ "$(grep "^autodel" "db/chats/$chat_id")" ]]; then
 	if [[ "$curl_result" == "" ]]; then
 		(sleep $(sed -n "s/^autodel: //p" "db/chats/$chat_id")  \

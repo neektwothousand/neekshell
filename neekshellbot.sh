@@ -404,8 +404,9 @@ process_reply() {
 			text)
 				pf=$(grep -o '^.' <<< "$text_id")
 				case "$pf" in
-					"/"|"$"|"&"|"%"|";")
+					"/"|"$"|"&"|"%"|";"|"!")
 						normal_message=$(sed "s|^[$pf]|!|" <<< "$text_id")
+						is_command=true
 					;;
 					*)
 						normal_message=$text_id
