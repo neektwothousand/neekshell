@@ -165,15 +165,15 @@ case "$normal_message" in
 				user_command="!${fn_arg[0]}"
 			fi
 			user_command=$(tr -d '/' <<< "$user_command")
-			[[ ! -d custom_commands/user_generated/ ]] && mkdir custom_commands/user_generated/
+			[[ ! -d custom_commands/user_generated/ ]] \
+				&& mkdir custom_commands/user_generated/
 			printf '%s\n' "$(cut -f 2- -d ' ' <<< "${fn_arg[@]}")" \
 				> "custom_commands/user_generated/$chat_id-$user_command"
 			text_id="$user_command set"
-			tg_method send_message
 		else
 			text_id=$(cat help/custom)
-			tg_method send_message
 		fi
+		tg_method send_message
 	;;
 	"!deemix "*|"!deemix")
 		if [[ "$reply_to_text" != "" ]] || [[ "$fn_args" != "" ]]; then
@@ -233,6 +233,49 @@ case "$normal_message" in
 			text_id=$(cat help/deemix)
 			get_reply_id self
 			tg_method send_message
+		fi
+	;;
+	"!deepfry"|"!fry")
+		if [[ "$reply_to_id" != "" ]]; then
+			cd $tmpdir
+			request_id=$RANDOM
+			get_reply_id reply
+			get_file_type reply
+			case $file_type in
+				video|animation)
+					if [[ "$file_type" == "video" ]]; then
+						media_id=$video_id
+					elif [[ "$file_type" == "animation" ]]; then
+						media_id=$animation_id
+					fi
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
+					ext=$(sed 's/.*\.//' <<< "$file_path")
+					if [[ "$ext" == "gif" ]]; then
+						ffmpeg -i "$file_path" "video-$request_id.mp4"
+					else
+						cp "$file_path" "video-$request_id.mp4"
+					fi
+					loading 1
+					if [[ "$file_type" == "video" ]]; then
+						ffmpeg -i video-"$request_id".mp4 \
+							-vf elbg=l=8,eq=saturation=3.0,noise=alls=20:allf=t+u \
+							video-fry-"$request_id".mp4
+						loading 2
+						video_id="@video-fry-$request_id.mp4"
+						tg_method send_video upload
+					else
+						ffmpeg -i video-"$request_id".mp4 \
+							-vf elbg=l=8,eq=saturation=3.0,noise=alls=20:allf=t+u \
+							-an video-fry-"$request_id".mp4
+						loading 2
+						animation_id="@video-fry-$request_id.mp4"
+						tg_method send_animation upload
+					fi
+					loading 3
+					rm video-"$request_id".mp4 video-fry-"$request_id".mp4
+				;;
+			esac
+			cd "$basedir"
 		fi
 	;;
 	"!d "*|"!dice "*|"!d"|"!dice")
@@ -321,6 +364,40 @@ case "$normal_message" in
 		fi
 		get_reply_id any
 		tg_method send_message
+	;;
+	"!giftoptext "*)
+		if [[ "$reply_to_message" != "" ]]; then
+			cd $tmpdir
+			request_id=$RANDOM
+			get_reply_id reply
+			get_file_type reply
+			case "$file_type" in
+				animation)
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$animation_id" | jshon -Q -e result -e file_path -u)
+					if [[ "$ext" == "gif" ]]; then
+						ffmpeg -i "$file_path" "video-$request_id.mp4"
+					else
+						cp "$file_path" "video-$request_id.mp4"
+					fi
+					loading 1
+					res=($(ffprobe -v error -show_streams "video-$request_id.mp4" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
+					size="3"
+					nh=$(bc <<< "${res[1]}+${res[1]}/$size")
+					fs=$(bc <<< "(${res[1]}/$size)/2")
+					ypad=$(bc <<< "${res[1]}/$size")
+					toptext=${fn_arg[@]}
+					fontfile="$(realpath ~/.local/share/fonts)/Futura Condensed Extra Bold.otf"
+					loading 2
+					ffmpeg -i "video-$request_id.mp4" \
+						-vf "pad=height=$nh:y=$ypad:color=white,drawtext=box=1:text=$toptext:fontfile=$fontfile:fontsize=$fs:y=($ypad-th)/2:x=(w-tw)/2" \
+						-acodec copy "video-toptext-$request_id.mp4"
+					animation_id="@video-toptext-$request_id.mp4"
+					tg_method send_animation upload
+					loading 3
+					rm -f -- "video-$request_id.mp4" "video-toptext-$request_id.mp4"
+				;;
+			esac
+		fi
 	;;
 	"!hf")
 		randweb=$(( ( RANDOM % 4 ) +1))
@@ -519,7 +596,7 @@ case "$normal_message" in
 						tg_method send_animation upload
 					fi
 					loading 3
-					rm video-"$request_id".mp4 video-low-"$request_id".mp4
+					rm -f -- "video-$request_id.mp4" "video-low-$request_id.mp4"
 				;;
 				audio)
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$audio_id" | jshon -Q -e result -e file_path -u)
@@ -1403,7 +1480,7 @@ case "$normal_message" in
 		get_reply_id self
 		if [[ "${fn_arg[0]}" != "" ]]; then
 			if [[ "$(grep -o "[^0-9]*" <<< "${fn_arg[0]}")" != "" ]]; then
-				rep_id=$(grep '^id:' $(grep -rwi -- "$(sed 's/@//' <<< "${fn_arg[0]}")" db/users/ | cut -d : -f 1) | head -n 1 | sed 's/.*id: //')
+				rep_id=$(grep -wi -- "$(sed 's/@//' <<< "${fn_arg[0]}")" <<< "$(grep "^tag:" -r db/users/)" | cut -f 1 -d ':' | cut -f 3 -d /)
 			else
 				if [[ -e db/users/"${fn_arg[0]}" ]]; then
 					rep_id=${fn_arg[0]}
