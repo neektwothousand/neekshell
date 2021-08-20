@@ -380,23 +380,15 @@ case "$normal_message" in
 						cp "$file_path" "video-$request_id.mp4"
 					fi
 					loading 1
-					res=($(ffprobe -v error -show_streams "video-$request_id.mp4" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
-					size="3"
-					nh=$(bc <<< "${res[1]}+${res[1]}/$size")
-					fs=$(bc <<< "(${res[1]}/$size)/2")
-					ypad=$(bc <<< "${res[1]}/$size")
-					toptext=${fn_arg[@]}
-					fontfile="$(realpath ~/.local/share/fonts)/Futura Condensed Extra Bold.otf"
+					source "$basedir/bin/toptext.sh"
 					loading 2
-					ffmpeg -i "video-$request_id.mp4" \
-						-vf "pad=height=$nh:y=$ypad:color=white,drawtext=box=1:text=$toptext:fontfile=$fontfile:fontsize=$fs:y=($ypad-th)/2:x=(w-tw)/2" \
-						-acodec copy "video-toptext-$request_id.mp4"
 					animation_id="@video-toptext-$request_id.mp4"
 					tg_method send_animation upload
 					loading 3
 					rm -f -- "video-$request_id.mp4" "video-toptext-$request_id.mp4"
 				;;
 			esac
+			cd "$basedir"
 		fi
 	;;
 	"!hf")
