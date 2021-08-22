@@ -183,10 +183,10 @@ tg_method() {
 					"\"can_add_web_page_previews\":$can_add_web_page_previews}}")" \
 				-H 'Content-Type: application/json'
 		;;
-		kick_member)
-			curl -s "$TELEAPI/kickChatMember" \
+		ban_member)
+			curl -s "$TELEAPI/banChatMember" \
 				$curl_f "chat_id=$chat_id" \
-				$curl_f "user_id=$kick_id"
+				$curl_f "user_id=$ban_id"
 		;;
 		unban_member)
 			curl -s "$TELEAPI/unbanChatMember" \
@@ -209,11 +209,6 @@ tg_method() {
 		;;
 		get_me)
 			curl -s "$TELEAPI/getMe"
-		;;
-		kick_member)
-			curl -s "$TELEAPI/kickChatMember" \
-				$curl_f "chat_id=$chat_id" \
-				$curl_f "user_id=$kick_id"
 		;;
 	esac)
 	if [[ "$(jshon -Q -e parameters -e retry_after -u <<< "$curl_result")" != "" ]]; then

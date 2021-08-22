@@ -29,6 +29,19 @@ case "$callback_message_text" in
 		chat_id=$callback_user_id
 		tg_method send_document upload
 	;;
+	"sleep")
+		case "$callback_data" in
+			delay)
+				touch "$tmpdir/sleep_delay"
+				button_text_reply=delayed
+			;;
+			cancel)
+				touch "$tmpdir/sleep_cancel"
+				button_text_reply=canceled
+			;;
+		esac
+		tg_method button_reply
+	;;
 esac
 case "$callback_data" in
 	"insta "*)

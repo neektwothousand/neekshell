@@ -105,7 +105,7 @@ json_array() {
 			printf '%s' "[ $(printf '%s' "${obj[@]}" | head -c -1) ]"
 		;;
 		inline)
-			if [[ "$j" = "" ]]; then
+			if [[ "$j" == "" ]]; then
 				j=0
 			fi
 			case "$2" in

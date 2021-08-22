@@ -12,11 +12,10 @@ case "$chat_id" in
 		&& [[ "$chat_id" != "-1001402125530" ]]; then
 			to_delete_id=$message_id
 			tg_method delete_message
-			kick_id=$user_id unban_id=$user_id
-			tg_method kick_member
-			kick_message=$(jshon -Q -e result -e message_id <<< "$curl_result")
+			ban_id=$user_id unban_id=$user_id
+			tg_method ban_member
+			to_delete_id=$(jshon -Q -e result -e message_id <<< "$curl_result")
 			tg_method unban_member
-			to_delete_id=$kick_message
 			tg_method delete_message
 		elif [[ "$reply_to_message" != "" ]] \
 		&& [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]] \
@@ -46,6 +45,41 @@ case "$chat_id" in
 				text_id="Allora praticamente Sofia disse:"
 				get_reply_id self
 				tg_method send_message
+			;;
+		esac
+	;;
+	-1001574542095)
+		case "$normal_message" in
+			"!sleep")
+				to_delete_id=$message_id
+				tg_method delete_message
+				j=1
+				button_text=("delay" "cancel")
+				button_data=(${button_text[@]})
+				markup_id=$(json_array inline button)
+				text_id="sleep"
+				tg_method send_message
+				sleep_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
+				unset markup_id
+				sleep 30
+				s=1800
+				while [[ -e "$tmpdir/sleep_delay" ]]; do
+					text_id="delayed by ${s}s"
+					tg_method send_message
+					delay_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
+					rm -f "$tmpdir/sleep_delay"
+					sleep $s
+					to_delete_id=$delay_id
+					tg_method delete_message
+				done
+				if [[ ! -e "$tmpdir/sleep_cancel" ]]; then
+					text_id=sleeping
+					tg_method send_message
+				else
+					rm -f "$tmpdir/sleep_cancel"
+				fi
+				to_delete_id=$sleep_id
+				tg_method delete_message
 			;;
 		esac
 	;;
@@ -167,7 +201,8 @@ case "$normal_message" in
 			user_command=$(tr -d '/' <<< "$user_command")
 			[[ ! -d custom_commands/user_generated/ ]] \
 				&& mkdir custom_commands/user_generated/
-			printf '%s\n' "$(cut -f 2- -d ' ' <<< "${fn_arg[@]}")" \
+			printf '%s\n' "$normal_message" \
+				| sed "s/!custom ${fn_arg[0]}//" \
 				> "custom_commands/user_generated/$chat_id-$user_command"
 			text_id="$user_command set"
 		else
@@ -365,7 +400,7 @@ case "$normal_message" in
 		get_reply_id any
 		tg_method send_message
 	;;
-	"!giftoptext "*)
+	"!giftoptext "*|"!ifunny "*)
 		if [[ "$reply_to_message" != "" ]]; then
 			cd $tmpdir
 			request_id=$RANDOM
@@ -1405,10 +1440,10 @@ case "$normal_message" in
 						fi
 					;;
 					"!kick "*|"!kick")
-						kick_id=$restrict_id
-						tg_method kick_member
+						ban_id=$restrict_id
+						tg_method ban_member
 						if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "false" ]]; then
-							unban_id=$kick_id
+							unban_id=$ban_id
 							tg_method unban_member
 							if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "false" ]]; then
 								text_id="$restrict_fname kicked"
@@ -1420,8 +1455,8 @@ case "$normal_message" in
 						fi
 					;;
 					"!ban "*|"!ban")
-						kick_id=$restrict_id
-						tg_method kick_member
+						ban_id=$restrict_id
+						tg_method ban_member
 						if [[ "$(jshon -Q -e ok <<< "$curl_result")" != "false" ]]; then
 							text_id="$restrict_fname banned"
 						else
