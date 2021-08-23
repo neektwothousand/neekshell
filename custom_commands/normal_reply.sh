@@ -400,7 +400,7 @@ case "$normal_message" in
 		get_reply_id any
 		tg_method send_message
 	;;
-	"!giftoptext "*|"!ifunny "*)
+	"!giftoptext "*|"!ifunny "*|"!gtt "*)
 		if [[ "$reply_to_message" != "" ]]; then
 			cd $tmpdir
 			request_id=$RANDOM
