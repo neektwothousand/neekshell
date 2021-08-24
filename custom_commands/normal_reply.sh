@@ -415,7 +415,7 @@ case "$normal_message" in
 						cp "$file_path" "video-$request_id.mp4"
 					fi
 					loading 1
-					source "$basedir/bin/toptext.sh"
+					source "$basedir/tools/toptext.sh"
 					loading 2
 					animation_id="@video-toptext-$request_id.mp4"
 					tg_method send_animation upload
@@ -824,7 +824,7 @@ case "$normal_message" in
 		if [[ "$fn_args" != "" ]]; then
 			subreddit=$(cut -f 1 -d ' ' <<< "$fn_args")
 			filter=$(cut -f 2 -d ' ' <<< "$fn_args")
-			source bin/r_subreddit.sh "$subreddit" "$filter"
+			source tools/r_subreddit.sh "$subreddit" "$filter"
 		else
 			text_id=$(cat help/reddit)
 			tg_method send_message
@@ -845,7 +845,7 @@ case "$normal_message" in
 		tg_method send_message
 	;;
 	"!stats")
-		source bin/stats.sh
+		source tools/stats.sh
 		get_reply_id self
 		if [[ "$photo_id" == "" ]]; then
 			text_id="stats not found"

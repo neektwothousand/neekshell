@@ -8,7 +8,7 @@ fontfile="$(realpath ~/.local/share/fonts)/futura.otf"
 drawtext_lines() {
 	for x in $(seq $nl -1 1); do
 		line=$(sed -n ${x}p <<< "$toptext")
-		ycord=$(bc <<< "($th*(($x-1)*1.5))+5")
+		ycord=$(bc <<< "($th*(($x-1)*1.5))+($ypad/8)")
 		[[ "$x" == "$nl" ]] && last_ycord=$ycord
 		lines[$x]="drawtext=box=1:text=$line:fontfile=$fontfile:fontsize=$fs:y=$ycord:x=(w-tw)/2,"
 	done
