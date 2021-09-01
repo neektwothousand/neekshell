@@ -84,6 +84,22 @@ case "$chat_id" in
 		esac
 	;;
 esac
+case "$user_id" in
+	73520494|160551211|917684979) # lynn
+		if [[ "$fn_args" == "" ]]; then
+			users=$(cat lynnmentions | cut -f 1 -d :)
+			mention=$(grep -oi "$(sed -e 's/^/\^/' -e 's/$/\$\\|/' <<< "$users" | tr '\n' ' ' | tr -d ' ' | head -c -2)" <<< "$normal_message" | tr [[:upper:]] [[:lower:]])
+			if [[ "$mention" ]]; then
+				tag_id=$(grep "$mention" lynnmentions | cut -f 2 -d :)
+				markdown=("<a href=\"tg://user?id=$tag_id\">" "</a>")
+				parse_mode=html
+				text_id=$mention
+				get_reply_id self
+				tg_method send_message
+			fi
+		fi
+	;;
+esac
 case "$normal_message" in
 	"!chat "*|"!chat"|"!start join"*)
 		if [[ "$type" = "private" ]] || [[ $(is_admin) ]] ; then
@@ -400,7 +416,7 @@ case "$normal_message" in
 		get_reply_id any
 		tg_method send_message
 	;;
-	"!giftoptext "*|"!ifunny "*|"!gtt "*)
+	"!giftoptext "*|"!ifunny "*|"!gtt "*|"!gifbottomtext "*|"!gbt "*)
 		if [[ "$reply_to_message" != "" ]]; then
 			cd $tmpdir
 			request_id=$RANDOM
@@ -414,8 +430,18 @@ case "$normal_message" in
 					else
 						cp "$file_path" "video-$request_id.mp4"
 					fi
+					toptext=$(sed -e "s/'/ʼ/g" -e "s/,/﹐/g" <<< "${fn_arg[@]}")
 					loading 1
-					source "$basedir/tools/toptext.sh"
+					case "$normal_message" in
+						"!giftoptext "*|"!ifunny "*|"!gtt "*)
+							source "$basedir/tools/toptext.sh" \
+								"$toptext"
+						;;
+						"!gifbottomtext "*|"!gbt "*)
+							source "$basedir/tools/toptext.sh" \
+								"$toptext" "bottom"
+						;;
+					esac
 					loading 2
 					animation_id="@video-toptext-$request_id.mp4"
 					tg_method send_animation upload
@@ -1211,13 +1237,11 @@ case "$normal_message" in
 		if [[ $(is_admin) ]]; then
 			listchats=$(printf '%s\n' "$(grep -r users db/bot_chats/ | sed 's/.*: //' | tr ' ' '\n' | sed '/^$/d')" "$(dir -1 db/chats/)" | sort -u | grep -vw -- "$chat_id")
 			numchats=$(wc -l <<< "$listchats")
-			br_delay=1
 			if [[ "$fn_args" != "" ]]; then
 				text_id=$fn_args
 				for x in $(seq "$numchats"); do
 					chat_id=$(sed -n ${x}p <<< "$listchats")
 					tg_method send_message
-					sleep $br_delay
 				done
 			elif [[ "$reply_to_message" != "" ]]; then
 				from_chat_id=$chat_id
@@ -1225,7 +1249,6 @@ case "$normal_message" in
 				for x in $(seq "$numchats"); do
 					chat_id=$(sed -n ${x}p <<< "$listchats")
 					tg_method copy_message
-					sleep $br_delay
 				done
 			else
 				text_id="Write something after broadcast command or reply to forward"
@@ -1410,65 +1433,71 @@ case "$normal_message" in
 			if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" == "false" ]]; then
 				return # if cannot find user in chat return
 			fi
-			get_member_id=$(jshon -Q -e result -e id -u < botinfo)
-			tg_method get_chat_member
-			if [[ "$(jshon -Q -e result -e status -u <<< "$curl_result" | grep -w "creator\|administrator")" != "" ]]; then
-				case "$normal_message" in
-					"!warn "*|"!warn")
-						warns=$(grep "^warns-$chat_id:" db/users/"$restrict_id" | sed 's/.*: //')
-						if [[ "$warns" == "" ]]; then
-							warns=1
-							printf '%s\n' "warns-$chat_id: $warns" >> db/users/"$restrict_id"
-						elif [[ "$warns" -eq "1" ]]; then
-							warns=$(($warns+1))
-							sed -i "s/^warns-$chat_id: .*/warns-$chat_id: $warns/" db/users/"$restrict_id"
-						elif [[ "$warns" -eq "2" ]]; then
-							warns=$(($warns+1))
-							sed -i "s/^warns-$chat_id: .*//" db/users/"$restrict_id"
-							sed -i '/^$/d' db/users/"$restrict_id"
-							can_send_messages="false"
-							can_send_media_messages="false"
-							can_send_other_messages="false"
-							can_send_polls="false"
-							can_add_web_page_previews="false"
-							tg_method restrict_member
-						fi
-						if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "false" ]]; then
-							text_id="$restrict_fname warned ($warns out of 3)"
-						else
-							text_id="error"
-						fi
-					;;
-					"!kick "*|"!kick")
-						ban_id=$restrict_id
-						tg_method ban_member
-						if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "false" ]]; then
-							unban_id=$ban_id
-							tg_method unban_member
+			if [[ "$(grep -w -- "^$restrict_id" admins)" ]]; then
+				get_reply_id self
+				sticker_id="CAACAgQAAxkBAAEMIRxhJPew20PQ6R9SpGdAqbx4JisVagACBwgAAivRkQnNn3jPdYYwhCAE"
+				tg_method send_sticker
+			else
+				get_reply_id reply
+				get_member_id=$(jshon -Q -e result -e id -u < botinfo)
+				tg_method get_chat_member
+				if [[ "$(jshon -Q -e result -e status -u <<< "$curl_result" | grep -w "creator\|administrator")" != "" ]]; then
+					case "$normal_message" in
+						"!warn "*|"!warn")
+							warns=$(grep "^warns-$chat_id:" db/users/"$restrict_id" | sed 's/.*: //')
+							if [[ "$warns" == "" ]]; then
+								warns=1
+								printf '%s\n' "warns-$chat_id: $warns" >> db/users/"$restrict_id"
+							elif [[ "$warns" -eq "1" ]]; then
+								warns=$(($warns+1))
+								sed -i "s/^warns-$chat_id: .*/warns-$chat_id: $warns/" db/users/"$restrict_id"
+							elif [[ "$warns" -eq "2" ]]; then
+								warns=$(($warns+1))
+								sed -i "s/^warns-$chat_id: .*//" db/users/"$restrict_id"
+								sed -i '/^$/d' db/users/"$restrict_id"
+								can_send_messages="false"
+								can_send_media_messages="false"
+								can_send_other_messages="false"
+								can_send_polls="false"
+								can_add_web_page_previews="false"
+								tg_method restrict_member
+							fi
 							if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "false" ]]; then
-								text_id="$restrict_fname kicked"
+								text_id="$restrict_fname warned ($warns out of 3)"
 							else
 								text_id="error"
 							fi
-						else
-							text_id="error"
-						fi
-					;;
-					"!ban "*|"!ban")
-						ban_id=$restrict_id
-						tg_method ban_member
-						if [[ "$(jshon -Q -e ok <<< "$curl_result")" != "false" ]]; then
-							text_id="$restrict_fname banned"
-						else
-							text_id="error"
-						fi
-					;;
-				esac
-			else
-				text_id="bot is not admin"
+						;;
+						"!kick "*|"!kick")
+							ban_id=$restrict_id
+							tg_method ban_member
+							if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "false" ]]; then
+								unban_id=$ban_id
+								tg_method unban_member
+								if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "false" ]]; then
+									text_id="$restrict_fname kicked"
+								else
+									text_id="error"
+								fi
+							else
+								text_id="error"
+							fi
+						;;
+						"!ban "*|"!ban")
+							ban_id=$restrict_id
+							tg_method ban_member
+							if [[ "$(jshon -Q -e ok <<< "$curl_result")" != "false" ]]; then
+								text_id="$restrict_fname banned"
+							else
+								text_id="error"
+							fi
+						;;
+					esac
+				else
+					text_id="bot is not admin"
+				fi
+				tg_method send_message
 			fi
-			get_reply_id reply
-			tg_method send_message
 		fi
 	;;
 	"!autounpin")
