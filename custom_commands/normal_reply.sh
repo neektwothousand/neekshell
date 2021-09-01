@@ -227,6 +227,7 @@ case "$normal_message" in
 		tg_method send_message
 	;;
 	"!deemix "*|"!deemix")
+		[[ -e powersave ]] && return
 		if [[ "$reply_to_text" != "" ]] || [[ "$fn_args" != "" ]]; then
 			if [[ "$reply_to_text" != "" ]]; then
 				deemix_link=$(grep -o 'https://www.deezer.*\|https://deezer.*' <<< "$reply_to_text" | cut -f 1 -d ' ')
@@ -287,6 +288,7 @@ case "$normal_message" in
 		fi
 	;;
 	"!deepfry"|"!fry")
+		[[ -e powersave ]] && return
 		if [[ "$reply_to_id" != "" ]]; then
 			cd $tmpdir
 			request_id=$RANDOM
@@ -417,6 +419,7 @@ case "$normal_message" in
 		tg_method send_message
 	;;
 	"!giftoptext "*|"!ifunny "*|"!gtt "*|"!gifbottomtext "*|"!gbt "*)
+		[[ -e powersave ]] && return
 		if [[ "$reply_to_message" != "" ]]; then
 			cd $tmpdir
 			request_id=$RANDOM
@@ -513,6 +516,7 @@ case "$normal_message" in
 		esac
 	;;
 	"!insta "*|"!insta")
+		[[ -e powersave ]] && return
 		if [[ "$fn_args" != "" ]]; then
 			if [[ "$(grep '^@' <<< "$fn_args")" != "" ]]; then
 				fn_arg=${fn_arg/@/}
@@ -746,6 +750,7 @@ case "$normal_message" in
 		tg_method send_message
 	;;
 	"!nh "*)
+		[[ -e powersave ]] && return
 		get_reply_id self
 		cd $tmpdir
 		nhentai_id=$(cut -d / -f 5 <<< "$fn_args")
@@ -782,6 +787,7 @@ case "$normal_message" in
 		cd "$basedir"
 	;;
 	"!ocr")
+		[[ -e powersave ]] && return
 		if [[ "$reply_to_message" ]]; then
 			get_file_type reply
 			case $file_type in
@@ -976,6 +982,7 @@ case "$normal_message" in
 		tg_method send_message
 	;;
 	"!ytdl "*|"!ytdl")
+		[[ -e powersave ]] && return
 		get_reply_id self
 		cd $tmpdir
 		if [[ "$reply_to_text" != "" ]]; then
@@ -1129,6 +1136,19 @@ case "$normal_message" in
 				text_id="$set_username not found"
 			fi
 			[[ "$text_id" != "" ]] && tg_method send_message
+		fi
+	;;
+	"!powersave")
+		if [[ $(is_admin) ]]; then
+			if [[ ! -e powersave ]]; then
+				touch powersave
+				text_id="powersave set"
+			else
+				rm -f powersave
+				text_id="powersave unset"
+			fi
+			get_reply_id self
+			tg_method send_message
 		fi
 	;;
 	"!bin "*|"!archbin "*)
