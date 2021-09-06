@@ -571,6 +571,7 @@ case "$normal_message" in
 		fi
 	;;
 	"!jpg")
+		[[ -e powersave ]] && return
 		if [[ "$reply_to_id" != "" ]]; then
 			cd $tmpdir
 			request_id=$RANDOM
@@ -1552,66 +1553,6 @@ case "$normal_message" in
 	
 	## no prefix
 	
-	"respect+"|"respect+ "*|"+"|"-"|"+"[0-9]*|"-"[0-9]*|"+ "*|"- "*|"+"[0-9]*" "*|"-"[0-9]*" "*)
-		get_reply_id self
-		if [[ "${fn_arg[0]}" != "" ]]; then
-			if [[ "$(grep -o "[^0-9]*" <<< "${fn_arg[0]}")" != "" ]]; then
-				rep_id=$(grep -wi -- "$(sed 's/@//' <<< "${fn_arg[0]}")" <<< "$(grep "^tag:" -r db/users/)" | cut -f 1 -d ':' | cut -f 3 -d /)
-			else
-				if [[ -e db/users/"${fn_arg[0]}" ]]; then
-					rep_id=${fn_arg[0]}
-				fi
-			fi
-		elif [[ "$reply_to_user_id" != "" ]]; then
-			if [[ "$reply_to_user_id" != "$user_id" ]]; then
-				rep_id=$reply_to_user_id
-			fi
-		fi
-		if [[ "$rep_id" != "$user_id" ]] && [[ "$rep_id" != "" ]]; then
-			rep_fname=$(grep -w -- "^fname" db/users/"$rep_id" | sed 's/.*fname: //')
-			rep_sign=$(grep -o "^." <<< "$(sed 's/^respect//' <<< "$normal_message")")
-			rep_n=$(cut -f 1 -d ' ' <<< "$normal_message" | grep -o "[0-9]*")
-			prevrep=$(grep "^totalrep" db/users/"$rep_id" | sed 's/^totalrep: //')
-			if [[ "$prevrep" = "" ]]; then
-				printf '%s\n' "totalrep: 0" >> db/users/"$rep_id"
-				prevrep=0
-			fi
-			if [[ "$rep_n" == "" ]]; then
-				sed -i "s/^totalrep: .*/totalrep: $(bc <<< "$prevrep $rep_sign 1")/" db/users/"$rep_id"
-			elif [[ $(is_admin) ]] || [[ "$file_type" == "sticker" ]]; then
-				sed -i "s/^totalrep: .*/totalrep: $(bc <<< "$prevrep $rep_sign $rep_n")/" db/users/"$rep_id"
-			else
-				return
-			fi
-			prevrep_user=$(sed -n "s/^rep-$user_id: //p" db/users/"$rep_id")
-			if [[ "$prevrep_user" = "" ]]; then
-				printf '%s\n' "rep-$user_id: 0" >> db/users/"$rep_id"
-				prevrep_user=0
-			fi
-			if [[ "$rep_n" == "" ]]; then
-				sed -i "s/^rep-$user_id: .*/rep-$user_id: $(bc <<< "$prevrep_user $rep_sign 1")/" db/users/"$rep_id"
-			elif [[ $(is_admin) ]] || [[ "$file_type" == "sticker" ]]; then
-				sed -i "s/^rep-$user_id: .*/rep-$user_id: $(bc <<< "$prevrep_user $rep_sign $rep_n")/" db/users/"$rep_id"
-			else
-				return
-			fi
-			if [[ "$(grep respect <<< "$normal_message")" = "" ]]; then
-				case "$rep_sign" in
-					"+")
-						text_id="respect + to $rep_fname"
-						tg_method send_message
-					;;
-					"-")
-						text_id="respect - to $rep_fname"
-						tg_method send_message
-				esac
-			else
-				voice_id="https://archneek.zapto.org/webaudio/respect.ogg"
-				caption="respect + to $rep_fname"
-				tg_method send_voice
-			fi
-		fi
-	;;
 	*)
 		if [[ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" != "" ]]; then
 			bc_users=$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir" | sed 's/.*:\s//' | tr ' ' '\n' | grep -v -- "$bot_chat_user_id")
