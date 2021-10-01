@@ -1,0 +1,7 @@
+Usage
+  !trad <text>
+ or
+  !trad (on reply to <text>)
+
+Description
+  sends translations of <text> to english

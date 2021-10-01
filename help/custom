@@ -1,0 +1,8 @@
+Usage
+  !custom <command> <reply>
+
+Description
+  set a new <command> for the current chat, with a custom <reply>
+
+Example
+  !custom hello world

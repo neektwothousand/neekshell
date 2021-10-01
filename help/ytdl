@@ -1,0 +1,7 @@
+Usage
+  !ytdl <link>
+ or
+  !ytdl (on reply to <link>)
+
+Description
+  sends a video in mp4 format using youtube-dl
