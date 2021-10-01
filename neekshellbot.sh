@@ -206,7 +206,8 @@ get_file_type() {
 	if [[ "$(jshon -Q -e text -u <<< "$message")" != "" ]]; then
 		text_id=$(jshon -Q -e text -u <<< "$message")
 		if [[ ! -e botinfo ]]; then
-			tg_method get_me > botinfo
+			tg_method get_me
+			printf '%s\n' "$curl_result" > botinfo
 		fi
 		text_id=${text_id/@$(jshon -Q -e result -e username -u < botinfo)/}
 		file_type="text"
