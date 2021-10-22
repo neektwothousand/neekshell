@@ -170,8 +170,8 @@ case "$inline_message" in
 			command=$(sed 's/ bin$//' <<< "$inline_message")
 			markdown=("<code>" "</code>")
 			parse_mode=html
-			message_text=$(mksh -c "$command" 2>&1)
-			title="> $command"
+			message_text=$(printf '%s\n' "$ $command" "$(mksh -c "$command" 2>&1)")
+			title=$command
 			return_query=$(json_array inline article)
 			tg_method send_inline
 		fi

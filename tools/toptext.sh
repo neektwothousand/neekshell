@@ -1,13 +1,16 @@
 #!/bin/mksh
 toptext=$1 size=3
 unfolded=$toptext tt_wc=$(wc -m <<< "$toptext")
-res=($(ffprobe -v error -show_streams "video-$request_id.mp4" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
+res=($(ffprobe -v error -show_streams "video-$request_id.$ext" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
 fs=$(bc <<< "(${res[1]}/$size)/2")
-fontfile="$(realpath ~/.local/share/fonts)/futura.otf"
-th=$(ffmpeg -v 24 -hide_banner -f lavfi -i color \
+if [[ "$(grep -P '[\p{Han}]' <<< "$toptext")" ]]; then
+	font="font=Noto Sans CJK HK"
+else
+	font="fontfile=$(realpath ~/.local/share/fonts)/futura.otf"
+fi
+line_th=$(ffmpeg -v 24 -hide_banner -f lavfi -i color \
 	-vf "drawtext=fontfile=$fontfile:fontsize=$fs:text=$toptext:y=print(th\,24)" \
 	-vframes 1 -f null - 2>&1 | sed -n 1p | sed 's/\..*//')
-line_th=$th
 if [[ "$2" == "" ]]; then
 	mode=top
 else
@@ -36,7 +39,7 @@ drawtext_lines() {
 			ycord=$(bc <<< "$ycord+($line_th/1.2)")
 		fi
 		printf '%s\n' "$ycord($x) res1: ${res[1]}"
-		lines[$x]="drawtext=box=1:text=$line:fontfile=$fontfile:fontsize=$fs:y=$ycord:x=(w-tw)/2,"
+		lines[$x]="drawtext=box=1:text=$line:$font:fontsize=$fs:y=$ycord:x=(w-tw)/2,"
 	done
 	last_ycord=$ycord
 	drawtext=$(printf '%s' "${lines[@]}" | head -c -1)
@@ -44,11 +47,12 @@ drawtext_lines() {
 }
 get_tw() {
 	tw=$(ffmpeg -v 24 -hide_banner -f lavfi -i color \
-		-vf "drawtext=fontfile=$fontfile:fontsize=$fs:text=$toptext:x=print(tw\,24)" \
+		-vf "drawtext=$font:fontsize=$fs:text=$toptext:x=print(tw\,24)" \
 		-vframes 1 -f null - 2>&1 | sed -n 1p | sed 's/\..*//')
 	nl=$(wc -l <<< "$toptext")
 	w_diff=$(bc <<< "${res[0]}/$tw")
 	if [[ "$w_diff" != "0" ]]; then
+		line_th=$((line_th+(line_th/4)))
 		drawtext_lines
 		get_nh "$mode" "$nh" "text"
 		ffmpeg -y -i "video-$request_id.mp4" \
@@ -56,15 +60,15 @@ get_tw() {
 			-an "video-toptext-$request_id.mp4" 2>/dev/null
 	else
 		tw_c=$((tw_c+1))
-		if [[ "$tw_c" == "1" ]]; then
-			fs=$(bc -l <<< "(${res[1]}/$size)/2.5" | sed 's/\..*//')
-			th=$(ffmpeg -v 24 -hide_banner -f lavfi -i color \
-				-vf "drawtext=fontfile=$fontfile:fontsize=$fs:text=$toptext:y=print(th\,24)" \
+		if [[ "$((tw_c%2))" == "1" ]] && [[ "$fs" -gt "8" ]]; then
+			fs=$(bc <<< "$fs - 5")
+			line_th=$(ffmpeg -v 24 -hide_banner -f lavfi -i color \
+				-vf "drawtext=$font:fontsize=$fs:text=$(tr '\n' ' ' <<< "$toptext"):y=print(th\,24)" \
 				-vframes 1 -f null - 2>&1 | sed -n 1p | sed 's/\..*//')
 		else
 			toptext=$(fold -s -w $(bc <<< "($tt_wc/$tw_c)+5") <<< "$unfolded")
 		fi
-		if [[ "$tw_c" -lt "15" ]]; then
+		if [[ "$tw_c" -lt "30" ]]; then
 			get_tw
 		else
 			return

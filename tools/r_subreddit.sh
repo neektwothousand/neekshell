@@ -59,10 +59,10 @@ media_id=$(jshon -e url -u <<< "$hot" | grep "i.redd.it\|imgur\|gfycat\|redgifs"
 video=$(jshon -Q -e secure_media -e reddit_video <<< "$hot")
 permalink=$(jshon -e permalink -u <<< "$hot" | cut -f 5 -d /)
 if [[ "$media_id" ]]; then
-	if [[ "$(grep "gfycat" <<< "$media_id")" != "" ]]; then
-		media_id=$(curl -s "$media_id" | sed -En 's|.*<source src="(https://thumbs.*mp4)" .*|\1|p')
-	elif [[ "$(grep "redgifs" <<< "$media_id")" != "" ]]; then
-		media_id=$(wget -q -O- "$media_id" | sed -En 's|.*content="(https://thumbs2.redgifs.*-mobile.mp4)".*|\1|p')
+	if [[ "$(grep "gfycat\|redgifs" <<< "$media_id")" ]]; then
+		media_id=$(wget -q -O- "$media_id" | sed -En 's|.*<source src="(https://thumbs.*mp4)" .*|\1|p')
+	elif [[ "$(grep "gifv$" <<< "$media_id")" ]]; then
+		media_id=$(sed 's/gifv$/mp4/' <<< "$media_id")
 	fi
 elif [[ "$video" ]]; then
 	youtube-dl --quiet --no-warnings --merge-output-format mp4 -o "$permalink.mp4" "https://www.reddit.com/$permalink/"

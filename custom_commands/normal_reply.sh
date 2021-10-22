@@ -344,7 +344,7 @@ case "$normal_message" in
 				fi
 				for x in $(seq "$mul"); do
 					chars=$(( $(wc -m <<< "$normaldice") - 1 ))
-					result[$x]=$(( ($(cat /dev/urandom | tr -dc '[:digit:]' 2>/dev/null | head -c $chars) % $normaldice) + 1 ))
+					result[$x]=$(bc <<< "($(cat /dev/urandom | tr -dc '[:digit:]' 2>/dev/null | head -c $chars) % $normaldice)+1")
 				done
 				text_id=${result[*]}
 				markdown=("<code>" "</code>")
@@ -426,13 +426,21 @@ case "$normal_message" in
 			get_reply_id reply
 			get_file_type reply
 			case "$file_type" in
-				animation)
-					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$animation_id" | jshon -Q -e result -e file_path -u)
-					if [[ "$ext" == "gif" ]]; then
-						ffmpeg -i "$file_path" "video-$request_id.mp4"
-					else
-						cp "$file_path" "video-$request_id.mp4"
-					fi
+				animation|photo|video)
+					case "$file_type" in
+						animation)
+							media_id=$animation_id
+						;;
+						photo)
+							media_id=$photo_id
+						;;
+						video)
+							media_id=$video_id
+						;;
+					esac
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
+					ext=$(sed 's/.*\.//' <<< "$file_path")
+					cp "$file_path" "video-$request_id.$ext"
 					toptext=$(sed -e "s/'/ʼ/g" -e "s/,/﹐/g" <<< "${fn_arg[@]}")
 					loading 1
 					case "$normal_message" in
@@ -446,10 +454,18 @@ case "$normal_message" in
 						;;
 					esac
 					loading 2
-					animation_id="@video-toptext-$request_id.mp4"
-					tg_method send_animation upload
+					case "$file_type" in
+						animation|video)
+							animation_id="@video-toptext-$request_id.$ext"
+							tg_method send_animation upload
+						;;
+						photo)
+							photo_id="@video-toptext-$request_id.$ext"
+							tg_method send_photo upload
+						;;
+					esac
 					loading 3
-					rm -f -- "video-$request_id.mp4" "video-toptext-$request_id.mp4"
+					rm -f -- "video-$request_id.$ext" "video-toptext-$request_id.$ext"
 				;;
 			esac
 			cd "$basedir"
@@ -867,13 +883,20 @@ case "$normal_message" in
 		if [[ "$reply_to_message" != "" ]]; then
 			get_file_type reply
 			case "$file_type" in
-				"photo")
+				"photo"|"animation")
 					request_id=$RANDOM
-					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$photo_id" | jshon -Q -e result -e file_path -u)
+					[[ "$file_type" == "photo" ]] && media_id=$photo_id || media_id=$animation_id
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
 					ext=$(sed 's/.*\.//' <<< "$file_path")
-					public_path="/home/genteek/archneek/public/tmp/$request_id-sauce.$ext"
-					request_url="https://archneek.zapto.org/public/tmp/$request_id-sauce.$ext"
-					cp "$file_path" "$public_path"
+					if [[ "$ext" == "mp4" ]]; then
+						public_path="/home/genteek/archneek/public/tmp/$request_id-sauce.jpg"
+						request_url="https://archneek.zapto.org/public/tmp/$request_id-sauce.jpg"
+						ffmpeg -ss 0.5 -i "$file_path" -vframes 1 -f image2 "$public_path"
+					else
+						public_path="/home/genteek/archneek/public/tmp/$request_id-sauce.$ext"
+						request_url="https://archneek.zapto.org/public/tmp/$request_id-sauce.$ext"
+						cp "$file_path" "$public_path"
+					fi
 					api_key=$(cat saucenao_key)
 					params="output_type=2&numres=32&api_key=$api_key&url=$request_url"
 					sauce=$(curl -s "https://saucenao.com/search.php?$params")

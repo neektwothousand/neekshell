@@ -389,10 +389,10 @@ process_reply() {
 		im_arg=$(cut -f 2- -d ' ' <<< "$inline_message")
 		user_id=$inline_user_id user_fname=$inline_fname
 	fi
-	if [[ $(grep -w -- "^$user_id\|^$inline_user_id\|^$callback_user_id" banned 2>/dev/null) ]]; then
-		user_fname="banned"
-		return
-	else
+# 	if [[ $(grep -w -- "^$user_id\|^$inline_user_id\|^$callback_user_id" banned 2>/dev/null) ]]; then
+# 		user_fname="banned"
+# 		return
+# 	else
 		if [[ "$type" = "private" ]] || [[ "$inline" != "" ]] || [[ "$callback" != "" ]]; then
 			bot_chat_dir="db/bot_chats/"
 			bot_chat_user_id=$user_id
@@ -453,7 +453,7 @@ process_reply() {
 			get_button_reply
 			[[ $? != 1 ]] && source custom_commands/button_reply.sh
 		fi
-	fi
+# 	fi
 }
 input=$1
 basedir=$(realpath .)
