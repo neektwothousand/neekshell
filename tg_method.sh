@@ -147,6 +147,11 @@ tg_method() {
 					"}")" \
 				-H 'Content-Type: application/json'
 		;;
+		edit_reply_markup)
+			curl -s "$TELEAPI/editMessageReplyMarkup" \
+				$curl_f "inline_message_id=$inline_message_id" \
+				$curl_f "reply_markup=$markup_id"
+		;;
 		delete_message)
 			curl -s "$TELEAPI/deleteMessage" \
 				$curl_f "chat_id=$chat_id" \

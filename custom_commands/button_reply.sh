@@ -67,7 +67,7 @@ case "$callback_data" in
 			button_data=("insta - $ig_tag $chat_id" "insta + $ig_tag $chat_id")
 		fi
 		printf '%s' "$ig_page" > ig_page
-		markup_id=$(inline_array button)
+		markup_id=$(json_array inline button)
 		media_id="@$(sed -n ${ig_page}p ig_list)"
 		to_delete_id=$(cat ig_id)
 		tg_method button_reply
@@ -89,5 +89,15 @@ case "$callback_data" in
 		cd ..
 		printf '%s' "$ig_id" > ig_id
 		cd "$basedir"
+	;;
+	"F"*)
+		f=$((${callback_data/F/} + 1))
+		button_text="F ($f)"
+		button_data="F$f"
+		markup_id=$(json_array inline button)
+		inline_message_id=$(jshon -Q -e inline_message_id -u <<< "$callback")
+		tg_method edit_reply_markup
+		button_text_reply="F"
+		tg_method button_reply
 	;;
 esac

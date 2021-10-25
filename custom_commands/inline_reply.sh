@@ -47,6 +47,15 @@ case "$inline_message" in
 		return_query=$(json_array inline article)
 		tg_method send_inline > /dev/null
 	;;
+	[Ff])
+		button_text="F"
+		button_data="F0"
+		markup_id=$(json_array inline button)
+		title="Press F to pay respects"
+		message_text=$title
+		return_query=$(json_array inline article)
+		tg_method send_inline
+	;;
 	"figlet "*)
 		figtext=$(sed 's/figlet //' <<< "$inline_message")
 		markdown=("<code>" "</code>")
@@ -154,7 +163,6 @@ case "$inline_message" in
 	;;
 	"invite")
 		if [[ $(is_admin) ]]; then
-			set -x
 			join_id="917684979"
 			button_text="click to join"
 			button_url="http://t.me/neekshellbot?start=join$join_id"
