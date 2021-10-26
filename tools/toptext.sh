@@ -55,9 +55,9 @@ get_tw() {
 		line_th=$((line_th+(line_th/4)))
 		drawtext_lines
 		get_nh "$mode" "$nh" "text"
-		ffmpeg -y -i "video-$request_id.mp4" \
+		ffmpeg -y -i "video-$request_id.$ext" \
 			-vf "pad=height=$nh:y=$ypad_cord:color=white,$drawtext" \
-			-an "video-toptext-$request_id.mp4" 2>/dev/null
+			-an "video-toptext-$request_id.$ext" 2>/dev/null
 	else
 		tw_c=$((tw_c+1))
 		if [[ "$((tw_c%2))" == "1" ]] && [[ "$fs" -gt "8" ]]; then
