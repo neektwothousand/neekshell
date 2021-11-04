@@ -83,23 +83,33 @@ json_array() {
 	case "$1" in
 		mediagroup)
 			if [[ "${caption}" != "" ]]; then
-				obj[0]="{
-					\"type\":\"photo\",
-					\"media\":\"${media[0]}\",
-					\"caption\":\"${caption}\"
-				},"
+				caption=$(sed 's/"/\\"/g' <<< "$caption")
+				if [[ "$parse_mode" ]]; then
+					obj[0]=$(printf '%s' "{" \
+						"\"type\":\"photo\"," \
+						"\"media\":\"${media[0]}\"," \
+						"\"caption\":\"${caption}\"," \
+						"\"parse_mode\":\"$parse_mode\"" \
+					"},")
+				else
+					obj[0]=$(printf '%s' "{" \
+						"\"type\":\"photo\"," \
+						"\"media\":\"${media[0]}\"," \
+						"\"caption\":\"${caption}\"" \
+					"},")
+				fi
 				for x in $(seq 1 $j); do
-					obj[$x]="{
-						\"type\":\"photo\",
-						\"media\":\"${media[$x]}\"
-					},"
+					obj[$x]=$(printf '%s' "{" \
+						"\"type\":\"photo\"," \
+						"\"media\":\"${media[$x]}\"" \
+					"},")
 				done
 			else
 				for x in $(seq 0 $j); do
-					obj[$x]="{
-						\"type\":\"photo\",
-						\"media\":\"${media[$x]}\"
-					},"
+					obj[$x]=$(printf '%s' "{" \
+						"\"type\":\"photo\"," \
+						"\"media\":\"${media[$x]}\"" \
+					"},")
 				done
 			fi
 			printf '%s' "[ $(printf '%s' "${obj[@]}" | head -c -1) ]"

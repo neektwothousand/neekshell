@@ -90,7 +90,7 @@ case "$user_id" in
 			users=$(cat lynnmentions | cut -f 1 -d :)
 			mention=$(grep -oi "$(sed -e 's/^/\^/' -e 's/$/\$\\|/' <<< "$users" | tr '\n' ' ' | tr -d ' ' | head -c -2)" <<< "$normal_message" | tr [[:upper:]] [[:lower:]])
 			if [[ "$mention" ]]; then
-				tag_id=$(grep "$mention" lynnmentions | cut -f 2 -d :)
+				tag_id=$(grep "$mention" lynnmentions | cut -f 2 -d : | head -n 1)
 				markdown=("<a href=\"tg://user?id=$tag_id\">" "</a>")
 				parse_mode=html
 				text_id=$mention

@@ -63,7 +63,6 @@ tg_method() {
 		send_mediagroup)
 			curl -s "$TELEAPI/sendMediaGroup" \
 				$curl_f "chat_id=$chat_id" \
-				$curl_f "parse_mode=$parse_mode" \
 				$curl_f "reply_to_message_id=$reply_id" \
 				$curl_f "media=$mediagroup_id"
 		;;
