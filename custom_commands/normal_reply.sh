@@ -85,7 +85,7 @@ case "$chat_id" in
 	;;
 esac
 case "$user_id" in
-	73520494|160551211|917684979) # lynn
+	73520494) # lynn
 		if [[ "$fn_args" == "" ]]; then
 			users=$(cat lynnmentions | cut -f 1 -d :)
 			mention=$(grep -oi "$(sed -e 's/^/\^/' -e 's/$/\$\\|/' <<< "$users" | tr '\n' ' ' | tr -d ' ' | head -c -2)" <<< "$normal_message" | tr [[:upper:]] [[:lower:]])
@@ -426,7 +426,7 @@ case "$normal_message" in
 			get_reply_id reply
 			get_file_type reply
 			case "$file_type" in
-				animation|photo|video)
+				animation|photo|video|sticker)
 					case "$file_type" in
 						animation)
 							media_id=$animation_id
@@ -437,11 +437,14 @@ case "$normal_message" in
 						video)
 							media_id=$video_id
 						;;
+						sticker)
+							media_id=$sticker_id
+						;;
 					esac
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
 					ext=$(sed 's/.*\.//' <<< "$file_path")
 					cp "$file_path" "video-$request_id.$ext"
-					toptext=$(sed -e "s/'/ʼ/g" -e "s/,/﹐/g" <<< "${fn_arg[@]}")
+					toptext=$(sed -e "s/$(head -n 1 <<< "$normal_message" | cut -f 1 -d ' ') //" -e "s/,/\\\,/g" <<< "$normal_message")
 					loading 1
 					case "$normal_message" in
 						"!giftoptext "*|"!ifunny "*|"!gtt "*)
@@ -455,13 +458,21 @@ case "$normal_message" in
 					esac
 					loading 2
 					case "$file_type" in
-						animation|video)
+						animation)
 							animation_id="@video-toptext-$request_id.$ext"
 							tg_method send_animation upload
+						;;
+						video)
+							video_id="@video-toptext-$request_id.$ext"
+							tg_method send_video upload
 						;;
 						photo)
 							photo_id="@video-toptext-$request_id.$ext"
 							tg_method send_photo upload
+						;;
+						sticker)
+							sticker_id="@video-toptext-$request_id.$ext"
+							tg_method send_sticker upload
 						;;
 					esac
 					loading 3

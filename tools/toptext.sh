@@ -8,8 +8,10 @@ if [[ "$(grep -P '[\p{Han}]' <<< "$toptext")" ]]; then
 else
 	font="fontfile=$(realpath ~/.local/share/fonts)/futura.otf"
 fi
+textfile="$tmpdir/$RANDOM-toptext-start"
+printf '%s' "$(tr '\n' ' ' <<< "$toptext")" > "$textfile"
 line_th=$(ffmpeg -v 24 -hide_banner -f lavfi -i color \
-	-vf "drawtext=fontfile=$fontfile:fontsize=$fs:text=$toptext:y=print(th\,24)" \
+	-vf "drawtext=fontfile=$fontfile:fontsize=$fs:textfile=$textfile:y=print(th\,24)" \
 	-vframes 1 -f null - 2>&1 | sed -n 1p | sed 's/\..*//')
 if [[ "$2" == "" ]]; then
 	mode=top
@@ -33,13 +35,15 @@ drawtext_lines() {
 	fi
 	for x in $(seq $nl -1 1); do
 		line=$(sed -n ${x}p <<< "$(tac <<< "$toptext")")
+		textfile[$x]="$tmpdir/$RANDOM-toptext-$x"
+		printf '%s' "$line" > "${textfile[$x]}"
 		if [[ "$x" == "$nl" ]]; then
 			ycord=$(bc <<< "$ycord+($line_th/4)")
 		else
 			ycord=$(bc <<< "$ycord+($line_th/1.2)")
 		fi
 		printf '%s\n' "$ycord($x) res1: ${res[1]}"
-		lines[$x]="drawtext=box=1:text=$line:$font:fontsize=$fs:y=$ycord:x=(w-tw)/2,"
+		lines[$x]="drawtext=box=1:textfile=${textfile[$x]}:$font:fontsize=$fs:y=$ycord:x=(w-tw)/2,"
 	done
 	last_ycord=$ycord
 	drawtext=$(printf '%s' "${lines[@]}" | head -c -1)
@@ -54,19 +58,39 @@ get_tw() {
 	if [[ "$w_diff" != "0" ]]; then
 		line_th=$((line_th+(line_th/4)))
 		drawtext_lines
-		get_nh "$mode" "$nh" "text"
-		ffmpeg -y -i "video-$request_id.$ext" \
-			-vf "pad=height=$nh:y=$ypad_cord:color=white,$drawtext" \
-			-an "video-toptext-$request_id.$ext" 2>/dev/null
+		get_nh "$mode"
+		case "$ext" in
+			jpg|jpeg|png|webp)
+				ffmpeg -y -i "video-$request_id.$ext" \
+					-vf "pad=h=ih+$(bc <<< "$last_ycord+($line_th/0.9)"):w=iw+4:x=-1:y=$(bc <<< "$last_ycord+($line_th/0.9)")-1:color=white,$drawtext" \
+					-an "video-toptext-$request_id.$ext"
+			;;
+			mp4)
+				case "$file_type" in
+					animation)
+						ffmpeg -y -i "video-$request_id.$ext" \
+							-vf "pad=h=$nh:y=$ypad_cord:color=white,$drawtext" \
+							-an "video-toptext-$request_id.$ext"
+					;;
+					video)
+						ffmpeg -y -i "video-$request_id.$ext" \
+							-vf "pad=h=$nh:y=$ypad_cord:color=white,$drawtext" \
+							"video-toptext-$request_id.$ext"
+					;;
+				esac
+			;;
+		esac
 	else
 		tw_c=$((tw_c+1))
 		if [[ "$((tw_c%2))" == "1" ]] && [[ "$fs" -gt "8" ]]; then
 			fs=$(bc <<< "$fs - 5")
+			textfile="$tmpdir/$RANDOM-toptext-start"
+			printf '%s' "$(tr '\n' ' ' <<< "$toptext")" > "$textfile"
 			line_th=$(ffmpeg -v 24 -hide_banner -f lavfi -i color \
-				-vf "drawtext=$font:fontsize=$fs:text=$(tr '\n' ' ' <<< "$toptext"):y=print(th\,24)" \
+				-vf "drawtext=$font:fontsize=$fs:textfile=$textfile:y=print(th\,24)" \
 				-vframes 1 -f null - 2>&1 | sed -n 1p | sed 's/\..*//')
 		else
-			toptext=$(fold -s -w $(bc <<< "($tt_wc/$tw_c)+5") <<< "$unfolded")
+			toptext=$(fold -s -w $(bc <<< "($tt_wc/$tw_c)+5") <<< "$unfolded" | sed -e 's/ *$//g' -e 's/^ *//g' | sed '/^ *$/d' | sed '/^$/d')
 		fi
 		if [[ "$tw_c" -lt "30" ]]; then
 			get_tw
@@ -76,3 +100,4 @@ get_tw() {
 	fi
 }
 get_tw
+rm -f ${textfile[*]}
