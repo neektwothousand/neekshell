@@ -1218,7 +1218,7 @@ case "$normal_message" in
 	"!bin "*|"!archbin "*)
 		markdown=("<code>" "</code>")
 		parse_mode=html
-		if [[ $(grep "160551211\|917684979" <<< "$user_id") ]]; then
+		if [[ $(is_admin) ]]; then
 			case "$normal_message" in
 				"!bin "*)
 					text_id=$(mksh -c "$fn_args" 2>&1)
