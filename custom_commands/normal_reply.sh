@@ -1058,7 +1058,7 @@ case "$normal_message" in
 		if [[ "$ytdl_link" != "" ]]; then
 			ytdl_id=$RANDOM
 			loading 1
-			ytdl_json=$(youtube-dl --print-json --merge-output-format mp4 -o ytdl-$ytdl_id.mp4 "$ytdl_link")
+			ytdl_json=$(~/.local/bin/yt-dlp --print-json --merge-output-format mp4 -o ytdl-$ytdl_id.mp4 "$ytdl_link")
 			if [[ "$ytdl_json" != "" ]]; then
 				caption=$(jshon -Q -e title -u <<< "$ytdl_json")
 				if [[ "$(du -m ytdl-$ytdl_id.mp4 | cut -f 1)" -ge 2000 ]]; then
