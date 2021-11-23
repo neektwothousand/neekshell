@@ -299,7 +299,7 @@ get_normal_reply() {
 		;;
 		"!source")
 			source_id=$RANDOM
-			zip -r source-"$source_id".zip neekshellbot.sh custom_commands tools LICENSE README.md webhook.php
+			zip -r source-"$source_id".zip neekshellbot.sh tg_method.sh webhook.sh getinput.sh custom_commands tools LICENSE README.md webhook.php
 			document_id="@source-$source_id.zip"
 			get_reply_id self
 			tg_method send_document upload
