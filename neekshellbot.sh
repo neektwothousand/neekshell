@@ -4,7 +4,7 @@ START_TIME=$(bc <<< "$(date +%s%N) / 1000000")
 PS4="[$(date "+%F %H:%M:%S")] "
 exec 1>>"log.log" 2>&1
 TOKEN=$(cat ./token)
-TELEAPI="http://192.168.1.15:8081/bot${TOKEN}"
+TELEAPI="https://bot.shantih19.xyz/bot${TOKEN}"
 update_db() {
 	if [[ "$user_id" != "" ]]; then
 		[[ ! -d db/users/ ]] && mkdir -p db/users/

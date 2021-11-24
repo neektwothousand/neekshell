@@ -597,6 +597,34 @@ case "$normal_message" in
 			tg_method send_message
 		fi
 	;;
+	"!hide")
+		if [[ "$reply_to_id" != "" ]]; then
+			cd $tmpdir
+			request_id=$RANDOM
+			get_reply_id self
+			if [["$fn_args"  != ""]]; then
+				get_file_type reply
+				if $file_type == photo; then
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$photo_id" | jshon -Q -e result -e file_path -u)
+					ext=$(sed 's/.*\.//' <<< "$file_path")
+					cp "$file_path" "pic-$request_id.$ext"
+					imageobfuscate -i "pic-$request_id.$ext" -e -s "${fn_arg[0]}" -p "${fn_arg[1]}"
+					get_reply_id reply
+					photo-id = "@pic-${request_id}_obfuscated.png"
+					tg_method send_photo upload
+					rm "pic-$request_id.$ext"
+				fi
+			else
+				get_reply_id self
+				text_id=$(cat help/hide)
+				tg_method send_message
+			fi
+		else
+			get_reply_id self
+			text_id=$(cat help/hide)
+			tg_method send_message
+		fi			
+	;;
 	"!jpg")
 		[[ -e powersave ]] && return
 		if [[ "$reply_to_id" != "" ]]; then
