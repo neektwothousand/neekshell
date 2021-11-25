@@ -1,0 +1,9 @@
+Usage
+  !hide [phrase] (replying to an image)
+  or
+  !hide [phrase] [password] (replying to an image)
+
+Description
+  encodes phrase inside image using optional password (send uncompressed image)
+  use !unhide to decode
+  if password is blank default will be used
