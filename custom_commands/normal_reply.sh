@@ -598,39 +598,29 @@ case "$normal_message" in
 		fi
 	;;
 	"!hide "*|"!hide")
-		if [[ "$reply_to_id" != "" ]]; then
+		get_file_type reply
+		if [[ "$reply_to_id" != "" ]] \
+		&& [[ "${fn_arg[0]}" != "" ]] \
+		&& [[ "$file_type" == "photo" ]]; then
 			cd $tmpdir
 			request_id=$RANDOM
-			get_reply_id self
-			if [[ "$fn_args"  != "" ]] && [[ "${fn_arg[0]}" != "" ]]; then
-				get_file_type reply
-				if [[ $file_type == photo ]]; then
-					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$photo_id" | jshon -Q -e result -e file_path -u)
-					ext=$(sed 's/.*\.//' <<< "$file_path")
-					cp "$file_path" "pic-$request_id.$ext"
-					if [[ "${fn_arg[1]}" == "" ]]; then
-						seed="defaultpasswordthatisreallyhardtoguessiguess"
-					else
-						seed="${fn_args[1]}"
-					fi
-					result=$(imageobfuscator -i "pic-$request_id.$ext" -e -p "${fn_arg[0]}" -s "$seed")
-					get_reply_id reply
-					if [[ "$result" == "Saved." ]]; then
-						document_id="@pic-${request_id}_encoded.png"
-						tg_method send_document upload
-						rm "pic-${request_id}_encoded.png"
-					fi
-					rm "pic-$request_id.$ext"
-				else
-					get_reply_id self
-					text_id=$(cat help/hide)
-					tg_method send_message
-				fi
+			get_reply_id reply
+			file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$photo_id" | jshon -Q -e result -e file_path -u)
+			ext=$(sed 's/.*\.//' <<< "$file_path")
+			cp "$file_path" "pic-$request_id.$ext"
+			if [[ "${fn_arg[1]}" == "" ]]; then
+				seed="defaultpasswordthatisreallyhardtoguessiguess"
 			else
-				get_reply_id self
-				text_id=$(cat help/hide)
-				tg_method send_message
+				seed="${fn_args[1]}"
 			fi
+			result=$(imageobfuscator -i "pic-$request_id.$ext" -e -p "${fn_arg[0]}" -s "$seed")
+			if [[ "$result" == "Saved." ]]; then
+				document_id="@pic-${request_id}_encoded.png"
+				tg_method send_document upload
+				rm "pic-${request_id}_encoded.png"
+			fi
+			rm "pic-$request_id.$ext"
+			cd "$basedir"
 		else
 			get_reply_id self
 			text_id=$(cat help/hide)
@@ -638,33 +628,29 @@ case "$normal_message" in
 		fi
 	;;
 	"!unhide "*|"!unhide")
-		if [[ "$reply_to_id" != "" ]]; then
+		get_file_type reply
+		if [[ "$reply_to_id" != "" ]] \
+		&& [[ "$file_type" == "photo" ]]; then
 			cd $tmpdir
 			request_id=$RANDOM
 			get_reply_id self
-			get_file_type reply
-			if [[ $file_type == photo ]]; then
-				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$photo_id" | jshon -Q -e result -e file_path -u)
-				ext=$(sed 's/.*\.//' <<< "$file_path")
-				cp "$file_path" "pic-$request_id.$ext"
-				if [[ "${fn_arg[1]}" == "" ]]; then
-					seed="defaultpasswordthatisreallyhardtoguessiguess"
-				else
-					seed="${fn_arg[1]}"
-				fi
-				text_id=($(imageobfuscator -i "pic-$request_id.$ext" -d -s "$seed"))
-				text_id=${text_id[1]}
-				if [[ "$text_id" == "" ]]; then
-					text_id="Wrong password, compressed image or image has no hidden data."
-				fi
-				get_reply_id reply
-				tg_method send_message
-				rm "pic-$request_id.$ext"
+			file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$photo_id" | jshon -Q -e result -e file_path -u)
+			ext=$(sed 's/.*\.//' <<< "$file_path")
+			cp "$file_path" "pic-$request_id.$ext"
+			if [[ "${fn_arg[1]}" == "" ]]; then
+				seed="defaultpasswordthatisreallyhardtoguessiguess"
 			else
-				get_reply_id self
-				text_id=$(cat help/unhide)
-				tg_method send_message
+				seed="${fn_arg[1]}"
 			fi
+			text_id=($(imageobfuscator -i "pic-$request_id.$ext" -d -s "$seed"))
+			text_id=${text_id[1]}
+			if [[ "$text_id" == "" ]]; then
+				text_id="Wrong password, compressed image or image has no hidden data."
+			fi
+			get_reply_id reply
+			tg_method send_message
+			rm "pic-$request_id.$ext"
+			cd "$basedir"
 		else
 			get_reply_id self
 			text_id=$(cat help/unhide)
