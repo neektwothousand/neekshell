@@ -597,6 +597,80 @@ case "$normal_message" in
 			tg_method send_message
 		fi
 	;;
+	"!hide "*|"!hide")
+		if [[ "$reply_to_id" != "" ]]; then
+			cd $tmpdir
+			request_id=$RANDOM
+			get_reply_id self
+			if [[ "$fn_args"  != "" ]] && [[ "${fn_arg[0]}" != "" ]]; then
+				get_file_type reply
+				if [[ $file_type == photo ]]; then
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$photo_id" | jshon -Q -e result -e file_path -u)
+					ext=$(sed 's/.*\.//' <<< "$file_path")
+					cp "$file_path" "pic-$request_id.$ext"
+					if [[ "${fn_arg[1]}" == "" ]]; then
+						seed="defaultpasswordthatisreallyhardtoguessiguess"
+					else
+						seed="${fn_args[1]}"
+					fi
+					result=$(imageobfuscator -i "pic-$request_id.$ext" -e -p "${fn_arg[0]}" -s "$seed")
+					get_reply_id reply
+					if [[ "$result" == "Saved." ]]; then
+						document_id="@pic-${request_id}_encoded.png"
+						tg_method send_document upload
+						rm "pic-${request_id}_encoded.png"
+					fi
+					rm "pic-$request_id.$ext"
+				else
+					get_reply_id self
+					text_id=$(cat help/hide)
+					tg_method send_message
+				fi
+			else
+				get_reply_id self
+				text_id=$(cat help/hide)
+				tg_method send_message
+			fi
+		else
+			get_reply_id self
+			text_id=$(cat help/hide)
+			tg_method send_message
+		fi
+	;;
+	"!unhide "*|"!unhide")
+		if [[ "$reply_to_id" != "" ]]; then
+			cd $tmpdir
+			request_id=$RANDOM
+			get_reply_id self
+			get_file_type reply
+			if [[ $file_type == photo ]]; then
+				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$photo_id" | jshon -Q -e result -e file_path -u)
+				ext=$(sed 's/.*\.//' <<< "$file_path")
+				cp "$file_path" "pic-$request_id.$ext"
+				if [[ "${fn_arg[1]}" == "" ]]; then
+					seed="defaultpasswordthatisreallyhardtoguessiguess"
+				else
+					seed="${fn_arg[1]}"
+				fi
+				text_id=($(imageobfuscator -i "pic-$request_id.$ext" -d -s "$seed"))
+				text_id=${text_id[1]}
+				if [[ "$text_id" == "" ]]; then
+					text_id="Wrong password, compressed image or image has no hidden data."
+				fi
+				get_reply_id reply
+				tg_method send_message
+				rm "pic-$request_id.$ext"
+			else
+				get_reply_id self
+				text_id=$(cat help/unhide)
+				tg_method send_message
+			fi
+		else
+			get_reply_id self
+			text_id=$(cat help/unhide)
+			tg_method send_message
+		fi
+	;;
 	"!jpg")
 		[[ -e powersave ]] && return
 		if [[ "$reply_to_id" != "" ]]; then

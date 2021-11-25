@@ -1,0 +1,8 @@
+Usage
+  !unhide (replying to an image sent as a document)
+  or
+  !unhide [password] (replying to an image sent as a document)
+
+Description
+  decodes image encoded with !hide (image must be sent uncompressed)
+  if password is left blank password will be default
