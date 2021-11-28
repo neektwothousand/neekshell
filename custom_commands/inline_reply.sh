@@ -77,76 +77,36 @@ case "$inline_message" in
 	;;
 	"booru "*)
 		offset=$(($(jshon -Q -e offset -u <<< "$inline")+1))
-		booru_prefix=$(cut -f 2 -d ' ' <<< "$inline_message")
-		case "$booru_prefix" in
-			'e621b'|'e621bgif')
-				booru="e621.net"
-				ilb="e621"
-				tags=$(cut -f 3- -d ' ' <<< "$inline_message")
-			;;
-			'sb'|'sbgif')
-				booru="safebooru.donmai.us"
-				ilb="s"
-				tags=$(cut -f 3- -d ' ' <<< "$inline_message")
-			;;
-			*)
-				booru="gelbooru.com"
-				ilb="g"
-				tags=$(cut -f 2- -d ' ' <<< "$inline_message")
-			;;
-		esac
+		tags=$(tr ' ' '+' <<< "$(sed 's/booru //' <<< "$inline_message")")
+		website="gelbooru.com"
+		booru_site="gelbooru"
 		limit=5 y=0
-		case "$ilb" in 
-			"e621")
-				apikey=$(cat e621_api_key)
-				getbooru=$(curl -A 'neekmkshbot/1.0 (by neek)' -s "https://e621.net/posts.json?tags=$tags&page=$offset&limit=$limit&$apikey")
-				for j in $(seq 0 $((limit - 1))); do
-					photo_url[$j]=$(jshon -Q -e posts -e $y -e file -e url -u <<< "$getbooru")
-					while [[ "$(grep 'jpg\|jpeg' <<< "${photo_url[$j]}")" = "" ]]; do
-						y=$((y+1))
-						if [[ "$y" -gt "10" ]]; then
-							break
-						fi
-						photo_url[$j]=$(jshon -Q -e posts -e $y -e file -e url -u <<< "$getbooru")
-						photo_weight[$j]=$(curl -s -L -I "${photo_url[$j]}" | gawk -v IGNORECASE=1 '/^Content-Length/ { print $2 }')
-						if [[ "${photo_weight[$j]}" -gt "5000000" ]]; then
-							photo_url[$j]=""
-						fi
-					done
-					thumb_url[$j]=${photo_url[$j]}
-					caption[$j]="source: ${photo_url[$j]}"
-					y=$((y+1))
-				done
-			;;
-			*)
-				case "$ilb" in
-				"s")
-					getbooru=$(wget -q -O- "https://$booru/posts.json?search[name_matches]=$tags&limit=$limit&page=$offset")
-				;;
-				*)
-					getbooru=$(curl -A 'Mozilla/5.0' -s "https://$booru/index.php?page=dapi&s=post&json=1&pid=$offset&tags=$tags&q=index&limit=$limit")
-				;;
-				esac
-				for j in $(seq 0 $((limit - 1))); do
-					while [[ "$(grep "jpg$\|jpeg$\|png$" <<< "${photo_url[$j]}")" = "" ]]; do
-						y=$((y+1))
-						if [[ "$y" -gt "10" ]]; then
-							break
-						fi
-						photo_url[$j]=$(jshon -Q -e $y -e file_url -u <<< "$getbooru")
-						photo_weight[$j]=$(curl -s -L -I "${photo_url[$j]}" | gawk -v IGNORECASE=1 '/^Content-Length/ { print $2 }')
-						if [[ "${photo_weight[$j]}" -gt "5000000" ]]; then
-							photo_url[$j]=""
-						fi
-					done
-					thumb_url[$j]=${photo_url[$j]}
-					caption[$j]="source: ${photo_url[$j]}"
-					y=$((y+1))
-				done
-			;;
-		esac
+		no_video="-video+-webm+-animated+-animated_gif+-animated_png"
+		getbooru=$(curl -A 'Mozilla/5.0' -s "https://$website/index.php?page=dapi&s=post&json=1&pid=$offset&tags=$tags+$no_video&q=index&limit=$limit")
+		for j in $(seq 0 $((limit - 1))); do
+			while [[ "$(grep "jpg$\|jpeg$\|png$" <<< "${photo_url[$j]}")" == "" ]]; do
+				y=$((y+1))
+				if [[ "$y" -gt "10" ]]; then
+					break
+				fi
+				if [[ "$(jshon -Q -e $y -e sample -u <<< "$getbooru")" != "0" ]]; then
+					hash=$(jshon -Q -e $y -e hash -u <<< "$getbooru")
+					booru_dir=$(jshon -Q -e $y -e directory -u <<< "$getbooru")
+					photo_url[$j]="https://$website/samples/$booru_dir/sample_$hash.jpg"
+				else
+					photo_url[$j]=$(jshon -Q -e $y -e file_url -u <<< "$getbooru")
+				fi
+				photo_weight[$j]=$(curl -s -L -I "${photo_url[$j]}" | gawk -v IGNORECASE=1 '/^Content-Length/ { print $2 }')
+				if [[ "${photo_weight[$j]}" -gt "5000000" ]]; then
+					photo_url[$j]=""
+				fi
+			done
+			thumb_url[$j]=${photo_url[$j]}
+			caption[$j]="source: ${photo_url[$j]}"
+			y=$((y+1))
+		done
 		return_query=$(json_array inline photo)
-		tg_method send_inline > /dev/null
+		tg_method send_inline
 	;;
 	"search "*)
 		offset=$(($(jshon -Q -e offset -u <<< "$inline")+1))
