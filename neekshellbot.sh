@@ -152,6 +152,8 @@ json_array() {
 							"\"id\":\"$RANDOM\"," \
 							"\"photo_url\":\"${photo_url[$x]}\"," \
 							"\"thumb_url\":\"${thumb_url[$x]}\"," \
+							"\"photo_width\":${photo_width[$x]}," \
+							"\"photo_height\":${photo_height[$x]}," \
 							"\"caption\":\"${caption[$x]}\"},")
 					done
 					printf '%s' "[ $(printf '%s' "${obj[@]}" | sed -E 's/(.*)},/\1}/') ]"

@@ -96,10 +96,8 @@ case "$inline_message" in
 				else
 					photo_url[$j]=$(jshon -Q -e $y -e file_url -u <<< "$getbooru")
 				fi
-				photo_weight[$j]=$(curl -s -L -I "${photo_url[$j]}" | gawk -v IGNORECASE=1 '/^Content-Length/ { print $2 }')
-				if [[ "${photo_weight[$j]}" -gt "5000000" ]]; then
-					photo_url[$j]=""
-				fi
+				photo_width[$j]=$(jshon -Q -e $y -e width -u <<< "$getbooru")
+				photo_height[$j]=$(jshon -Q -e $y -e height -u <<< "$getbooru")
 			done
 			thumb_url[$j]=${photo_url[$j]}
 			caption[$j]="source: ${photo_url[$j]}"
