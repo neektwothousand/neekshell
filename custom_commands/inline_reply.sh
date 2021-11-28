@@ -100,7 +100,7 @@ case "$inline_message" in
 				photo_height[$j]=$(jshon -Q -e $y -e height -u <<< "$getbooru")
 			done
 			thumb_url[$j]=${photo_url[$j]}
-			caption[$j]="source: ${photo_url[$j]}"
+			caption[$j]="source: https://$website/index.php?page=post&s=view&id=$(jshon -Q -e $y -e id -u <<< "$getbooru")"
 			y=$((y+1))
 		done
 		return_query=$(json_array inline photo)
