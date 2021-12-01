@@ -65,7 +65,7 @@ get_tw() {
 					-vf "pad=h=ih+$(bc <<< "$last_ycord+($line_th/0.9)"):w=iw+4:x=-1:y=$(bc <<< "$last_ycord+($line_th/0.9)")-1:color=white,$drawtext" \
 					-an "video-toptext-$request_id.$ext"
 			;;
-			mp4)
+			mp4|MP4)
 				case "$file_type" in
 					animation)
 						ffmpeg -y -i "video-$request_id.$ext" \
