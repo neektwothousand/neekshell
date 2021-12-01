@@ -63,19 +63,19 @@ get_tw() {
 			jpg|jpeg|png|webp)
 				ffmpeg -y -i "video-$request_id.$ext" \
 					-vf "pad=h=ih+$(bc <<< "$last_ycord+($line_th/0.9)"):w=iw+4:x=-1:y=$(bc <<< "$last_ycord+($line_th/0.9)")-1:color=white,$drawtext" \
-					-an "video-toptext-$request_id.$ext"
+					-an "video-toptext-$request_id.$ext" > /dev/null 2>&1
 			;;
 			mp4|MP4)
 				case "$file_type" in
 					animation)
 						ffmpeg -y -i "video-$request_id.$ext" \
 							-vf "pad=h=$nh:y=$ypad_cord:color=white,$drawtext" \
-							-an "video-toptext-$request_id.$ext"
+							-an "video-toptext-$request_id.$ext" > /dev/null 2>&1
 					;;
 					video)
 						ffmpeg -y -i "video-$request_id.$ext" \
 							-vf "pad=h=$nh:y=$ypad_cord:color=white,$drawtext" \
-							"video-toptext-$request_id.$ext"
+							"video-toptext-$request_id.$ext" > /dev/null 2>&1
 					;;
 				esac
 			;;
