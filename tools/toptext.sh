@@ -83,7 +83,7 @@ get_tw() {
 	else
 		tw_c=$((tw_c+1))
 		if [[ "$((tw_c%2))" == "1" ]] && [[ "$fs" -gt "8" ]]; then
-			fs=$(bc <<< "$fs - 5")
+			fs=$(bc <<< "$fs-($fs/4)")
 			textfile="$tmpdir/$RANDOM-toptext-start"
 			printf '%s' "$(tr '\n' ' ' <<< "$toptext")" > "$textfile"
 			line_th=$(ffmpeg -v 24 -hide_banner -f lavfi -i color \
