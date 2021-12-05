@@ -950,7 +950,7 @@ case "$normal_message" in
 			tg_method send_message
 		fi
 	;;
-	"!sauce")
+	"!sauce"|"!sauce "*)
 		if [[ "$reply_to_message" != "" ]]; then
 			get_file_type reply
 			case "$file_type" in
@@ -968,17 +968,22 @@ case "$normal_message" in
 						request_url="https://archneek.zapto.org/public/tmp/$request_id-sauce.$ext"
 						cp "$file_path" "$public_path"
 					fi
-					api_key=$(cat saucenao_key)
-					params="output_type=2&numres=32&api_key=$api_key&url=$request_url"
-					sauce=$(curl -s "https://saucenao.com/search.php?$params")
-					numres=$(jshon -Q -e results -l <<< "$sauce")
-					if [[ "$numres" ]]; then
-						for x in $(seq 0 $((numres-1))); do
-							ext_url[$x]=$(jshon -Q -e results -e $x -e data -e ext_urls -e 0 -u <<< "$sauce")
-						done
-						text_id=$(tr ' ' '\n' <<< "${ext_url[*]}")
+					if [[ "${fn_arg[0]}" == "google" ]]; then
+						text_id=$(curl -s "https://www.google.com/searchbyimage?site=search&sa=X&image_url=$request_url" \
+							| sed -n 's/^<A HREF="//p' | sed 's|">here</A>.||')
 					else
-						text_id="no results"
+						api_key=$(cat saucenao_key)
+						params="output_type=2&numres=32&api_key=$api_key&url=$request_url"
+						sauce=$(curl -s "https://saucenao.com/search.php?$params")
+						numres=$(jshon -Q -e results -l <<< "$sauce")
+						if [[ "$numres" ]]; then
+							for x in $(seq 0 $((numres-1))); do
+								ext_url[$x]=$(jshon -Q -e results -e $x -e data -e ext_urls -e 0 -u <<< "$sauce")
+							done
+							text_id=$(tr ' ' '\n' <<< "${ext_url[*]}")
+						else
+							text_id="no results"
+						fi
 					fi
 					tg_method send_message
 					rm -f "$public_path"
