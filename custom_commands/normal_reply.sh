@@ -962,7 +962,7 @@ case "$normal_message" in
 					if [[ "$ext" == "mp4" ]]; then
 						public_path="/home/genteek/archneek/public/tmp/$request_id-sauce.jpg"
 						request_url="https://archneek.zapto.org/public/tmp/$request_id-sauce.jpg"
-						ffmpeg -ss 0.5 -i "$file_path" -vframes 1 -f image2 "$public_path"
+						ffmpeg -ss 0.1 -i "$file_path" -vframes 1 -f image2 "$public_path"
 					else
 						public_path="/home/genteek/archneek/public/tmp/$request_id-sauce.$ext"
 						request_url="https://archneek.zapto.org/public/tmp/$request_id-sauce.$ext"
