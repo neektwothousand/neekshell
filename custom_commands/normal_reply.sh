@@ -954,12 +954,16 @@ case "$normal_message" in
 		if [[ "$reply_to_message" != "" ]]; then
 			get_file_type reply
 			case "$file_type" in
-				"photo"|"animation")
+				"photo"|"animation"|"video")
 					request_id=$RANDOM
-					[[ "$file_type" == "photo" ]] && media_id=$photo_id || media_id=$animation_id
+					case "$file_type" in
+						photo) media_id=$photo_id ;;
+						animation) media_id=$animation_id ;;
+						video) media_id=$video_id ;;
+					esac
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
 					ext=$(sed 's/.*\.//' <<< "$file_path")
-					if [[ "$ext" == "mp4" ]]; then
+					if [[ "$(grep -i "mp4" <<< "$ext")" ]]; then
 						public_path="/home/genteek/archneek/public/tmp/$request_id-sauce.jpg"
 						request_url="https://archneek.zapto.org/public/tmp/$request_id-sauce.jpg"
 						ffmpeg -ss 0.1 -i "$file_path" -vframes 1 -f image2 "$public_path"
