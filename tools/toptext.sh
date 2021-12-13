@@ -82,7 +82,7 @@ get_tw() {
 		esac
 	else
 		tw_c=$((tw_c+1))
-		if [[ "$((tw_c%2))" == "1" ]] && [[ "$fs" -gt "8" ]]; then
+		if [[ "$((tw_c%4))" == "0" ]] && [[ "$fs" -gt "8" ]]; then
 			fs=$(bc <<< "$fs-($fs/4)")
 			textfile="$tmpdir/$RANDOM-toptext-start"
 			printf '%s' "$(tr '\n' ' ' <<< "$toptext")" > "$textfile"
@@ -90,7 +90,7 @@ get_tw() {
 				-vf "drawtext=$font:fontsize=$fs:textfile=$textfile:y=print(th\,24)" \
 				-vframes 1 -f null - 2>&1 | sed -n 1p | sed 's/\..*//')
 		else
-			toptext=$(fold -s -w $(bc <<< "($tt_wc/2)+5") <<< "$unfolded" | sed -e 's/ *$//g' -e 's/^ *//g' | sed '/^ *$/d' | sed '/^$/d')
+			toptext=$(fold -s -w $(bc <<< "(($tt_wc/2)+5)-$tw_c") <<< "$unfolded" | sed -e 's/ *$//g' -e 's/^ *//g' | sed '/^ *$/d' | sed '/^$/d')
 		fi
 		if [[ "$tw_c" -lt "30" ]]; then
 			get_tw
