@@ -1690,6 +1690,9 @@ case "$normal_message" in
 			bc_users=$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir" | sed 's/.*:\s//' | tr ' ' '\n' | grep -v -- "$bot_chat_user_id")
 			if [[ "$bc_users" != "" ]]; then
 				bc_users_num=$(wc -l <<< "$bc_users")
+				if [[ ! "$reply_to_text" ]] && [[ "$reply_to_caption" ]]; then
+					reply_to_text=$reply_to_caption
+				fi
 				if [[ "$file_type" = "text" ]] && [[ "$reply_to_text" != "" ]]; then
 					quote_reply=$(sed -n 1p <<< "$reply_to_text" | grep '^|')
 					if [[ "$quote_reply" != "" ]]; then
