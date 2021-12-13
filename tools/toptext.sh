@@ -90,7 +90,7 @@ get_tw() {
 				-vf "drawtext=$font:fontsize=$fs:textfile=$textfile:y=print(th\,24)" \
 				-vframes 1 -f null - 2>&1 | sed -n 1p | sed 's/\..*//')
 		else
-			toptext=$(fold -s -w $(bc <<< "($tt_wc/$tw_c)+5") <<< "$unfolded" | sed -e 's/ *$//g' -e 's/^ *//g' | sed '/^ *$/d' | sed '/^$/d')
+			toptext=$(fold -s -w $(bc <<< "($tt_wc/2)+5") <<< "$unfolded" | sed -e 's/ *$//g' -e 's/^ *//g' | sed '/^ *$/d' | sed '/^$/d')
 		fi
 		if [[ "$tw_c" -lt "30" ]]; then
 			get_tw
