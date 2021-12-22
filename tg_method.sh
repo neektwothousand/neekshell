@@ -165,11 +165,18 @@ tg_method() {
 				$curl_f "message_id=$to_delete_id"
 		;;
 		copy_message)
-			curl -s "$TELEAPI/copyMessage" \
-				$curl_f "chat_id=$chat_id" \
-				$curl_f "from_chat_id=$from_chat_id" \
-				$curl_f "message_id=$copy_id" \
-				$curl_f "caption=$caption"
+			if [[ "$caption" ]]; then
+				curl -s "$TELEAPI/copyMessage" \
+					$curl_f "chat_id=$chat_id" \
+					$curl_f "from_chat_id=$from_chat_id" \
+					$curl_f "message_id=$copy_id" \
+					$curl_f "caption=$caption"
+			else
+				curl -s "$TELEAPI/copyMessage" \
+					$curl_f "chat_id=$chat_id" \
+					$curl_f "from_chat_id=$from_chat_id" \
+					$curl_f "message_id=$copy_id"
+			fi
 		;;
 		set_chat_permissions)
 			curl -s "$TELEAPI/setChatPermissions" \
