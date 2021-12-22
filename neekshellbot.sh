@@ -383,6 +383,10 @@ process_reply() {
 			chat_title=$(jshon -Q -e chat -e title -u <<< "$message")
 		fi
 		update_db
+		get_file_type
+		if [[ "$file_type" != "text" ]]; then
+			caption=$(jshon -Q -e caption -u <<< "$message")
+		fi
 	elif [[ "$callback" != "" ]]; then
 		callback_user=$(jshon -Q -e from -e username -u <<< "$callback")
 		callback_user_id=$(jshon -Q -e from -e id -u <<< "$callback")
@@ -403,71 +407,65 @@ process_reply() {
 		im_arg=$(cut -f 2- -d ' ' <<< "$inline_message")
 		user_id=$inline_user_id user_fname=$inline_fname
 	fi
-# 	if [[ $(grep -w -- "^$user_id\|^$inline_user_id\|^$callback_user_id" banned 2>/dev/null) ]]; then
-# 		user_fname="banned"
-# 		return
-# 	else
-		if [[ "$type" = "private" ]] || [[ "$inline" != "" ]] || [[ "$callback" != "" ]]; then
-			bot_chat_dir="db/bot_chats/"
-			bot_chat_user_id=$user_id
-		else
-			bot_chat_dir="db/bot_group_chats/"
-			bot_chat_user_id=$chat_id
-		fi
-		get_file_type
-		case "$file_type" in
-			text)
-				pf=$(grep -o '^.' <<< "$text_id")
-				case "$pf" in
-					"/"|"$"|"&"|"%"|";"|"!")
-						normal_message=$(sed "s|^[$pf]|!|" <<< "$text_id")
-						is_command=true
-					;;
-					*)
-						normal_message=$text_id
-				esac
-				unset text_id
-				fn_args=$(cut -f 2- -d ' ' <<< "$normal_message")
-				if [[ "$fn_args" != "$normal_message" ]]; then
-					fn_arg=($fn_args)
-				else
-					fn_args=""
-				fi
-			;;
-			photo)
-				normal_message=$photo_id
-			;;
-			animation)
-				normal_message=$animation_id
-			;;
-			video)
-				normal_message=$video_id
-			;;
-			sticker)
-				normal_message=$sticker_id
-			;;
-			audio)
-				normal_message=$audio_id
-			;;
-			voice)
-				normal_message=$voice_id
-			;;
-			document)
-				normal_message=$document_id
-			;;
-		esac
-		source tg_method.sh
-		if [[ "$message" != "" ]]; then
-			get_normal_reply
-			[[ $? != 1 ]] && source custom_commands/normal_reply.sh
-		elif [[ "$inline_message" != "" ]]; then
-			get_inline_reply
-			[[ $? != 1 ]] && source custom_commands/inline_reply.sh
-		elif [[ "$callback_data" != "" ]]; then
-			get_button_reply
-			[[ $? != 1 ]] && source custom_commands/button_reply.sh
-		fi
-# 	fi
+	if [[ "$type" = "private" ]] || [[ "$inline" != "" ]] || [[ "$callback" != "" ]]; then
+		bot_chat_dir="db/bot_chats/"
+		bot_chat_user_id=$user_id
+	else
+		bot_chat_dir="db/bot_group_chats/"
+		bot_chat_user_id=$chat_id
+	fi
+	case "$file_type" in
+		text)
+			pf=$(grep -o '^.' <<< "$text_id")
+			case "$pf" in
+				"/"|"$"|"&"|"%"|";"|"!")
+					normal_message=$(sed "s|^[$pf]|!|" <<< "$text_id")
+					is_command=true
+				;;
+				*)
+					normal_message=$text_id
+			esac
+			unset text_id
+			fn_args=$(cut -f 2- -d ' ' <<< "$normal_message")
+			if [[ "$fn_args" != "$normal_message" ]]; then
+				fn_arg=($fn_args)
+			else
+				fn_args=""
+			fi
+		;;
+		photo)
+			normal_message=$photo_id
+		;;
+		animation)
+			normal_message=$animation_id
+		;;
+		video)
+			normal_message=$video_id
+		;;
+		sticker)
+			normal_message=$sticker_id
+		;;
+		audio)
+			normal_message=$audio_id
+		;;
+		voice)
+			normal_message=$voice_id
+		;;
+		document)
+			normal_message=$document_id
+		;;
+	esac
+	source tg_method.sh
+	if [[ "$message" != "" ]]; then
+		get_normal_reply
+		[[ $? != 1 ]] && source custom_commands/normal_reply.sh
+	elif [[ "$inline_message" != "" ]]; then
+		get_inline_reply
+		[[ $? != 1 ]] && source custom_commands/inline_reply.sh
+	elif [[ "$callback_data" != "" ]]; then
+		get_button_reply
+		[[ $? != 1 ]] && source custom_commands/button_reply.sh
+	fi
 }
 input=$1
 basedir=$(realpath .)

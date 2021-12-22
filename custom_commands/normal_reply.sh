@@ -1687,29 +1687,39 @@ case "$normal_message" in
 	
 	*)
 		if [[ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" != "" ]]; then
-			bc_users=$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir" | sed 's/.*:\s//' | tr ' ' '\n' | grep -v -- "$bot_chat_user_id")
+			bc_users=$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir" | sed 's/.*:\s//' | tr ' ' '\n')
 			if [[ "$bc_users" != "" ]]; then
+				to_delete_id=$message_id
+				sender_chat_id=$chat_id
+				mmd5=$(md5sum <<< "$message" | cut -f 1 -d ' ')
 				bc_users_num=$(wc -l <<< "$bc_users")
 				if [[ ! "$reply_to_text" ]] && [[ "$reply_to_caption" ]]; then
 					reply_to_text=$reply_to_caption
 				fi
-				if [[ "$file_type" = "text" ]] && [[ "$reply_to_text" != "" ]]; then
+				if [[ "$reply_to_text" ]]; then
 					quote_reply=$(sed -n 1p <<< "$reply_to_text" | grep '^|')
 					if [[ "$quote_reply" != "" ]]; then
-						reply_to_text=$(sed '1,2d' <<< "$reply_to_text")
+						reply_to_text=$(sed '1d' <<< "$reply_to_text")
 					fi
-					if [[ "$(wc -c <<< "$reply_to_text")" -gt 30 ]]; then
-						quote="$(head -n 1 <<< "$reply_to_text" | head -c 30 | sed 's/^/| /g')..."
+					quote=$(head -n 1 <<< "$reply_to_text" | sed 's/^/| /g')
+				fi
+				if [[ "$file_type" == "text" ]]; then
+					if [[ "$quote" ]]; then
+						text_id=$(printf '%s\n' "$quote" "#$mmd5" "$normal_message")
 					else
-						quote="$(head -n 1 <<< "$reply_to_text" | head -c 30 | sed 's/^/| /g')"
+						text_id=$(printf '%s\n' "#$mmd5" "$normal_message")
 					fi
-					text_id=$(printf '%s\n' "$quote" "" "$normal_message")
 					for c in $(seq "$bc_users_num"); do
 						chat_id=$(sed -n ${c}p <<< "$bc_users")
 						tg_method send_message &
 					done
 					wait
 				else
+					if [[ "$quote" ]]; then
+						caption=$(printf '%s\n' "$quote" "#$mmd5" "$caption")
+					else
+						caption=$(printf '%s\n' "#$mmd5" "$caption")
+					fi
 					from_chat_id=$chat_id
 					copy_id=$message_id
 					for c in $(seq "$bc_users_num"); do
@@ -1718,6 +1728,8 @@ case "$normal_message" in
 					done
 					wait
 				fi
+				chat_id=$sender_chat_id
+				tg_method delete_message
 			fi
 		fi
 	;;
