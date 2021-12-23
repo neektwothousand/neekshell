@@ -236,7 +236,7 @@ tg_method() {
 		sleep "$retry_after"
 		tg_method $@
 	elif [[ "$(jshon -Q -e ok -u <<< "$curl_result")" == "false" ]]; then
-		printf '%s\n' "$chat_id:" "$curl_result" >> method_error.log
+		printf '%s\n' "$chat_id ($(date)): $curl_result" >> method_error.log
 		if [[ "$(jshon -Q -e description -u <<< "$curl_result")" == "Bad Request: strings must be encoded in UTF-8" ]]; then
 			text_id=$(iconv -c -f utf-8 -t ascii <<< "$text_id")
 			tg_method $@
