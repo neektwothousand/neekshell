@@ -206,6 +206,53 @@ case "$normal_message" in
 			tg_method send_message
 		fi
 	;;
+	"!convert "*)
+		[[ -e powersave ]] && return
+		if [[ "$reply_to_id" != "" ]]; then
+			cd "$tmpdir"
+			request_id=$RANDOM
+			get_reply_id reply
+			get_file_type reply
+			case "$file_type" in
+				video)
+					media_id=$video_id
+				;;
+				photo)
+					media_id=$photo_id
+				;;
+			esac
+			if [[ "$media_id" ]]; then
+				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
+				ext=$(sed 's/.*\.//' <<< "$file_path")
+				input_codecs=$(ffprobe -v error -show_streams "$file_path" | grep "^codec_name")
+				loading 1
+				case "${fn_arg[0]}" in
+					gif)
+						out_file="convert-$request_id.mp4"
+						if [[ "$(grep "^codec_name=h264$" <<< "$input_codecs")" ]]; then
+							out_vcodec=copy
+						else
+							out_vcodec=h264
+						fi
+						ffmpeg -v error -i "$file_path" -vcodec $out_vcodec -an "$out_file"
+						loading 2
+						animation_id="@$out_file"
+						tg_method send_animation upload
+					;;
+					webp)
+						out_file="convert-$request_id.webp"
+						convert "$file_path" "$out_file"
+						loading 2
+						sticker_id="@$out_file"
+						tg_method send_sticker upload
+					;;
+				esac
+				loading 3
+				rm -f "$out_file"
+			fi
+			cd "$basedir"
+		fi
+	;;
 	"!custom "*|"!custom")
 		get_reply_id self
 		if [[ "$fn_args" != "" ]]; then
