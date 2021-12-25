@@ -9,13 +9,11 @@ case "$callback_message_text" in
 			button_text_reply="you're already in an existing chat"
 			text_id="you're already in an existing chat"
 		fi
-		tg_method button_reply
 		tg_method send_message
 	;;
 	"Select chat to leave:")
 		sed -i "s/$callback_user_id //" $bot_chat_dir"$callback_data"
 		button_text_reply="bye"
-		tg_method button_reply
 		chat_id=$callback_user_id
 		text_id="$callback_data is no more"
 		tg_method send_message
@@ -40,7 +38,6 @@ case "$callback_message_text" in
 				button_text_reply=canceled
 			;;
 		esac
-		tg_method button_reply
 	;;
 esac
 case "$callback_data" in
@@ -70,7 +67,6 @@ case "$callback_data" in
 		markup_id=$(json_array inline button)
 		media_id="@$(sed -n ${ig_page}p ig_list)"
 		to_delete_id=$(cat ig_id)
-		tg_method button_reply
 		cd "$ig_tag"
 		tg_method delete_message
 		ext=$(grep -o "...$" <<< "$media_id")
@@ -98,6 +94,6 @@ case "$callback_data" in
 		inline_message_id=$(jshon -Q -e inline_message_id -u <<< "$callback")
 		tg_method edit_reply_markup
 		button_text_reply="F"
-		tg_method button_reply
 	;;
 esac
+tg_method button_reply
