@@ -293,7 +293,7 @@ case "$normal_message" in
 				if [[ "$(dir -N1 "$downloaded" | wc -l)" -gt "1" ]]; then
 					up_type=archive
 					set +f
-					zip "$downloaded.zip" "$downloaded/"* > /dev/null
+					zip -r "$downloaded.zip" "$downloaded" > /dev/null
 					set -f
 					document_id="@$downloaded.zip"
 				else
