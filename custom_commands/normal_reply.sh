@@ -1161,6 +1161,32 @@ case "$normal_message" in
 		get_reply_id self
 		tg_method send_message
 	;;
+	"!wget "*|"!wget")
+		cd "$tmpdir"
+		if [[ "$reply_to_text" != "" ]]; then
+			wget_link=$reply_to_text
+		else
+			wget_link=${fn_arg[0]}
+		fi
+		if [[ "$wget_link" ]]; then
+			wget_id=$RANDOM
+			mkdir "wget_$wget_id" ; cd "wget_$wget_id"
+			loading 1
+			wget_file=$(wget -E -nv "$wget_link" 2>&1 \
+				| cut -f 6 -d ' ' \
+				| sed -e s/^.// -e s/.$//)
+			if [[ "$wget_file" ]]; then
+				document_id="@$wget_file"
+				loading 2
+				tg_method send_document upload
+				loading 3
+			else
+				loading value "file not found"
+			fi
+			cd .. ; rm -r "wget_$wget_id/"
+		fi
+		cd "$basedir"
+	;;
 	"!ytdl "*|"!ytdl")
 		[[ -e powersave ]] && return
 		get_reply_id self
