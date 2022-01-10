@@ -419,6 +419,31 @@ case "$normal_message" in
 			tg_method send_message
 		fi
 	;;
+	"!ugoira-dl "*)
+		get_reply_id self
+		loading 1
+		gallery_json=$(gallery-dl -sj "${fn_arg[0]}" 2>/dev/null)
+		if [[ "$gallery_json" ]]; then
+			gallery_type=$(jshon -Q -e 0 -e 1 -e type -u <<< "$gallery_json")
+			if [[ "$gallery_type" == "ugoira" ]]; then
+				cd "$tmpdir"
+				request_id=$RANDOM
+				mkdir "gallery_$request_id" ; cd "gallery_$request_id"
+				gallery-dl -q --ugoira-conv-lossless -d . -f out.webm "${fn_arg[0]}"
+				ffmpeg -v error -i out.webm -vcodec h264 -an out.mp4
+				animation_id="@out.mp4"
+				loading 2
+				tg_method send_animation upload
+				loading 3
+				cd .. ; rm -r "gallery_$request_id"
+				cd "$basedir"
+			else
+				loading value "ugoira not found"
+			fi
+		else
+			loading value "invalid link"
+		fi
+	;;
 	"!gayscale"|"!gs")
 		if [[ "$reply_to_user_id" = "" ]]; then
 			gs_id=$user_id
