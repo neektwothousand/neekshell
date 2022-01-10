@@ -1,0 +1,1 @@
+/mnt/NEEKEXTHDD/archlinux/home/neek/misc-shell/nova/booru_api.sh

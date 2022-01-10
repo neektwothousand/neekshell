@@ -76,6 +76,7 @@ case "$inline_message" in
 		tg_method send_inline > /dev/null
 	;;
 	"booru "*)
+		source tools/booru_api.sh
 		offset=$(($(jshon -Q -e offset -u <<< "$inline")+1))
 		tags=$(tr ' ' '+' <<< "$(sed 's/booru //' <<< "$inline_message")")
 		website="gelbooru.com"
@@ -83,25 +84,23 @@ case "$inline_message" in
 		limit=5 y=0
 		no_video="-video+-webm+-animated+-animated_gif+-animated_png"
 		getbooru=$(curl -A 'Mozilla/5.0' -s "https://$website/index.php?page=dapi&s=post&json=1&pid=$offset&tags=$tags+$no_video&q=index&limit=$limit")
-		for j in $(seq 0 $((limit - 1))); do
-			while [[ "$(grep "jpg$\|jpeg$\|png$" <<< "${photo_url[$j]}")" == "" ]]; do
-				y=$((y+1))
-				if [[ "$y" -gt "10" ]]; then
+		booru_api # get n_posts
+		for x in $(seq 0 $(($n_posts - 1))); do
+			while [[ "$(grep "jpg$\|jpeg$\|png$" <<< "${photo_url[$x]}")" == "" ]]; do
+				if [[ "$x" -gt "10" ]]; then
 					break
 				fi
-				if [[ "$(jshon -Q -e $y -e sample -u <<< "$getbooru")" != "0" ]]; then
-					hash=$(jshon -Q -e $y -e hash -u <<< "$getbooru")
-					booru_dir=$(jshon -Q -e $y -e directory -u <<< "$getbooru")
-					photo_url[$j]="https://$website/samples/$booru_dir/sample_$hash.jpg"
+				if [[ "$(booru_api has_sample)" ]]; then
+					hash=$(booru_api hash)
+					photo_url[$x]=$(booru_api sample)
 				else
-					photo_url[$j]=$(jshon -Q -e $y -e file_url -u <<< "$getbooru")
+					photo_url[$x]=$(booru_api file)
 				fi
-				photo_width[$j]=$(jshon -Q -e $y -e width -u <<< "$getbooru")
-				photo_height[$j]=$(jshon -Q -e $y -e height -u <<< "$getbooru")
+				photo_width[$x]=$(booru_api width)
+				photo_height[$x]=$(booru_api height)
 			done
-			thumb_url[$j]=${photo_url[$j]}
-			caption[$j]="source: https://$website/index.php?page=post&s=view&id=$(jshon -Q -e $y -e id -u <<< "$getbooru")"
-			y=$((y+1))
+			thumb_url[$x]=${photo_url[$x]}
+			caption[$x]="source: https://$website/index.php?page=post&s=view&id=$(booru_api id)"
 		done
 		return_query=$(json_array inline photo)
 		tg_method send_inline
