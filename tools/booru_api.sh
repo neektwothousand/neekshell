@@ -102,7 +102,7 @@ booru_api() {
 					jshon -Q $level -e sample_url -u <<< "$getbooru"
 				;;
 				gelbooru)
-					hash=$(jshon -Q $level -e hash -u <<< "$getbooru")
+					hash=$(jshon -Q $level -e md5 -u <<< "$getbooru")
 					booru_dir=$(jshon -Q $level -e directory -u <<< "$getbooru")
 					printf '%s\n' "https://$website/samples/$booru_dir/sample_$hash.jpg"
 				;;
@@ -127,7 +127,10 @@ booru_api() {
 				e621)
 					jshon -Q $level -e file -e md5 -u <<< "$getbooru"
 				;;
-				rule34|gelbooru|realbooru)
+				gelbooru)
+					jshon -Q $level -e md5 -u <<< "$getbooru"
+				;;
+				rule34|realbooru)
 					jshon -Q $level -e hash -u <<< "$getbooru"
 				;;
 			esac
