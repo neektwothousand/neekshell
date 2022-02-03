@@ -230,6 +230,10 @@ tg_method() {
 		get_me)
 			curl -s "$TELEAPI/getMe"
 		;;
+		get_file)
+			curl -s "${TELEAPI}/getFile" \
+				--form-string "file_id=$2"
+		;;
 	esac)
 	if [[ "$(jshon -Q -e parameters -e retry_after -u <<< "$curl_result")" != "" ]]; then
 		retry_after=$(jshon -Q -e parameters -e retry_after -u <<< "$curl_result")

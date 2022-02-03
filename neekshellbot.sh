@@ -248,19 +248,19 @@ get_file_type() {
 		file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$document_id" | jshon -Q -e result -e file_path -u)
 		ext=$(sed 's/.*\.//' <<< "$file_path")
 		case "$ext" in
-			jpg|png|jpeg)
+			jpg|png|jpeg|JPG|PNG|JPEG)
 				file_type=photo
 				photo_id=$document_id
 			;;
-			gif)
+			gif|GIF)
 				file_type=animation
 				animation_id=$document_id
 			;;
-			mp4)
+			mp4|webm|avi|mkv|MP4|WEBM|AVI|MKV)
 				file_type=video
 				video_id=$document_id
 			;;
-			mp3|ogg|flac|wav)
+			mp3|ogg|flac|wav|MP3|OGG|FLAC|WAV)
 				file_type=audio
 				audio_id=$document_id
 			;;

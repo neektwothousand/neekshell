@@ -1190,9 +1190,25 @@ case "$normal_message" in
 		if [[ "$reply_to_message" ]]; then
 			get_file_type reply
 			get_reply_id self
+			set -x
+			if [[ "$file_type" == "animation" ]]; then
+				tg_method get_file "$animation_id"
+				file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
+				ext=$(sed 's/.*\.//' <<< "$file_path")
+				case "$ext" in
+					mp4|gif|MP4|GIF)
+						video_id=$animation_id
+						file_type=video
+					;;
+				esac
+			fi
 			if [[ "$file_type" == "video" ]]; then
-				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$video_id" | jshon -Q -e result -e file_path -u)
-				video_info=$(ffprobe -v error -show_entries stream=duration,width,height,r_frame_rate -of default=noprint_wrappers=1 "$file_path")
+				[[ ! "$file_path" ]] \
+					&& tg_method get_file "$video_id" \
+					&& file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
+				video_info=$(ffprobe -v error \
+					-show_entries stream=duration,width,height,r_frame_rate \
+					-of default=noprint_wrappers=1 "$file_path")
 				duration=$(sed -n "s/^duration=//p" <<< "$video_info" | head -n 1 | sed "s/\..*//")
 				if [[ "$duration" -le "3" ]]; then
 					loading 1
@@ -1211,7 +1227,9 @@ case "$normal_message" in
 					if [[ "$frame_rate" -gt "30" ]]; then
 						filter="$filter,fps=30"
 					fi
-					ffmpeg -v error -ss 0 -i "$file_path" -vcodec vp9 -b:v 600k -an -pix_fmt yuva420p $filter -t 3 sticker.webm
+					ffmpeg -v error -ss 0 -i "$file_path" \
+						-vcodec vp9 -b:v 600k -an \
+						-pix_fmt yuva420p $filter -t 3 sticker.webm
 					sticker_id=@sticker.webm
 					sticker_hash=$(md5sum sticker.webm | cut -f 1 -d ' ')
 					loading 2
@@ -1221,18 +1239,16 @@ case "$normal_message" in
 						-F "title=${sticker_hash}" \
 						-F "webm_sticker=$sticker_id" \
 						-F "emojis=⬛️" > /dev/null
-					mkdir -p "/home/genteek/archneek/public/tmp/videosticker/$sticker_hash/"
-					mv sticker.webm "/home/genteek/archneek/public/tmp/videosticker/$sticker_hash/sticker.webm"
+					video_id=$sticker_id
+					caption="https://t.me/addstickers/s${sticker_hash}_by_$bot_username"
+					tg_method send_video upload
 					loading 3
 					cd .. ; rm -rf "videosticker-$request_id/"
 					cd "$basedir"
-					text_id=$(printf '%s\n' \
-						"https://t.me/addstickers/s${sticker_hash}_by_$bot_username" \
-						"https://archneek.zapto.org/public/tmp/videosticker/$sticker_hash/sticker.webm")
 				else
 					text_id="video duration must not exceed 3 seconds"
+					tg_method send_message
 				fi
-				tg_method send_message
 			fi
 		fi
 	;;
