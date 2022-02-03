@@ -1194,13 +1194,13 @@ case "$normal_message" in
 				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$video_id" | jshon -Q -e result -e file_path -u)
 				video_info=$(ffprobe -v error -show_entries stream=duration,width,height,r_frame_rate -of default=noprint_wrappers=1 "$file_path")
 				duration=$(sed -n "s/^duration=//p" <<< "$video_info" | head -n 1 | sed "s/\..*//")
-				frame_rate=$(sed -n "s/^r_frame_rate=//p" <<< "$video_info" | head -n 1 | cut -f 1 -d /)
 				if [[ "$duration" -le "3" ]]; then
 					loading 1
 					request_id=$RANDOM
 					bot_username=$(jshon -Q -e result -e username -u < botinfo)
 					cd "$tmpdir" ; mkdir "videosticker-$request_id"
 					cd "videosticker-$request_id"
+					frame_rate=$(sed -n "s/^r_frame_rate=//p" <<< "$video_info" | head -n 1 | cut -f 1 -d /)
 					width=$(sed -n 's/^width=//p' <<< "$video_info")
 					height=$(sed -n 's/^height=//p' <<< "$video_info")
 					if [[ "$width" -ge "$height" ]]; then
@@ -1221,10 +1221,14 @@ case "$normal_message" in
 						-F "title=${sticker_hash}" \
 						-F "webm_sticker=$sticker_id" \
 						-F "emojis=⬛️" > /dev/null
+					mkdir -p "/home/genteek/archneek/public/tmp/videosticker/$sticker_hash/"
+					mv sticker.webm "/home/genteek/archneek/public/tmp/videosticker/$sticker_hash/sticker.webm"
+					loading 3
 					cd .. ; rm -rf "videosticker-$request_id/"
 					cd "$basedir"
-					loading 3
-					text_id="https://t.me/addstickers/s${sticker_hash}_by_$bot_username"
+					text_id=$(printf '%s\n' \
+						"https://t.me/addstickers/s${sticker_hash}_by_$bot_username" \
+						"https://archneek.zapto.org/public/tmp/videosticker/$sticker_hash/sticker.webm")
 				else
 					text_id="video duration must not exceed 3 seconds"
 				fi
