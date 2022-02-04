@@ -732,113 +732,149 @@ case "$normal_message" in
 	"!jpg")
 		[[ -e powersave ]] && return
 		if [[ "$reply_to_id" != "" ]]; then
-			cd $tmpdir
 			request_id=$RANDOM
+			cd "$tmpdir" ; mkdir "jpg-$request_id"
+			cd "jpg-$request_id"
 			get_reply_id reply
 			get_file_type reply
-			case $file_type in
+			case "$file_type" in
 				text)
 					text_id=$(sed -E 's/(.).(.)/\1\2/g' <<< "$reply_to_text")
 					tg_method send_message
 				;;
 				photo)
-					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$photo_id" | jshon -Q -e result -e file_path -u)
+					tg_method get_file "$photo_id"
+					file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
 					ext=$(sed 's/.*\.//' <<< "$file_path")
 					if [[ "$(grep "png\|jpg\|jpeg" <<< "$ext")" != "" ]]; then
 						case "$ext" in
 							png)
-								convert "$file_path" "pic-$request_id.jpg"
+								convert "$file_path" "pic.jpg"
 								ext=jpg
 							;;
 							jpg|jpeg)
-								cp "$file_path" "pic-$request_id.jpg"
+								cp "$file_path" "pic.jpg"
 							;;
 						esac
-						res=($(ffprobe -v error -show_streams "pic-$request_id.$ext" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
-						magick "pic-$request_id.$ext" -resize $(printf '%.0f\n' "$(bc -l <<< "${res[0]}/2.5")")x$(printf '%.0f\n' "$(bc -l <<< "${res[1]}/2.5")") "pic-$request_id.$ext"
-						magick "pic-$request_id.$ext" -quality 4 "pic-$request_id.$ext"
-						photo_id="@pic-$request_id.$ext"
+						res=($(ffprobe -v error -show_streams "pic.$ext" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
+						magick "pic.$ext" -resize $(printf '%.0f\n' "$(bc -l <<< "${res[0]}/2.5")")x$(printf '%.0f\n' "$(bc -l <<< "${res[1]}/2.5")") "pic.$ext"
+						magick "pic.$ext" -quality 4 "pic.$ext"
+						photo_id="@pic.$ext"
 						tg_method send_photo upload
-						rm "pic-$request_id.$ext"
+						rm "pic.$ext"
 					fi
 				;;
 				sticker)
-					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$sticker_id" | jshon -Q -e result -e file_path -u)
-					cp "$file_path" "sticker-$request_id.webp"
-					res=($(ffprobe -v error -show_streams "sticker-$request_id.webp" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
-					convert "sticker-$request_id.webp" "sticker-$request_id.jpg"
-					magick "sticker-$request_id.jpg" -resize $(bc <<< "${res[0]}/1.5")x$(bc <<< "${res[1]}/1.5") "sticker-$request_id.jpg"
-					magick "sticker-$request_id.jpg" -quality 6 "sticker-$request_id.jpg"
-					magick "sticker-$request_id.jpg" -resize 512x512 "sticker-$request_id.jpg"
-					convert "sticker-$request_id.jpg" "sticker-$request_id.webp"
+					tg_method get_file "$sticker_id"
+					file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
+					cp "$file_path" "sticker.webp"
+					res=($(ffprobe -v error -show_streams "sticker.webp" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
+					convert "sticker.webp" "sticker.jpg"
+					magick "sticker.jpg" -resize $(bc <<< "${res[0]}/1.5")x$(bc <<< "${res[1]}/1.5") "sticker.jpg"
+					magick "sticker.jpg" -quality 6 "sticker.jpg"
+					magick "sticker.jpg" -resize 512x512 "sticker.jpg"
+					convert "sticker.jpg" "sticker.webp"
 					
-					sticker_id="@sticker-$request_id.webp"
+					sticker_id="@sticker.webp"
 					tg_method send_sticker upload
 					
-					rm "sticker-$request_id.webp" \
-						"sticker-$request_id.jpg"
+					rm -f "sticker.webp" "sticker.jpg"
 				;;
 				video|animation)
 					if [[ "$file_type" == "video" ]]; then
-						media_id=$video_id
+						audio_c="-c:a aac"
 					elif [[ "$file_type" == "animation" ]]; then
-						media_id=$animation_id
+						video_id=$animation_id
+						audio_c="-an"
 					fi
-					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
+					tg_method get_file "$video_id"
+					file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
 					ext=$(sed 's/.*\.//' <<< "$file_path")
 					if [[ "$ext" == "gif" ]]; then
-						ffmpeg -i "$file_path" "video-$request_id.mp4"
+						ffmpeg -i "$file_path" "video.mp4"
 					else
-						cp "$file_path" "video-$request_id.mp4"
+						cp "$file_path" "video.mp4"
 					fi
 					loading 1
-					res=($(ffprobe -v error -show_streams "video-$request_id.mp4" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
+					video_info=$(ffprobe -v error \
+						-show_entries stream=duration,width,height,r_frame_rate \
+						-of default=noprint_wrappers=1 "$file_path")
+					res[0]=$(sed -n 's/^width=//p' <<< "$video_info")
+					res[1]=$(sed -n 's/^height=//p' <<< "$video_info")
 					res[0]=$(bc <<< "${res[0]}/1.5")
 					res[1]=$(bc <<< "${res[1]}/1.5")
 					[[ "$((${res[0]}%2))" -eq "0" ]] || res[0]=$((${res[0]}-1))
 					[[ "$((${res[1]}%2))" -eq "0" ]] || res[1]=$((${res[1]}-1))
 					if [[ "$file_type" == "video" ]]; then
-						ffmpeg -i video-"$request_id".mp4 \
-							-vf "scale=${res[0]}:${res[1]}" -sws_flags fast_bilinear \
-							-crf 50 -c:a aac -b:a 24k video-low-"$request_id".mp4
-						loading 2
-						video_id="@video-low-$request_id.mp4"
+						br=$(sed -n 's/^bit_rate=//p' <<< "$video_info" | head -n 1)
+						sr=$(sed -n 's/^sample_rate=//p' <<< "$video_info" | head -n 1)
+						srs=(24000 16000 11025 7350)
+						y=0 ; for x in ${srs[@]}; do
+							if [[ "$sr" == "${srs[$y]}" ]] \
+							&& [[ "$y" != "3" ]]; then
+								sr=${srs[$((y+1))]}
+								break
+							else
+								y=$((y+1))
+							fi
+							if [[ "$y" == "3" ]]; then
+								sr=${srs[0]}
+							fi
+						done
+						audio_c="$audio_c -b:a $(bc <<< "$br/2") -ar $sr"
+					fi
+					ffmpeg -i "video.mp4" \
+						-vf "scale=${res[0]}:${res[1]}" -sws_flags fast_bilinear \
+						-crf 50 $audio_c "video-low.mp4"
+					loading 2
+					if [[ "$file_type" == "video" ]]; then
+						video_id="@video-low.mp4"
 						tg_method send_video upload
 					else
-						ffmpeg -i video-"$request_id".mp4 \
-							-vf "scale=${res[0]}:${res[1]}" -sws_flags fast_bilinear \
-							-crf 50 -an video-low-"$request_id".mp4
-						loading 2
-						animation_id="@video-low-$request_id.mp4"
+						animation_id="@video-low.mp4"
 						tg_method send_animation upload
 					fi
 					loading 3
-					rm -f -- "video-$request_id.mp4" "video-low-$request_id.mp4"
+					rm -f -- "video.mp4" "video-low.mp4"
 				;;
-				audio)
-					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$audio_id" | jshon -Q -e result -e file_path -u)
+				audio|voice)
+					[[ "$file_type" == "voice" ]] && audio_id=$voice_id
+					tg_method get_file "$audio_id"
+					file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
 					ext=$(sed 's/.*\.//' <<< "$file_path")
-					cp "$file_path" "audio-$request_id.$ext"
+					cp "$file_path" "audio.$ext"
 					loading 1
-					ffmpeg -i audio-"$request_id".$ext -vn -acodec libmp3lame -b:a 6k audio-low-"$request_id".mp3
+					audio_info=$(ffprobe -v error \
+						-show_entries stream=sample_rate,bit_rate \
+						-of default=noprint_wrappers=1 "$file_path")
+					br=$(sed -n 's/^bit_rate=//p' <<< "$audio_info" | head -n 1)
+					sr=$(sed -n 's/^sample_rate=//p' <<< "$audio_info" | head -n 1)
+					srs=(24000 16000 11025 7350)
+					y=0 ; for x in ${srs[@]}; do
+						if [[ "$sr" == "${srs[$y]}" ]] \
+						&& [[ "$y" != "3" ]]; then
+							sr=${srs[$((y+1))]}
+							break
+						else
+							y=$((y+1))
+						fi
+						if [[ "$y" == "3" ]]; then
+							sr=${srs[0]}
+						fi
+					done
+					ffmpeg -v error \
+						-i "audio.$ext" -vn -acodec libmp3lame \
+						-b:a $(bc <<< "$br/2") \
+						-ar $sr \
+						-strict -2 "audio-jpg.mp3"
 					loading 2
-					audio_id="@audio-low-$request_id.mp3"
+					audio_id="@audio-jpg.mp3"
 					tg_method send_audio upload
 					loading 3
-					rm audio-"$request_id".$ext audio-low-"$request_id".mp3
-				;;
-				voice)
-					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$voice_id" | jshon -Q -e result -e file_path -u)
-					cp "$file_path" "voice-$request_id.ogg"
-					loading 1
-					ffmpeg -i voice-"$request_id".ogg -vn -acodec opus -b:a 6k -strict -2 voice-low-"$request_id".ogg
-					loading 2
-					voice_id="@voice-low-$request_id.ogg"
-					tg_method send_voice upload
-					loading 3
-					rm voice-"$request_id".ogg voice-low-"$request_id".ogg
+					rm -f "audio.$ext" "audio-jpg.mp3"
 				;;
 			esac
+			cd .. ; rm -rf "jpg-$request_id/"
 			cd "$basedir"
 		else
 			text_id=$(cat help/jpg)
@@ -1190,7 +1226,6 @@ case "$normal_message" in
 		if [[ "$reply_to_message" ]]; then
 			get_file_type reply
 			get_reply_id self
-			set -x
 			if [[ "$file_type" == "animation" ]]; then
 				tg_method get_file "$animation_id"
 				file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
