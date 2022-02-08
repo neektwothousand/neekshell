@@ -404,6 +404,18 @@ case "$normal_message" in
 			;;
 		esac
 	;;
+	"!parrot")
+		get_member_id=$(jshon -Q -e result -e id -u < botinfo)
+		tg_method get_chat_member
+		if [[ "$(jshon -Q -e result -e status -u <<< "$curl_result" | grep -w "administrator")" != "" ]]; then
+			ban_id=$user_id
+			tg_method ban_member
+			if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "false" ]]; then
+				unban_id=$user_id
+				tg_method unban_member
+			fi
+		fi
+	;;
 	"!fortune"|"!fortune "*)
 		if [[ "$fn_args" = "" ]]; then
 			text_id=$(/usr/bin/fortune fortunes paradoxum goedel linuxcookie | tr '\n' ' ' | awk '{$2=$2};1')
