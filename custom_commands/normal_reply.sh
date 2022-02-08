@@ -808,20 +808,22 @@ case "$normal_message" in
 					if [[ "$file_type" == "video" ]]; then
 						br=$(sed -n 's/^bit_rate=//p' <<< "$video_info" | head -n 1)
 						sr=$(sed -n 's/^sample_rate=//p' <<< "$video_info" | head -n 1)
-						srs=(24000 16000 11025 7350)
-						y=0 ; for x in ${srs[@]}; do
-							if [[ "$sr" == "${srs[$y]}" ]] \
-							&& [[ "$y" != "3" ]]; then
-								sr=${srs[$((y+1))]}
-								break
-							else
-								y=$((y+1))
-							fi
-							if [[ "$y" == "3" ]]; then
-								sr=${srs[0]}
-							fi
-						done
-						audio_c="$audio_c -b:a $(bc <<< "$br/2") -ar $sr"
+						if [[ "$br" ]] && [[ "$sr" ]]; then
+							srs=(24000 16000 11025 7350)
+							y=0 ; for x in ${srs[@]}; do
+								if [[ "$sr" == "${srs[$y]}" ]] \
+								&& [[ "$y" != "3" ]]; then
+									sr=${srs[$((y+1))]}
+									break
+								else
+									y=$((y+1))
+								fi
+								if [[ "$y" == "3" ]]; then
+									sr=${srs[0]}
+								fi
+							done
+							audio_c="$audio_c -b:a $(bc <<< "$br/2") -ar $sr"
+						fi
 					fi
 					ffmpeg -i "video.mp4" \
 						-vf "scale=${res[0]}:${res[1]}" -sws_flags fast_bilinear \
