@@ -27,6 +27,5 @@ if [[ "$chat_id" != "" ]] || [[ "$user_id" != "" ]]; then
 			plot "$data_id-data" using 2:xticlabels(1) with boxes notitle ls 1, '' using 0:2:2 with labels notitle
 EOF
 		photo_id="@$data_id-out.png"
-		rm -f "$data_id-data"
 	fi
 fi

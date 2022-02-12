@@ -505,8 +505,10 @@ case "$normal_message" in
 	"!giftoptext "*|"!ifunny "*|"!gtt "*|"!gifbottomtext "*|"!gbt "*)
 		[[ -e powersave ]] && return
 		if [[ "$reply_to_message" != "" ]]; then
-			cd $tmpdir
+			cd "$tmpdir"
 			request_id=$RANDOM
+			tt_dir="toptext-$request_id"
+			mkdir "$tt_dir" ; cd "$tt_dir"
 			get_reply_id reply
 			get_file_type reply
 			case "$file_type" in
@@ -560,9 +562,10 @@ case "$normal_message" in
 						;;
 					esac
 					loading 3
-					rm -f -- "video-$request_id.$ext" "video-toptext-$request_id.$ext"
 				;;
 			esac
+			cd ..
+			rm -rf "toptext-$request_id/"
 			cd "$basedir"
 		fi
 	;;
@@ -1139,6 +1142,7 @@ case "$normal_message" in
 			tg_method send_message
 		else
 			tg_method send_photo upload
+			rm -f "$data_id-data" "$data_id-out.png"
 		fi
 		cd "$basedir"
 	;;
