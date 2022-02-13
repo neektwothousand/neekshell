@@ -1808,7 +1808,6 @@ case "$normal_message" in
 				sticker_id="CAACAgQAAxkBAAEMIRxhJPew20PQ6R9SpGdAqbx4JisVagACBwgAAivRkQnNn3jPdYYwhCAE"
 				tg_method send_sticker
 			else
-				get_reply_id reply
 				get_member_id=$(jshon -Q -e result -e id -u < botinfo)
 				tg_method get_chat_member
 				if [[ "$(jshon -Q -e result -e status -u <<< "$curl_result" | grep -w "creator\|administrator")" != "" ]]; then
@@ -1833,12 +1832,15 @@ case "$normal_message" in
 								tg_method restrict_member
 							fi
 							if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "false" ]]; then
+								get_reply_id reply
 								text_id="$restrict_fname warned ($warns out of 3)"
 							else
+								get_reply_id self
 								text_id="error"
 							fi
 						;;
 						"!kick "*|"!kick")
+							get_reply_id self
 							ban_id=$restrict_id
 							tg_method ban_member
 							if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "false" ]]; then
@@ -1854,6 +1856,7 @@ case "$normal_message" in
 							fi
 						;;
 						"!ban "*|"!ban")
+							get_reply_id self
 							ban_id=$restrict_id
 							tg_method ban_member
 							if [[ "$(jshon -Q -e ok <<< "$curl_result")" != "false" ]]; then
