@@ -1867,6 +1867,7 @@ case "$normal_message" in
 						;;
 					esac
 				else
+					get_reply_id self
 					text_id="bot is not admin"
 				fi
 				tg_method send_message
