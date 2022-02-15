@@ -1810,7 +1810,7 @@ case "$normal_message" in
 			else
 				get_member_id=$(jshon -Q -e result -e id -u < botinfo)
 				tg_method get_chat_member
-				if [[ "$(jshon -Q -e result -e status -u <<< "$curl_result" | grep -w "creator\|administrator")" != "" ]]; then
+				if [[ "$(jshon -Q -e result -e status -u <<< "$curl_result" | grep -w "administrator")" ]]; then
 					case "$normal_message" in
 						"!warn "*|"!warn")
 							warns=$(grep "^warns-$chat_id:" db/users/"$restrict_id" | sed 's/.*: //')
@@ -1839,31 +1839,41 @@ case "$normal_message" in
 								text_id="error"
 							fi
 						;;
-						"!kick "*|"!kick")
+						"!kick "*|"!kick"|"!ban "*|"!ban")
 							get_reply_id self
 							ban_id=$restrict_id
-							tg_method ban_member
-							if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "false" ]]; then
-								unban_id=$ban_id
-								tg_method unban_member
-								if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "false" ]]; then
-									text_id="$restrict_fname kicked"
-								else
-									text_id="error"
+							get_chat_id=$chat_id
+							tg_method get_chat
+							linked_chat_id=$(jshon -Q -e result -e linked_chat_id -u <<< "$curl_result")
+							if [[ "$linked_chat_id" ]]; then
+								chat_id[1]=$chat_id
+								chat_id[0]=$linked_chat_id
+								tg_method get_chat_member
+								if [[ ! "$(jshon -Q -e result -e status -u <<< "$curl_result" | grep -w "administrator")" ]]; then
+									chat_id[0]=${chat_id[1]}
+									unset chat_id[1]
 								fi
-							else
-								text_id="error"
 							fi
-						;;
-						"!ban "*|"!ban")
-							get_reply_id self
-							ban_id=$restrict_id
-							tg_method ban_member
-							if [[ "$(jshon -Q -e ok <<< "$curl_result")" != "false" ]]; then
-								text_id="$restrict_fname banned"
-							else
-								text_id="error"
-							fi
+							for x in ${chat_id[@]}; do
+								chat_id=$x
+								tg_method ban_member
+								case "$normal_message" in
+									"!kick "*|"!kick")
+										if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "false" ]]; then
+											unban_id=$ban_id
+											tg_method unban_member
+											if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "false" ]]; then
+												text_id="$restrict_fname kicked"
+											fi
+										fi
+									;;
+									"!ban "*|"!ban")
+										if [[ "$(jshon -Q -e ok <<< "$curl_result")" != "false" ]]; then
+											text_id="$restrict_fname banned"
+										fi
+									;;
+								esac
+							done
 						;;
 					esac
 				else
