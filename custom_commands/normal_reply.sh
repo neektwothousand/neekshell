@@ -418,7 +418,7 @@ case "$normal_message" in
 	;;
 	"!fortune"|"!fortune "*)
 		if [[ "$fn_args" = "" ]]; then
-			text_id=$(/usr/bin/fortune fortunes paradoxum goedel linuxcookie | tr '\n' ' ' | awk '{$2=$2};1')
+			text_id=$(/usr/bin/fortune fortunes paradoxum goedel | tr '\n' ' ' | awk '{$2=$2};1')
 		else
 			text_id=$(/usr/bin/fortune "$fn_args" | tr '\n' ' ' | awk '{$2=$2};1')
 		fi
@@ -628,6 +628,31 @@ case "$normal_message" in
 				done
 			;;
 		esac
+	;;
+	"!insert "*|"!extract "[0-9]*)
+		case "$normal_message" in
+			"!insert "*)
+				if [[ ! "$(grep "^pool" "$file_chat")" ]]; then
+					printf '%s\n' "pool: $fn_args" >> "db/chats/$chat_id"
+				else
+					sed -i "s/\(^pool: \).*/\1$fn_args /" "$file_chat"
+				fi
+				text_id=$(grep "^pool:" "$file_chat")
+			;;
+			"!extract "[0-9]*)
+				pool=($(sed -n "s/^pool: //p" "$file_chat"))
+				if [[ "$fn_args" -gt "${#pool[@]}" ]]; then
+					fn_args=${#pool[@]}
+				fi
+				for x in $(seq 0 $(($fn_args-1))); do
+					pool=(${pool[@]})
+					pool_rand=$((RANDOM % ${#pool[@]}))
+					text_id="${pool[$pool_rand]} $text_id"
+					unset pool[$pool_rand]
+				done
+			;;
+		esac
+		tg_method send_message
 	;;
 	"!insta "*|"!insta")
 		[[ -e powersave ]] && return
