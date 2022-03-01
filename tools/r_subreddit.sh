@@ -10,7 +10,10 @@ case "$subreddit" in
 			;;
 		esac
 	;;
-	"https"*)
+	"http"*)
+		if [[ "$(grep "redd.it" <<< "$subreddit")" ]]; then
+			subreddit=$(curl "$subreddit" -s -L -I -o /dev/null -w '%{url_effective}')
+		fi
 		if [[ "$(grep "reddit.com" <<< "$subreddit")" != "" ]]; then
 			if [[ "$(grep '?' <<< "$subreddit")" != "" ]]; then
 				subreddit=$(sed 's/\?.*//' <<< "$subreddit")
