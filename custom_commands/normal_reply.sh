@@ -1148,11 +1148,9 @@ case "$normal_message" in
 	"!sed "*|"!sed")
 		[[ "$reply_to_caption" != "" ]] && reply_to_text=$reply_to_caption
 		if [[ "$reply_to_text" != "" ]]; then
-			if [[ "$(cut -f 1 -d '/' <<< "$fn_args" | grep 'e')" == "" ]]; then
-				regex=$fn_args
-				text_id=$(sed "$regex" <<< "$reply_to_text")
-				get_reply_id reply
-			fi
+			regex=$fn_args
+			text_id=$(sed --sandbox "$regex" <<< "$reply_to_text")
+			get_reply_id reply
 		else
 			text_id=$(cat help/sed)
 			get_reply_id self
