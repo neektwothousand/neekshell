@@ -55,6 +55,9 @@ update_db() {
 	fi
 }
 is_admin() {
+	[[ ! "$user_id" ]] && user_id=null
+	[[ ! "$inline_user_id" ]] && inline_user_id=null
+	[[ ! "$callback_user_id" ]] && callback_user_id=null
 	grep -w -- "^$user_id\|^$inline_user_id\|^$callback_user_id" admins
 }
 loading() {
