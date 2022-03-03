@@ -416,6 +416,33 @@ case "$normal_message" in
 			fi
 		fi
 	;;
+	"!ffprobe")
+		if [[ "$reply_to_message" ]]; then
+			get_file_type reply
+			case "$file_type" in
+				animation)
+					media_id=$animation_id
+				;;
+				photo)
+					media_id=$photo_id
+				;;
+				video)
+					media_id=$video_id
+				;;
+				sticker)
+					media_id=$sticker_id
+				;;
+			esac
+			if [[ "$media_id" ]]; then
+				get_reply_id self
+				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
+				text_id=$(ffprobe "$file_path" 2>&1 | grep -v "^  configuration\|^  lib\|^Input")
+				markdown=("<code>" "</code>")
+				parse_mode=html
+				tg_method send_message
+			fi
+		fi
+	;;
 	"!fortune"|"!fortune "*)
 		if [[ "$fn_args" = "" ]]; then
 			text_id=$(/usr/bin/fortune fortunes paradoxum goedel | tr '\n' ' ' | awk '{$2=$2};1')
