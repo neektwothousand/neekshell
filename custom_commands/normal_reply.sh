@@ -1149,7 +1149,7 @@ case "$normal_message" in
 		[[ "$reply_to_caption" != "" ]] && reply_to_text=$reply_to_caption
 		if [[ "$reply_to_text" != "" ]]; then
 			regex=$fn_args
-			text_id=$(sed --sandbox "$regex" <<< "$reply_to_text")
+			text_id=$(sed --sandbox "$regex" <<< "$reply_to_text" 2>&1)
 			get_reply_id reply
 		else
 			text_id=$(cat help/sed)
