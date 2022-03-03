@@ -1112,7 +1112,9 @@ case "$normal_message" in
 		fi
 	;;
 	"!ping")
-		text_id=$(printf '%s\n' "pong" ; ping -c 1 192.168.1.15 | grep time= | sed 's/.*time=//')
+		text_id=$(printf '%s\n' \
+			"pong" \
+			"api: $(ping -c 1 api.telegram.org | grep time= | sed 's/.*time=//'), reply: $(bc -l <<< "$(date +%s)-$(jshon -Q -e date -u <<< "$message")") s")
 		get_reply_id self
 		tg_method send_message
 	;;
