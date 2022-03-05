@@ -70,7 +70,7 @@ esac
 
 if [[ "$command" ]]; then
 	case "$command" in
-		"!chat"|"!start")
+		"!chat")
 			if [[ "$type" = "private" ]] || [[ $(is_admin) ]] ; then
 				get_reply_id self
 				case "${arg[0]}" in

@@ -302,10 +302,11 @@ get_normal_reply() {
 				"")
 					text_id="this is a mksh bot, use !source to download"
 				;;
-				"help")
+				"help"|"/start")
 					if [[ "$type" == "private" ]]; then
 						set +f
-						text_id=$(printf '%s\n' "$(cat help/* | grep -A 1 '^Usage' | grep -v '^Usage\|--' | sed 's/^  //' | sort)" "" 'send !help <command> for details')
+						text_id=$(printf '%s\n' "$(cat help/* 2>/dev/null \
+							| grep -A 1 '^Usage' | grep -v '^Usage\|--' | sed 's/^  //' | sort)" "" 'send !help <command> for details')
 						set -f
 					else
 						parse_mode=html
