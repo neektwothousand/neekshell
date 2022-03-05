@@ -1,0 +1,11 @@
+Usage
+  !set <option> <user>
+
+Description
+  set user status
+
+Options
+  admin (set bot admin status to <user>)
+  normal, demote (remove bot admin status from <user>)
+  ban, deny (ban <user> from using the bot)
+  unban, allow (allow <user> to use the bot)

@@ -1,0 +1,9 @@
+Usage
+  !ocr (on reply to <format>)
+
+Description
+  recognize text on <format> and sends it as message
+
+Formats
+  photo
+  sticker

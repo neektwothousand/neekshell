@@ -1,0 +1,10 @@
+Usage
+  !convert <format> (on reply)
+
+Description
+  converts the format replied to, to the format specified
+
+Currently supported formats
+  animation (telegram mp4 without audio)
+  webp
+  jpg

@@ -1,0 +1,9 @@
+Usage
+  !gtt [text] (on reply to <format>)
+
+Description
+  adds a caption on the upper side of <format>
+
+Formats
+  animation (telegram gif)
+  video

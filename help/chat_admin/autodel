@@ -1,0 +1,5 @@
+Usage
+  !autodel <seconds>
+
+Description
+  auto delete messages every <seconds>, send without to disable

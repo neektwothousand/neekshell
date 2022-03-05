@@ -1,0 +1,5 @@
+Usage
+  !wget [direct link to file]
+
+Description
+  downloads file from direct link and uploads it as document

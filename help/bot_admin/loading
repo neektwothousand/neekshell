@@ -1,0 +1,9 @@
+Usage
+  !loading <option>
+
+Description
+  display a loading message
+
+Options
+  start
+  stop

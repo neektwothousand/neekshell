@@ -1,0 +1,5 @@
+Usage
+  !broadcast [text]
+
+Description
+  sends [text] message to every chat

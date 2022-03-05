@@ -60,6 +60,24 @@ is_admin() {
 	[[ ! "$callback_user_id" ]] && callback_user_id=null
 	grep -w -- "^$user_id\|^$inline_user_id\|^$callback_user_id" admins
 }
+is_banned() {
+	[[ ! "$user_id" ]] && user_id=null
+	[[ ! "$inline_user_id" ]] && inline_user_id=null
+	[[ ! "$callback_user_id" ]] && callback_user_id=null
+	grep -w -- "^$user_id\|^$inline_user_id\|^$callback_user_id" banned
+}
+is_chat_admin() {
+	for x in "$user_id" "$(jshon -Q -e result -e id -u < botinfo)"; do
+		get_member_id=$x
+		tg_method get_chat_member
+		chat_admin=$(jshon -Q -e result -e status -u <<< "$curl_result" \
+			| grep -w "creator\|administrator")
+		if [[ ! "$chat_admin" ]]; then
+			break
+		fi
+	done
+	printf '%s' "$chat_admin"
+}
 loading() {
 	case $1 in
 		1)
@@ -277,43 +295,82 @@ get_file_type() {
 	fi
 }
 get_normal_reply() {
-	case $normal_message in
+	case "$command" in
 		"!start")
-			text_id="this is a mksh bot, use !source to download"
 			get_reply_id self
-			tg_method send_message
-			return 1
+			case "${arg[0]}" in
+				"")
+					text_id="this is a mksh bot, use !source to download"
+				;;
+				"help")
+					if [[ "$type" == "private" ]]; then
+						set +f
+						text_id=$(printf '%s\n' "$(cat help/* | grep -A 1 '^Usage' | grep -v '^Usage\|--' | sed 's/^  //' | sort)" "" 'send !help <command> for details')
+						set -f
+					else
+						parse_mode=html
+						markdown=('<a href="http://t.me/neekshellbot?start=help">' '</a>')
+						text_id="command list"
+					fi
+				;;
+			esac
+			if [[ "$text_id" ]]; then
+				tg_method send_message
+			fi
 		;;
-		"!start help"|"!help")
-			if [[ "$fn_args" == "help" ]] || [[ "$fn_args" == "" ]]; then
+		"!help"|"!bahelp"|"!cahelp")
+			get_reply_id self
+			if [[ ! "${arg[0]}" ]]; then
 				if [[ "$type" == "private" ]]; then
 					set +f
-					text_id=$(printf '%s\n' "$(cat help/* | grep -A 1 '^Usage' | grep -v '^Usage\|--' | sed 's/^  //' | sort)" "" 'send !help <command> for details')
+					case "$command" in
+						"!help")
+							help_list=$(cat help/* 2>/dev/null)
+						;;
+						"!bahelp")
+							help_list=$(cat help/bot_admin/* 2>/dev/null)
+						;;
+						"!cahelp")
+							help_list=$(cat help/chat_admin/* 2>/dev/null)
+						;;
+					esac
 					set -f
+					help_list=$(grep -A 1 '^Usage' <<< "$help_list" | grep -v '^Usage\|--' | sed 's/^  //' | sort)
+					text_id=$(printf '%s\n' "$help_list" "" "send !help <command> for details")
+					[[ "$command" == "!help" ]] && text_id=$(printf '%s\n' "$text_id" "!bahelp for bot admin" "!cahelp for chat admin")
 				else
 					parse_mode=html
 					markdown=('<a href="http://t.me/neekshellbot?start=help">' '</a>')
 					text_id="command list"
 				fi
 			else
-				text_id=$(cat help/"$fn_args")
-				[[ "$text_id" = "" ]] && text_id="command not found"
+				case "$command" in
+					"!help")
+						text_id=$(cat "help/${arg[0]}")
+					;;
+					"!bahelp")
+						text_id=$(cat "help/bot_admin/${arg[0]}")
+					;;
+					"!cahelp")
+						text_id=$(cat "help/chat_admin/${arg[0]}")
+					;;
+				esac
+				[[ ! "$text_id" ]] && text_id="${arg[0]} not found"
 			fi
-			get_reply_id self
 			tg_method send_message
-			return 1
 		;;
 		"!source")
 			source_id=$RANDOM
-			zip -r source-"$source_id".zip neekshellbot.sh tg_method.sh webhook.sh getinput.sh custom_commands tools LICENSE README.md webhook.php \
+			zip -r source-"$source_id".zip \
+				custom_commands help tools LICENSE \
+				README.md getinput.sh neekshellbot.sh \
+				tg_method.sh webhook.sh \
 				-x custom_commands/user_generated/\*
+			caption="https://gitlab.com/craftmallus/neekshell-telegrambot/"
 			document_id="@source-$source_id.zip"
 			get_reply_id self
 			tg_method send_document upload
 			rm source-"$source_id".zip
-			text_id="https://gitlab.com/craftmallus/neekshell-telegrambot/"
-			tg_method send_message
-			return 1
 		;;
 	esac
 }
@@ -410,6 +467,9 @@ process_reply() {
 		im_arg=$(cut -f 2- -d ' ' <<< "$inline_message")
 		user_id=$inline_user_id user_fname=$inline_fname
 	fi
+	if [[ $(is_banned) ]]; then
+		exit
+	fi
 	if [[ "$type" = "private" ]] || [[ "$inline" != "" ]] || [[ "$callback" != "" ]]; then
 		bot_chat_dir="db/bot_chats/"
 		bot_chat_user_id=$user_id
@@ -419,21 +479,26 @@ process_reply() {
 	fi
 	case "$file_type" in
 		text)
-			pf=$(grep -o '^.' <<< "$text_id")
+			pf=$(head -n 1 <<< "$text_id" | grep -o '^.')
 			case "$pf" in
 				"/"|"$"|"&"|"%"|";"|"!")
-					normal_message=$(sed "s|^[$pf]|!|" <<< "$text_id")
-					is_command=true
+					normal_message=$text_id
+					command=$(head -n 1 <<< "$normal_message" | sed -e "s/ .*//" -e "s/^./!/")
 				;;
 				*)
 					normal_message=$text_id
+				;;
 			esac
+
 			unset text_id
-			fn_args=$(cut -f 2- -d ' ' <<< "$normal_message")
-			if [[ "$fn_args" != "$normal_message" ]]; then
-				fn_arg=($fn_args)
+
+			if [[ "$(grep "[^ ] [^ ]" <<< "$normal_message")" ]]; then
+				if [[ "$command" ]]; then
+					arg=($(sed "s/^\s*$command\s*//" <<< "$normal_message" \
+						| tr '\n' ' ' | grep -oP "^([^\s]*\s*){10}"))
+				fi
 			else
-				fn_args=""
+				no_args=true
 			fi
 		;;
 		photo)
@@ -459,15 +524,15 @@ process_reply() {
 		;;
 	esac
 	source tg_method.sh
-	if [[ "$message" != "" ]]; then
+	if [[ "$message" ]]; then
 		get_normal_reply
-		[[ $? != 1 ]] && source custom_commands/normal_reply.sh
-	elif [[ "$inline_message" != "" ]]; then
+		[[ ! "$curl_result" ]] && source custom_commands/normal_reply.sh
+	elif [[ "$inline_message" ]]; then
 		get_inline_reply
-		[[ $? != 1 ]] && source custom_commands/inline_reply.sh
-	elif [[ "$callback_data" != "" ]]; then
+		[[ ! "$curl_result" ]] && source custom_commands/inline_reply.sh
+	elif [[ "$callback_data" ]]; then
 		get_button_reply
-		[[ $? != 1 ]] && source custom_commands/button_reply.sh
+		[[ ! "$curl_result" ]] && source custom_commands/button_reply.sh
 	fi
 }
 input=$1

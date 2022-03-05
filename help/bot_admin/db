@@ -1,0 +1,9 @@
+Usage
+  !db <option>
+
+Description
+  get info from db
+
+Options
+  get (on reply to a message, get info about the user)
+  chats (get list of chats)

@@ -1,0 +1,5 @@
+Usage
+  !extract [number]
+
+Description
+  extract [number] random elements from the pool

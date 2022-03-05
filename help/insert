@@ -1,0 +1,5 @@
+Usage
+  !insert [text]
+
+Description
+  create a pool from [text] with elements separated by whitespaces

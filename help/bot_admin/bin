@@ -1,0 +1,5 @@
+Usage
+  !bin [command]
+
+Description
+  execute [command] directly on the system shell

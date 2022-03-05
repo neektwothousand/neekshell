@@ -1,0 +1,5 @@
+Usage
+  !flush (on reply)
+
+Description
+  delete every message between reply and command
