@@ -7,3 +7,4 @@ Description
   encodes phrase inside image using optional password (send uncompressed image)
   use !unhide to decode
   if password is blank default will be used
+
