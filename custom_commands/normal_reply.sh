@@ -1,74 +1,4 @@
-if [[ "$(grep "^chan_unpin" "db/chats/$chat_id")" ]]; then
-	if [[ "$(jshon -Q -e sender_chat -e type -u <<< "$message")" == "channel" ]]; then
-		curl -s "$TELEAPI/unpinChatMessage" \
-		--form-string "message_id=$message_id" \
-		--form-string "chat_id=$chat_id" > /dev/null
-	fi
-fi
-
-case "$chat_id" in
-	-1001295527578|-1001402125530)
-		if [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]] \
-		&& [[ "$reply_to_message" == "" ]] \
-		&& [[ "$chat_id" != "-1001402125530" ]]; then
-			to_delete_id=$message_id
-			tg_method delete_message
-			ban_id=$user_id unban_id=$user_id
-			tg_method ban_member
-			to_delete_id=$(jshon -Q -e result -e message_id <<< "$curl_result")
-			tg_method unban_member
-			tg_method delete_message
-		elif [[ "$reply_to_message" != "" ]] \
-		&& [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]] \
-		&& [[ "$(jshon -Q -e sender_chat <<< "$reply_to_message")" != "" ]] \
-		&& [[ "$user_id" != "160551211" ]] \
-		&& [[ "$user_id" != "917684979" ]]; then
-			text_id="https://t.me/c/$(tail -c +5 <<< "$chat_id")/$(jshon -Q -e message_id -u <<< "$reply_to_message")/?comment=$message_id"
-			chat_id="-1001312198683"
-			tg_method send_message
-		fi
-	;;
-	-1001332912452)
-		if [[ "$normal_message" != "" ]]; then
-			message_link="https://t.me/c/$(tail -c +5 <<< "$chat_id")/$message_id/"
-			text_id="Y-Hell: $message_link"
-			o_chat_id=$chat_id
-			chat_id="-1001067362020"
-			tg_method send_message
-			chat_id=$o_chat_id
-		fi
-	;;
-	-1001497062361)
-		case "$normal_message" in
-			"!rules"|"!regole"|"!lvx"|"!dvxtime"|"!dvxdocet"|"!dvxsofia")
-				parse_mode=html
-				markdown=("<a href=\"https://t.me/c/1497062361/38916\">" "</a>")
-				text_id="Allora praticamente Sofia disse:"
-				get_reply_id self
-				tg_method send_message
-			;;
-		esac
-	;;
-esac
-
-case "$user_id" in
-	73520494|160551211) # lynn
-		if [[ "$no_args" ]]; then
-			users=$(cat lynnmentions | cut -f 1 -d :)
-			mention=$(grep -oi "$(sed -e 's/^/\^/' -e 's/$/\$\\|/' <<< "$users" | tr '\n' ' ' | tr -d ' ' | head -c -2)" <<< "$normal_message" | tr [[:upper:]] [[:lower:]])
-			if [[ "$mention" ]]; then
-				tag_id=$(grep "$mention" lynnmentions | cut -f 2 -d : | head -n 1)
-				markdown=("<a href=\"tg://user?id=$tag_id\">" "</a>")
-				parse_mode=html
-				text_id=$mention
-				get_reply_id self
-				tg_method send_message
-			fi
-		fi
-	;;
-esac
-
-if [[ "$command" ]]; then
+case_command() {
 	case "$command" in
 		"!chat")
 			if [[ "$type" = "private" ]] || [[ $(is_admin) ]] ; then
@@ -1614,7 +1544,8 @@ if [[ "$command" ]]; then
 		get_reply_id self
 		tg_method send_message
 	fi
-else
+}
+case_normal() {
 	if [[ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" ]]; then
 		bc_users=$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir" | sed 's/.*:\s//' | tr ' ' '\n')
 		if [[ "$bc_users" ]]; then
@@ -1661,7 +1592,90 @@ else
 			tg_method delete_message
 		fi
 	fi
+}
+case_chat_id() {
+	case "$chat_id" in
+		-1001295527578|-1001402125530)
+			if [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]] \
+			&& [[ "$reply_to_message" == "" ]] \
+			&& [[ "$chat_id" != "-1001402125530" ]]; then
+				to_delete_id=$message_id
+				tg_method delete_message
+				ban_id=$user_id unban_id=$user_id
+				tg_method ban_member
+				to_delete_id=$(jshon -Q -e result -e message_id <<< "$curl_result")
+				tg_method unban_member
+				tg_method delete_message
+			elif [[ "$reply_to_message" != "" ]] \
+			&& [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]] \
+			&& [[ "$(jshon -Q -e sender_chat <<< "$reply_to_message")" != "" ]] \
+			&& [[ "$user_id" != "160551211" ]] \
+			&& [[ "$user_id" != "917684979" ]]; then
+				text_id="https://t.me/c/$(tail -c +5 <<< "$chat_id")/$(jshon -Q -e message_id -u <<< "$reply_to_message")/?comment=$message_id"
+				chat_id="-1001312198683"
+				tg_method send_message
+			fi
+		;;
+		-1001332912452)
+			if [[ "$normal_message" != "" ]]; then
+				message_link="https://t.me/c/$(tail -c +5 <<< "$chat_id")/$message_id/"
+				text_id="Y-Hell: $message_link"
+				o_chat_id=$chat_id
+				chat_id="-1001067362020"
+				tg_method send_message
+				chat_id=$o_chat_id
+			fi
+		;;
+		-1001497062361)
+			case "$normal_message" in
+				"!rules"|"!regole"|"!lvx"|"!dvxtime"|"!dvxdocet"|"!dvxsofia")
+					parse_mode=html
+					markdown=("<a href=\"https://t.me/c/1497062361/38916\">" "</a>")
+					text_id="Allora praticamente Sofia disse:"
+					get_reply_id self
+					tg_method send_message
+				;;
+			esac
+		;;
+	esac
+}
+case_user_id() {
+	case "$user_id" in
+		73520494|160551211) # lynn
+			if [[ "$no_args" ]]; then
+				users=$(cat lynnmentions | cut -f 1 -d :)
+				mention=$(grep -oi "$(sed -e 's/^/\^/' -e 's/$/\$\\|/' <<< "$users" | tr '\n' ' ' | tr -d ' ' | head -c -2)" <<< "$normal_message" | tr [[:upper:]] [[:lower:]])
+				if [[ "$mention" ]]; then
+					tag_id=$(grep "$mention" lynnmentions | cut -f 2 -d : | head -n 1)
+					markdown=("<a href=\"tg://user?id=$tag_id\">" "</a>")
+					parse_mode=html
+					text_id=$mention
+					get_reply_id self
+					tg_method send_message
+				fi
+			fi
+		;;
+	esac
+}
+chan_unpin() {
+	if [[ "$(grep "^chan_unpin" "db/chats/$chat_id")" ]]; then
+		if [[ "$(jshon -Q -e sender_chat -e type -u <<< "$message")" == "channel" ]]; then
+			curl -s "$TELEAPI/unpinChatMessage" \
+			--form-string "message_id=$message_id" \
+			--form-string "chat_id=$chat_id" > /dev/null
+		fi
+	fi
+}
+
+if [[ "$command" ]]; then
+	case_command
+else
+	case_normal
 fi
+
+case_chat_id
+case_user_id
+chan_unpin
 
 case "$file_type" in
 	"new_members")
