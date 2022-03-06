@@ -307,7 +307,7 @@ case_command() {
 				if [[ "$media_id" ]]; then
 					get_reply_id self
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
-					text_id=$(ffprobe "$file_path" 2>&1 | grep -v "^  configuration\|^  lib\|^Input")
+					text_id=$(ffprobe "$file_path" 2>&1 | grep -v '^  lib' | sed '1,4d' | sed 's/^  //')
 					markdown=("<code>" "</code>")
 					parse_mode=html
 					tg_method send_message
