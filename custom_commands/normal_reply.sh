@@ -587,10 +587,11 @@ if [[ "$command" ]]; then
 						sed -i "s/\(^pool: \).*/\1${arg[*]} /" "$file_chat"
 					fi
 					text_id=$(grep "^pool:" "$file_chat")
+					tg_method send_message
 				;;
 				"!extract")
 					case "${arg[0]}" in
-						[0-9]*)
+						[1-9]*)
 							pool=($(sed -n "s/^pool: //p" "$file_chat"))
 							if [[ "${arg[0]}" -gt "${#pool[@]}" ]]; then
 								arg[0]=${#pool[@]}
@@ -601,11 +602,11 @@ if [[ "$command" ]]; then
 								text_id="${pool[$pool_rand]} $text_id"
 								unset pool[$pool_rand]
 							done
+							tg_method send_message
 						;;
 					esac
 				;;
 			esac
-			tg_method send_message
 		;;
 		"!insta")
 			[[ -e powersave ]] && return
