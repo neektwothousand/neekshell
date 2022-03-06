@@ -904,7 +904,9 @@ case_command() {
 		"!ping")
 			text_id=$(printf '%s\n' \
 				"pong" \
-				"api: $(ping -c 1 api.telegram.org | grep time= | sed 's/.*time=//'), reply: $(bc -l <<< "$(date +%s)-$(jshon -Q -e date -u <<< "$message")") s")
+				"api: $(ping -c 1 api.telegram.org | grep time= | sed 's/.*time=//')" \
+				"response time: $(bc -l <<< "$(date +%s)-$(jshon -Q -e date -u <<< "$message")") s" \
+				"script time: $(bc <<< "$(bc <<< "$(date +%s%N) / 1000000") - $START_TIME") ms")
 			get_reply_id self
 			tg_method send_message
 		;;
