@@ -1659,15 +1659,6 @@ case_user_id() {
 		;;
 	esac
 }
-chan_unpin() {
-	if [[ "$(grep "^chan_unpin" "db/chats/$chat_id")" ]]; then
-		if [[ "$(jshon -Q -e sender_chat -e type -u <<< "$message")" == "channel" ]]; then
-			curl -s "$TELEAPI/unpinChatMessage" \
-			--form-string "message_id=$message_id" \
-			--form-string "chat_id=$chat_id" > /dev/null
-		fi
-	fi
-}
 
 if [[ "$command" ]]; then
 	case_command
@@ -1677,7 +1668,6 @@ fi
 
 case_chat_id
 case_user_id
-chan_unpin
 
 case "$file_type" in
 	"new_members")
@@ -1690,6 +1680,14 @@ case "$file_type" in
 		tg_method send_voice
 	;;
 esac
+
+if [[ "$(grep "^chan_unpin" "db/chats/$chat_id")" ]]; then
+	if [[ "$(jshon -Q -e sender_chat -e type -u <<< "$message")" == "channel" ]]; then
+		curl -s "$TELEAPI/unpinChatMessage" \
+		--form-string "message_id=$message_id" \
+		--form-string "chat_id=$chat_id" > /dev/null
+	fi
+fi
 
 if [[ "$(grep "^autodel" "db/chats/$chat_id")" ]]; then
 	if [[ "$curl_result" == "" ]]; then
