@@ -121,7 +121,7 @@ case_command() {
 			fi
 		;;
 		"!convert")
-			[[ -e powersave ]] && return
+			[[ -e "$basedir/powersave" ]] && return
 			if [[ "$reply_to_id" != "" ]]; then
 				twd
 				get_reply_id reply
@@ -202,7 +202,7 @@ case_command() {
 			tg_method send_message
 		;;
 		"!deemix")
-			[[ -e powersave ]] && return
+			[[ -e "$basedir/powersave" ]] && return
 			if [[ "$reply_to_text" != "" ]] || [[ "${arg[0]}" != "" ]]; then
 				if [[ "$reply_to_text" != "" ]]; then
 					deemix_link=$(grep -o 'https://www.deezer.*\|https://deezer.*' <<< "$reply_to_text" | cut -f 1 -d ' ')
@@ -337,7 +337,7 @@ case_command() {
 			fi
 		;;
 		"!ugoira-dl")
-			[[ -e powersave ]] && return
+			[[ -e "$basedir/powersave" ]] && return
 			if [[ "${arg[0]}" ]]; then
 				get_reply_id self
 				loading 1
@@ -368,12 +368,12 @@ case_command() {
 				gs_id=$reply_to_user_id
 				gs_fname=$reply_to_user_fname
 			fi
-			[[ ! -d .lock+/gs/ ]] && mkdir -p .lock+/gs/
-			lockfile=.lock+/gs/"$gs_id"-lock
+			[[ ! -d "$basedir/.lock+/gs/" ]] && mkdir -p "$basedir/.lock+/gs/"
+			lockfile="$basedir/.lock+/gs/$gs_id-lock"
 			# check if it's younger than one day
 			lock_age=$(bc <<< "$(date +%s) - $(stat -c "%W" $lockfile)")
-			if [[ -e $lockfile ]] && [[ $lock_age -lt 86400 ]]; then
-				gs_perc=$(grep "^gs: " db/users/"$gs_id" | sed 's/gs: //')
+			if [[ -e "$lockfile" ]] && [[ "$lock_age" -lt "86400" ]]; then
+				gs_perc=$(grep "^gs: " "$basedir/db/users/$gs_id" | sed 's/gs: //')
 				if [[ $gs_perc -gt 9 ]]; then
 					for x in $(seq $((gs_perc/10))); do
 						rainbow="🏳️‍🌈${rainbow}"
@@ -381,7 +381,7 @@ case_command() {
 				fi
 				text_id="$gs_fname is ${gs_perc}% gay $rainbow"
 			else
-				rm $lockfile
+				rm -f "$lockfile"
 				get_chat_id=$gs_id
 				tg_method get_chat
 				gs_info="$user_fname $user_lname $(jshon -Q -e result -e bio -u <<< "$curl_result")"
@@ -396,18 +396,18 @@ case_command() {
 					done
 				fi
 				text_id="$gs_fname is ${gs_perc}% gay $rainbow"
-				prev_gs=$(grep "^gs: " db/users/"$gs_id" | sed 's/gs: //')
+				prev_gs=$(grep "^gs: " "$basedir/db/users/$gs_id" | sed 's/gs: //')
 				if [[ "$prev_gs" = "" ]]; then
-					printf '%s\n' "gs: 0" >> db/users/"$gs_id"
+					printf '%s\n' "gs: 0" >> "$basedir/db/users/$gs_id"
 				fi
-				sed -i "s/^gs: .*/gs: ${gs_perc}/" db/users/"$gs_id"
-				touch $lockfile
+				sed -i "s/^gs: .*/gs: ${gs_perc}/" "$basedir/db/users/$gs_id"
+				touch "$lockfile"
 			fi
 			get_reply_id any
 			tg_method send_message
 		;;
 		"!gtt"|"!gbt")
-			[[ -e powersave ]] && return
+			[[ -e "$basedir/powersave" ]] && return
 			if [[ "$reply_to_message" != "" ]]; then
 				twd
 				get_reply_id reply
@@ -498,7 +498,7 @@ case_command() {
 			case "$command" in
 				"!insert")
 					if [[ ! "$(grep "^pool" "$file_chat")" ]]; then
-						printf '%s\n' "pool: ${arg[*]}" >> "db/chats/$chat_id"
+						printf '%s\n' "pool: ${arg[*]}" >> "$basedir/db/chats/$chat_id"
 					else
 						sed -i "s/\(^pool: \).*/\1${arg[*]} /" "$file_chat"
 					fi
@@ -525,7 +525,7 @@ case_command() {
 			esac
 		;;
 		"!insta")
-			[[ -e powersave ]] && return
+			[[ -e "$basedir/powersave" ]] && return
 			if [[ "${arg[0]}" ]]; then
 				if [[ "$(grep '^@' <<< "${arg[0]}")" != "" ]]; then
 					arg[0]=${arg[0]/@/}
@@ -573,7 +573,7 @@ case_command() {
 			fi
 		;;
 		"!jpg")
-			[[ -e powersave ]] && return
+			[[ -e "$basedir/powersave" ]] && return
 			if [[ "$reply_to_id" != "" ]]; then
 				twd
 				get_reply_id reply
@@ -758,7 +758,7 @@ case_command() {
 			if [[ "$top_info" == "totalrep" ]]; then
 				p_rep_list=$(grep "^rep" "$file_user")
 				for x in $(seq $(wc -l <<< "$p_rep_list")); do
-					p_rep_fname=$(grep '^fname' db/users/"$(sed -n ${x}p <<< "$p_rep_list" | sed -e "s/^rep-//" -e "s/:.*//")" \
+					p_rep_fname=$(grep '^fname' "$basedir/db/users/$(sed -n ${x}p <<< "$p_rep_list" | sed -e "s/^rep-//" -e "s/:.*//")" \
 						| cut -f 2- -d ' ' | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g')
 					p_rep=$(sed -n ${x}p <<< "$p_rep_list" | sed "s/^.*: //")
 					p_user_entry[$x]="$p_rep from $p_rep_fname"
@@ -784,7 +784,7 @@ case_command() {
 			tg_method send_message
 		;;
 		"!nh")
-			[[ -e powersave ]] && return
+			[[ -e "$basedir/powersave" ]] && return
 			if [[ "${arg[0]}" ]]; then
 				get_reply_id self
 				nhentai_id=$(cut -d / -f 5 <<< "${arg[0]}")
@@ -819,7 +819,7 @@ case_command() {
 			fi
 		;;
 		"!ocr")
-			[[ -e powersave ]] && return
+			[[ -e "$basedir/powersave" ]] && return
 			if [[ "$reply_to_message" ]]; then
 				get_file_type reply
 				case $file_type in
@@ -966,7 +966,7 @@ case_command() {
 					tag_id=$tag_name
 				;;
 				*)
-					tag_id=$(grep '^id:' $(grep -ri -- "$(sed 's/@//' <<< "$tag_name")" db/users/ | cut -d : -f 1) | head -n 1 | sed 's/.*id: //')
+					tag_id=$(grep '^id:' $(grep -ri -- "$(sed 's/@//' <<< "$tag_name")" "$basedir/db/users/" | cut -d : -f 1) | head -n 1 | sed 's/.*id: //')
 				;;
 			esac
 			if [[ "$text_id" == "" ]]; then
@@ -991,7 +991,7 @@ case_command() {
 					return
 				;;
 			esac
-			list_top=$(grep -r "^$top_info" db/users/ | cut -d : -f 1)
+			list_top=$(grep -r "^$top_info" "$basedir/db/users/" | cut -d : -f 1)
 			if [[ "$list_top" != "" ]]; then
 				for x in $(seq $(wc -l <<< "$list_top")); do
 					user_file=$(sed -n ${x}p <<< "$list_top")
@@ -1027,7 +1027,7 @@ case_command() {
 			tg_method send_message
 		;;
 		"!videosticker")
-			[[ -e powersave ]] && return
+			[[ -e "$basedir/powersave" ]] && return
 			if [[ "$reply_to_message" ]]; then
 				get_file_type reply
 				get_reply_id self
@@ -1111,7 +1111,7 @@ case_command() {
 			fi
 		;;
 		"!ytdl")
-			[[ -e powersave ]] && return
+			[[ -e "$basedir/powersave" ]] && return
 			get_reply_id self
 			if [[ "$reply_to_text" != "" ]]; then
 				ytdl_link=$reply_to_text
@@ -1168,7 +1168,7 @@ case_command() {
 		;;
 		"!broadcast")
 			if [[ $(is_admin) ]]; then
-				listchats=$(printf '%s\n' "$(grep -r users db/bot_chats/ | sed 's/.*: //' | tr ' ' '\n' | sed '/^$/d')" "$(dir -1 db/chats/)" | sort -u | grep -vw -- "$chat_id")
+				listchats=$(printf '%s\n' "$(grep -r users "$basedir/db/bot_chats/" | sed 's/.*: //' | tr ' ' '\n' | sed '/^$/d')" "$(dir -1 "$basedir/db/chats/")" | sort -u | grep -vw -- "$chat_id")
 				numchats=$(wc -l <<< "$listchats")
 				if [[ "${arg[0]}" ]]; then
 					text_id=$(sed)
@@ -1198,14 +1198,14 @@ case_command() {
 			if [[ $(is_admin) ]]; then
 				case "${arg[0]}" in
 					"chats")
-						for x in $(seq $(dir -1 db/chats/ | wc -l)); do
-							info_chat=$(dir -1 db/chats/ | sed -n ${x}p)
+						for x in $(seq $(dir -1 "$basedir/db/chats/" | wc -l)); do
+							info_chat=$(dir -1 "$basedir/db/chats/" | sed -n ${x}p)
 							count[$x]=$(curl -s "$TELEAPI/getChatMembersCount" --form-string "chat_id=$info_chat" | jshon -Q -e result -u)
-							info[$x]="${count[$x]} members, $(cat -- db/chats/"$info_chat" \
+							info[$x]="${count[$x]} members, $(cat -- "$basedir/db/chats/$info_chat" \
 							| grep "^title\|^type" | sed -e 's/^title: //' -e 's/^type:/,/' | tr -d '\n')"
 							if [[ "${count[$x]}" == "" ]]; then
 								unset info[$x]
-								rm -f -- db/chats/"$info_chat"
+								rm -f -- "$basedir/db/chats/$info_chat"
 							fi
 						done
 						text_id=$(printf '%s\n' "${info[@]}" | sort -nr)
@@ -1214,7 +1214,7 @@ case_command() {
 					;;
 					"get")
 						if [[ "$reply_to_user_id" ]]; then
-							text_id=$(cat db/users/"$reply_to_user_id")
+							text_id=$(cat "$basedir/db/users/$reply_to_user_id")
 							get_reply_id any
 							tg_method send_message
 						fi
@@ -1292,11 +1292,11 @@ case_command() {
 		;;
 		"!powersave")
 			if [[ $(is_admin) ]]; then
-				if [[ ! -e powersave ]]; then
-					touch powersave
+				if [[ ! -e "$basedir/powersave" ]]; then
+					touch "$basedir/powersave"
 					text_id="powersave set"
 				else
-					rm -f powersave
+					rm -f "$basedir/powersave"
 					text_id="powersave unset"
 				fi
 				get_reply_id self
@@ -1306,7 +1306,7 @@ case_command() {
 		"!set")
 			if [[ $(is_admin) ]]; then
 				set_username=$(sed 's/^@//' <<< "${arg[1]}")
-				set_file=$(grep -ir -- "$set_username" db/users/ | head -n 1 | cut -d : -f 1)
+				set_file=$(grep -ir -- "$set_username" "$basedir/db/users/" | head -n 1 | cut -d : -f 1)
 				set_id=$(grep '^id' "$set_file" | sed 's/^id: //')
 				if [[ "$set_id" != "" ]]; then
 					case "${arg[0]}" in
@@ -1354,13 +1354,13 @@ case_command() {
 					if [[ "${arg[0]/s/}" -lt "172800" ]] \
 					&& [[ "${arg[0]/s/}" -ge "5" ]]; then
 						text_id="autodel set to ${arg[0]}"
-						printf '%s\n' "autodel: ${arg[0]}" >> "db/chats/$chat_id"
+						printf '%s\n' "autodel: ${arg[0]}" >> "$basedir/db/chats/$chat_id"
 					else
 						text_id="invalid time specified"
 					fi
 				else
-					if [[ "$(grep "^autodel" "db/chats/$chat_id")" ]]; then
-						sed -i "/^autodel: /d" "db/chats/$chat_id"
+					if [[ "$(grep "^autodel" "$basedir/db/chats/$chat_id")" ]]; then
+						sed -i "/^autodel: /d" "$basedir/db/chats/$chat_id"
 						text_id="autodel disabled"
 						tg_method send_message
 					fi
@@ -1370,11 +1370,11 @@ case_command() {
 		"!autounpin")
 			if [[ $(is_chat_admin) ]]; then
 				get_reply_id self
-				if [[ "$(grep "^chan_unpin" "db/chats/$chat_id")" ]]; then
-					sed -i '/^chan_unpin/d' "db/chats/$chat_id"
+				if [[ "$(grep "^chan_unpin" "$basedir/db/chats/$chat_id")" ]]; then
+					sed -i '/^chan_unpin/d' "$basedir/db/chats/$chat_id"
 					text_id="autounpin disabled"
 				else
-					printf '%s\n' "chan_unpin" >> "db/chats/$chat_id"
+					printf '%s\n' "chan_unpin" >> "$basedir/db/chats/$chat_id"
 					text_id="autounpin enabled"
 				fi
 				tg_method send_message
@@ -1404,7 +1404,7 @@ case_command() {
 							restrict_id=${arg[0]}
 						;;
 						*)
-							restrict_id=$(grep '^id:' $(grep -ri -- "$(sed 's/@//' <<< "${arg[0]}")" db/users/ | cut -d : -f 1) | head -n 1 | sed 's/.*id: //')
+							restrict_id=$(grep '^id:' $(grep -ri -- "$(sed 's/@//' <<< "${arg[0]}")" "$basedir/db/users/" | cut -d : -f 1) | head -n 1 | sed 's/.*id: //')
 							if [[ "$restrict_id" == "$user_id" ]]; then
 								unset restrict_id
 							fi
@@ -1413,7 +1413,7 @@ case_command() {
 				fi
 				if [[ "$restrict_id" ]]; then
 					if [[ "$reply_to_user_fname" == "" ]]; then
-						restrict_fname=$(grep -w -- "^fname" db/users/"$restrict_id" | sed 's/.*fname: //')
+						restrict_fname=$(grep -w -- "^fname" "$basedir/db/users/$restrict_id" | sed 's/.*fname: //')
 					else
 						restrict_fname=$reply_to_user_fname
 					fi
@@ -1427,17 +1427,17 @@ case_command() {
 						else
 							case "$command" in
 								"!warn")
-									warns=$(grep "^warns-$chat_id:" db/users/"$restrict_id" | sed 's/.*: //')
+									warns=$(grep "^warns-$chat_id:" "$basedir/db/users/$restrict_id" | sed 's/.*: //')
 									if [[ "$warns" == "" ]]; then
 										warns=1
-										printf '%s\n' "warns-$chat_id: $warns" >> db/users/"$restrict_id"
+										printf '%s\n' "warns-$chat_id: $warns" >> "$basedir/db/users/$restrict_id"
 									elif [[ "$warns" -eq "1" ]]; then
 										warns=$(($warns+1))
-										sed -i "s/^warns-$chat_id: .*/warns-$chat_id: $warns/" db/users/"$restrict_id"
+										sed -i "s/^warns-$chat_id: .*/warns-$chat_id: $warns/" "$basedir/db/users/$restrict_id"
 									elif [[ "$warns" -eq "2" ]]; then
 										warns=$(($warns+1))
-										sed -i "s/^warns-$chat_id: .*//" db/users/"$restrict_id"
-										sed -i '/^$/d' db/users/"$restrict_id"
+										sed -i "s/^warns-$chat_id: .*//" "$basedir/db/users/$restrict_id"
+										sed -i '/^$/d' "$basedir/db/users/$restrict_id"
 										can_send_messages="false"
 										can_send_media_messages="false"
 										can_send_other_messages="false"
@@ -1497,8 +1497,8 @@ case_command() {
 			fi
 		;;
 	esac
-	if [[ -e "custom_commands/user_generated/$chat_id-$normal_message" ]]; then
-		text_id=$(cat -- "custom_commands/user_generated/$chat_id-$normal_message")
+	if [[ -e "$basedir/custom_commands/user_generated/$chat_id-$normal_message" ]]; then
+		text_id=$(cat -- "$basedir/custom_commands/user_generated/$chat_id-$normal_message")
 		get_reply_id self
 		tg_method send_message
 	fi
@@ -1640,7 +1640,7 @@ case "$file_type" in
 	;;
 esac
 
-if [[ "$(grep "^chan_unpin" "db/chats/$chat_id")" ]]; then
+if [[ "$(grep "^chan_unpin" "$basedir/db/chats/$chat_id")" ]]; then
 	if [[ "$(jshon -Q -e sender_chat -e type -u <<< "$message")" == "channel" ]]; then
 		curl -s "$TELEAPI/unpinChatMessage" \
 		--form-string "message_id=$message_id" \
@@ -1648,14 +1648,14 @@ if [[ "$(grep "^chan_unpin" "db/chats/$chat_id")" ]]; then
 	fi
 fi
 
-if [[ "$(grep "^autodel" "db/chats/$chat_id")" ]]; then
+if [[ "$(grep "^autodel" "$basedir/db/chats/$chat_id")" ]]; then
 	if [[ "$curl_result" == "" ]]; then
-		(sleep $(sed -n "s/^autodel: //p" "db/chats/$chat_id")  \
+		(sleep $(sed -n "s/^autodel: //p" "$basedir/db/chats/$chat_id")  \
 		&& curl -s "$TELEAPI/deleteMessage" \
 			--form-string "message_id=$message_id" \
 			--form-string "chat_id=$chat_id" > /dev/null) &
 	else
-		(sleep $(sed -n "s/^autodel: //p" "db/chats/$chat_id")  \
+		(sleep $(sed -n "s/^autodel: //p" "$basedir/db/chats/$chat_id")  \
 		&& curl -s "$TELEAPI/deleteMessage" \
 			--form-string "message_id=$message_id" \
 			--form-string "chat_id=$chat_id" > /dev/null
