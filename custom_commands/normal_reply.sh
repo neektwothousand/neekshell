@@ -11,7 +11,18 @@ twd() {
 	fi
 }
 command_help() {
-	text_id=$(cat "$basedir/help/$(sed "s/^.//" <<< "$command")")
+	case "$1" in
+		bot_admin)
+			help_dir="$basedir/help/bot_admin"
+		;;
+		chat_admin)
+			help_dir="$basedir/help/chat_admin"
+		;;
+		*)
+			help_dir="$basedir/help"
+		;;
+	esac
+	text_id=$(cat "$help_dir/$(sed "s/^.//" <<< "$command")")
 	get_reply_id self
 }
 case_command() {
