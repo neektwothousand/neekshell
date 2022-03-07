@@ -1,7 +1,7 @@
 #!/bin/mksh
 toptext=$1 size=3
 unfolded=$toptext tt_wc=$(wc -m <<< "$toptext")
-res=($(ffprobe -v error -show_streams "video-$request_id.$ext" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
+res=($(ffprobe -v error -show_streams "video.$ext" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
 fs=$(bc <<< "(${res[1]}/$size)/2")
 tts="toptext-start"
 printf '%s' "$(tr '\n' ' ' <<< "$toptext")" > "$tts"
@@ -61,21 +61,21 @@ get_tw() {
 		get_nh "$mode"
 		case "$ext" in
 			jpg|jpeg|png|webp)
-				ffmpeg -v error -y -i "video-$request_id.$ext" \
+				ffmpeg -v error -y -i "video.$ext" \
 					-vf "pad=h=ih+$(bc <<< "$last_ycord+($line_th/0.9)"):w=iw+4:x=-1:y=$(bc <<< "$last_ycord+($line_th/0.9)")-1:color=white,$drawtext" \
-					-an "video-toptext-$request_id.$ext"
+					-an "video-toptext.$ext"
 			;;
 			mp4|MP4)
 				case "$file_type" in
 					animation)
-						ffmpeg -v error -y -i "video-$request_id.$ext" \
+						ffmpeg -v error -y -i "video.$ext" \
 							-vf "pad=h=$nh:y=$ypad_cord:color=white,$drawtext" \
-							-an "video-toptext-$request_id.$ext"
+							-an "video-toptext.$ext"
 					;;
 					video)
-						ffmpeg -v error -y -i "video-$request_id.$ext" \
+						ffmpeg -v error -y -i "video.$ext" \
 							-vf "pad=h=$nh:y=$ypad_cord:color=white,$drawtext" \
-							"video-toptext-$request_id.$ext"
+							"video-toptext.$ext"
 					;;
 				esac
 			;;

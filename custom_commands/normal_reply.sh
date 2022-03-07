@@ -1,3 +1,19 @@
+twd() {
+	if [[ "$1" != "exit" ]]; then
+		cd "$tmpdir"
+		twd_id=$RANDOM
+		twd_dir="twd_$twd_id"
+		mkdir "$twd_dir" ; cd "$twd_dir"
+	else
+		cd "$tmpdir"
+		rm -rf "$twd_dir/"
+		cd "$basedir"
+	fi
+}
+command_help() {
+	text_id=$(cat "$basedir/help/$(sed "s/^.//" <<< "$command")")
+	get_reply_id self
+}
 case_command() {
 	case "$command" in
 		"!chat")
@@ -98,8 +114,7 @@ case_command() {
 						[[ "$text_id" = "" ]] && text_id="no chats found"
 					;;
 					*)
-						text_id=$(cat help/chat)
-						get_reply_id self
+						command_help
 					;;
 				esac
 				tg_method send_message
@@ -108,8 +123,7 @@ case_command() {
 		"!convert")
 			[[ -e powersave ]] && return
 			if [[ "$reply_to_id" != "" ]]; then
-				cd "$tmpdir"
-				request_id=$RANDOM
+				twd
 				get_reply_id reply
 				get_file_type reply
 				case "$file_type" in
@@ -130,7 +144,7 @@ case_command() {
 					loading 1
 					case "${arg[0]}" in
 						animation)
-							out_file="convert-$request_id.mp4"
+							out_file="convert.mp4"
 							if [[ "$(grep "^codec_name=h264$" <<< "$input_codecs")" ]]; then
 								out_vcodec=copy
 							else
@@ -142,14 +156,14 @@ case_command() {
 							tg_method send_animation upload
 						;;
 						webp)
-							out_file="convert-$request_id.webp"
+							out_file="convert.webp"
 							err_out=$(convert "$file_path" "$out_file")
 							loading 2
 							sticker_id="@$out_file"
 							tg_method send_sticker upload
 						;;
 						jpg)
-							out_file="convert-$request_id.jpg"
+							out_file="convert.jpg"
 							err_out=$(convert "$file_path" "$out_file")
 							loading 2
 							photo_id="@$out_file"
@@ -165,7 +179,6 @@ case_command() {
 						tg_method send_message
 					fi
 				fi
-				cd "$basedir"
 			fi
 		;;
 		"!custom")
@@ -184,7 +197,7 @@ case_command() {
 					> "custom_commands/user_generated/$chat_id-$user_command"
 				text_id="$user_command set"
 			else
-				text_id=$(cat help/custom)
+				command_help
 			fi
 			tg_method send_message
 		;;
@@ -197,9 +210,7 @@ case_command() {
 					deemix_link=${arg[0]}
 				fi
 				if [[ "$(grep 'track\|album\|deezer.page.link' <<< "$deemix_link")" != "" ]]; then
-					cd $tmpdir
-					deemix_id=$RANDOM
-					mkdir "$deemix_id" ; cd "$deemix_id"
+					twd
 					loading 1
 					export LC_ALL=C.UTF-8
 					export LANG=C.UTF-8
@@ -240,12 +251,9 @@ case_command() {
 							fi
 						;;
 					esac
-					cd .. ; rm -rf "$deemix_id/"
-					cd "$basedir"
 				fi
 			else
-				text_id=$(cat help/deemix)
-				get_reply_id self
+				command_help
 				tg_method send_message
 			fi
 		;;
@@ -270,7 +278,7 @@ case_command() {
 					tg_method send_message
 				;;
 				*)
-					text_id=$(cat help/dice)
+					command_help
 					tg_method send_message
 				;;
 			esac
@@ -324,8 +332,7 @@ case_command() {
 				get_reply_id any
 				tg_method send_message
 			else
-				get_reply_id self
-				text_id=$(cat help/fortune)
+				command_help
 				tg_method send_message
 			fi
 		;;
@@ -338,17 +345,13 @@ case_command() {
 				if [[ "$gallery_json" ]]; then
 					gallery_type=$(jshon -Q -e 0 -e 1 -e type -u <<< "$gallery_json")
 					if [[ "$gallery_type" == "ugoira" ]]; then
-						cd "$tmpdir"
-						request_id=$RANDOM
-						mkdir "gallery_$request_id" ; cd "gallery_$request_id"
+						twd
 						gallery-dl -q --ugoira-conv-lossless -d . -f out.webm "${arg[0]}"
 						ffmpeg -v error -i out.webm -vcodec h264 -an out.mp4
 						animation_id="@out.mp4"
 						loading 2
 						tg_method send_animation upload
 						loading 3
-						cd .. ; rm -r "gallery_$request_id"
-						cd "$basedir"
 					else
 						loading value "ugoira not found"
 					fi
@@ -406,10 +409,7 @@ case_command() {
 		"!gtt"|"!gbt")
 			[[ -e powersave ]] && return
 			if [[ "$reply_to_message" != "" ]]; then
-				cd "$tmpdir"
-				request_id=$RANDOM
-				tt_dir="toptext-$request_id"
-				mkdir "$tt_dir" ; cd "$tt_dir"
+				twd
 				get_reply_id reply
 				get_file_type reply
 				case "$file_type" in
@@ -424,7 +424,7 @@ case_command() {
 						esac
 						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
 						ext=$(sed 's/.*\.//' <<< "$file_path")
-						cp "$file_path" "video-$request_id.$ext"
+						cp "$file_path" "video.$ext"
 						toptext=$(sed -e "s/$(head -n 1 <<< "$normal_message" | cut -f 1 -d ' ') //" -e "s/,/\\\,/g" <<< "$normal_message")
 						loading 1
 						case "$normal_message" in
@@ -440,32 +440,28 @@ case_command() {
 						loading 2
 						case "$file_type" in
 							animation)
-								animation_id="@video-toptext-$request_id.$ext"
+								animation_id="@video-toptext.$ext"
 								tg_method send_animation upload
 							;;
 							video)
-								video_id="@video-toptext-$request_id.$ext"
+								video_id="@video-toptext.$ext"
 								tg_method send_video upload
 							;;
 						esac
 						loading 3
 					;;
 				esac
-				cd ..
-				rm -rf "toptext-$request_id/"
-				cd "$basedir"
 			fi
 		;;
 		"!hide"|"!unhide")
 			if [[ "$reply_to_message" ]]; then
 				get_file_type reply
 				if [[ "$file_type" == "photo" ]]; then
-					cd $tmpdir
-					request_id=$RANDOM
+					twd
 					get_reply_id reply
 					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$photo_id" | jshon -Q -e result -e file_path -u)
 					ext=$(sed 's/.*\.//' <<< "$file_path")
-					cp "$file_path" "pic-$request_id.$ext"
+					cp "$file_path" "pic.$ext"
 					if [[ "${arg[1]}" == "" ]]; then
 						seed="defaultpasswordthatisreallyhardtoguessiguess"
 					else
@@ -474,17 +470,17 @@ case_command() {
 					case "$command" in
 						"!hide")
 							result=$(imageobfuscator \
-								-i "pic-$request_id.$ext" \
+								-i "pic.$ext" \
 								-e -p "${arg[0]}" -s "$seed")
 							if [[ "$result" == "Saved." ]]; then
-								document_id="@pic-${request_id}_encoded.png"
+								document_id="@pic_encoded.png"
 								tg_method send_document upload
-								rm -f "pic-${request_id}_encoded.png"
+								rm -f "pic_encoded.png"
 							fi
 						;;
 						"!unhide")
 							text_id=$(imageobfuscator \
-								-i "pic-$request_id.$ext" -d -s "$seed" \
+								-i "pic.$ext" -d -s "$seed" \
 								| cut -f 2 -d ' ')
 							if [[ "$text_id" == "" ]]; then
 								text_id="Wrong password, image has no hidden data."
@@ -492,19 +488,9 @@ case_command() {
 							tg_method send_message
 						;;
 					esac
-					rm "pic-$request_id.$ext"
-					cd "$basedir"
 				fi
 			else
-				get_reply_id self
-				case "$command" in
-					"!hide")
-						text_id=$(cat help/hide)
-					;;
-					"!unhide")
-						text_id=$(cat help/unhide)
-					;;
-				esac
+				command_help
 				tg_method send_message
 			fi
 		;;
@@ -550,10 +536,7 @@ case_command() {
 				loading 1
 				ig_user=$(sed -n 1p ig_key)
 				ig_pass=$(sed -n 2p ig_key)
-				cd $tmpdir
-				request_id="${arg[0]}_${chat_id}"
-				[[ ! -d "$request_id" ]] && mkdir "$request_id"
-				cd "$request_id"
+				twd
 				ig_scraper=$(~/.local/bin/instagram-scraper -u $ig_user -p $ig_pass -m 50 "${arg[0]}")
 				if [[ "$(grep "^ERROR" <<< "$ig_scraper")" != "" ]]; then
 					loading 3
@@ -583,21 +566,16 @@ case_command() {
 						ig_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
 					;;
 				esac
-				cd ..
 				printf '%s' "$ig_id" > ig_id
-				cd "$basedir"
 			else
-				text_id=$(cat help/insta)
-				get_reply_id self
+				command_help
 				tg_method send_message
 			fi
 		;;
 		"!jpg")
 			[[ -e powersave ]] && return
 			if [[ "$reply_to_id" != "" ]]; then
-				request_id=$RANDOM
-				cd "$tmpdir" ; mkdir "jpg-$request_id"
-				cd "jpg-$request_id"
+				twd
 				get_reply_id reply
 				get_file_type reply
 				case "$file_type" in
@@ -739,23 +717,19 @@ case_command() {
 						rm -f "audio.$ext" "audio-jpg.mp3"
 					;;
 				esac
-				cd .. ; rm -rf "jpg-$request_id/"
-				cd "$basedir"
 			else
-				text_id=$(cat help/jpg)
-				get_reply_id self
+				command_help
 				tg_method send_message
 			fi
 		;;
 		"!json")
-			cd "$tmpdir"
+			twd
 			update_id="${message_id}${user_id}"
 			printf '%s' "$input" | sed -e 's/{"/{\n"/g' -e 's/,"/,\n"/g' > decode-$update_id.json
 			document_id=@decode-$update_id.json
 			get_reply_id any
 			tg_method send_document upload
 			rm decode-$update_id.json
-			cd "$basedir"
 		;;
 		"!me")
 			if [[ "${arg[0]}" ]]; then
@@ -764,8 +738,7 @@ case_command() {
 				to_delete_id=$message_id
 				tg_method delete_message
 			else
-				get_reply_id self
-				text_id=$(cat help/me)
+				command_help
 				tg_method send_message
 			fi
 		;;
@@ -776,7 +749,7 @@ case_command() {
 					top_info="gs"
 				;;
 				*)
-					text_id=$(cat help/my)
+					command_help
 					tg_method send_message
 					return
 				;;
@@ -814,13 +787,11 @@ case_command() {
 			[[ -e powersave ]] && return
 			if [[ "${arg[0]}" ]]; then
 				get_reply_id self
-				cd $tmpdir
 				nhentai_id=$(cut -d / -f 5 <<< "${arg[0]}")
 				nhentai_check=$(wget -q -O- "https://nhentai.net/g/$nhentai_id/1/")
 				loading 1
 				if [[ "$nhentai_check" != "" ]]; then
-					request_id=$RANDOM
-					mkdir "$request_id" ; cd "$request_id"
+					twd
 					p_offset=1
 					numpages=$(grep 'num-pages' <<< "$nhentai_check" \
 						| sed -e 's/.*<span class="num-pages">//' -e 's/<.*//')
@@ -842,11 +813,9 @@ case_command() {
 						| jshon -Q -e result -e url -u)
 					loading 3
 					tg_method send_message
-					cd .. ; rm -rf "$request_id/"
 				else
 					loading value "invalid id"
 				fi
-				cd "$basedir"
 			fi
 		;;
 		"!ocr")
@@ -890,8 +859,7 @@ case_command() {
 				text_id=$(sed -e 's/[lr]/w/g' -e 's/[LR]/W/g' <<< "$reply")
 				get_reply_id reply
 			else
-				text_id=$(cat help/owo)
-				get_reply_id self
+				command_help
 			fi
 			if [[ "$reply_to_user_id" == "$(jshon -Q -e result -e id -u < botinfo)" ]]; then
 				edit_id=$reply_to_id
@@ -915,7 +883,7 @@ case_command() {
 			if [[ "${arg[0]}" ]]; then
 				source tools/r_subreddit.sh "${arg[0]}" "${arg[1]}"
 			else
-				text_id=$(cat help/reddit)
+				command_help
 				tg_method send_message
 			fi
 		;;
@@ -970,8 +938,7 @@ case_command() {
 				text_id=$(sed --sandbox "${arg[*]}" <<< "$reply_to_text" 2>&1)
 				get_reply_id reply
 			else
-				text_id=$(cat help/sed)
-				get_reply_id self
+				command_help
 			fi
 			tg_method send_message
 		;;
@@ -1003,8 +970,7 @@ case_command() {
 				;;
 			esac
 			if [[ "$text_id" == "" ]]; then
-				text_id=$(cat help/tag)
-				get_reply_id self
+				command_help
 			elif [[ "$tag_id" == "" ]]; then
 				text_id="$tag_name not found"
 			elif [[ "$tag_id" ]] && [[ "$text_id" ]]; then
@@ -1020,7 +986,7 @@ case_command() {
 					top_info="gs"
 				;;
 				*)
-					text_id=$(cat help/top)
+					command_help
 					tg_method send_message
 					return
 				;;
@@ -1085,11 +1051,9 @@ case_command() {
 						-of default=noprint_wrappers=1 "$file_path")
 					duration=$(sed -n "s/^duration=//p" <<< "$video_info" | head -n 1 | sed "s/\..*//")
 					if [[ "$duration" -le "3" ]]; then
+						twd
 						loading 1
-						request_id=$RANDOM
 						bot_username=$(jshon -Q -e result -e username -u < botinfo)
-						cd "$tmpdir" ; mkdir "videosticker-$request_id"
-						cd "videosticker-$request_id"
 						frame_rate=$(sed -n "s/^r_frame_rate=//p" <<< "$video_info" | head -n 1 | cut -f 1 -d /)
 						width=$(sed -n 's/^width=//p' <<< "$video_info")
 						height=$(sed -n 's/^height=//p' <<< "$video_info")
@@ -1117,8 +1081,6 @@ case_command() {
 						caption="https://t.me/addstickers/s${sticker_hash}_by_$bot_username"
 						tg_method send_video upload
 						loading 3
-						cd .. ; rm -rf "videosticker-$request_id/"
-						cd "$basedir"
 					else
 						text_id="video duration must not exceed 3 seconds"
 						tg_method send_message
@@ -1127,15 +1089,13 @@ case_command() {
 			fi
 		;;
 		"!wget")
-			cd "$tmpdir"
 			if [[ "$reply_to_text" != "" ]]; then
 				wget_link=$reply_to_text
 			else
 				wget_link=${arg[0]}
 			fi
 			if [[ "$wget_link" ]]; then
-				wget_id=$RANDOM
-				mkdir "wget_$wget_id" ; cd "wget_$wget_id"
+				twd
 				loading 1
 				wget_file=$(wget -E -nv "$wget_link" 2>&1 \
 					| cut -f 6 -d ' ' \
@@ -1148,43 +1108,39 @@ case_command() {
 				else
 					loading value "file not found"
 				fi
-				cd .. ; rm -r "wget_$wget_id/"
 			fi
-			cd "$basedir"
 		;;
 		"!ytdl")
 			[[ -e powersave ]] && return
 			get_reply_id self
-			cd $tmpdir
 			if [[ "$reply_to_text" != "" ]]; then
 				ytdl_link=$reply_to_text
 			else
 				ytdl_link=${arg[0]}
 			fi
 			if [[ "$(curl -o /dev/null -ILsw '%{http_code}\n' "$ytdl_link")" == "200" ]]; then
+				twd
 				if [[ "$(grep vm.tiktok <<< "$ytdl_link")" ]]; then
 					ua="--user-agent facebookexternalhit/1.1"
 				fi
-				ytdl_id=$RANDOM
 				loading 1
-				ytdl_json=$(~/.local/bin/yt-dlp $ua --print-json --merge-output-format mp4 -o ytdl-$ytdl_id.mp4 "$ytdl_link")
+				ytdl_json=$(~/.local/bin/yt-dlp $ua --print-json --merge-output-format mp4 -o ytdl.mp4 "$ytdl_link")
 				if [[ "$ytdl_json" != "" ]]; then
 					caption=$(jshon -Q -e title -u <<< "$ytdl_json")
-					if [[ "$(du -m ytdl-$ytdl_id.mp4 | cut -f 1)" -ge 2000 ]]; then
+					if [[ "$(du -m ytdl.mp4 | cut -f 1)" -ge 2000 ]]; then
 						loading value "error"
-						rm ytdl-$ytdl_id.mp4
+						rm ytdl.mp4
 					else
-						video_id="@ytdl-$ytdl_id.mp4" thumb="@thumb-$ytdl_id.jpg"
+						video_id="@ytdl.mp4" thumb="@thumb.jpg"
 						loading 2
 						tg_method send_video upload
 						loading 3
-						rm "ytdl-$ytdl_id.mp4" "thumb-$ytdl_id.jpg"
+						rm "ytdl.mp4" "thumb.jpg"
 					fi
 				else
 					loading value "error"
 				fi
 			fi
-			cd "$basedir"
 		;;
 
 		# bot admin
@@ -1545,6 +1501,9 @@ case_command() {
 		text_id=$(cat -- "custom_commands/user_generated/$chat_id-$normal_message")
 		get_reply_id self
 		tg_method send_message
+	fi
+	if [[ "$twd_dir" ]]; then
+		twd exit
 	fi
 }
 case_normal() {
