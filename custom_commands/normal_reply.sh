@@ -6,7 +6,7 @@ twd() {
 		mkdir "$twd_dir" ; cd "$twd_dir"
 	else
 		cd "$tmpdir"
-		rm -rf "$twd_dir/"
+		rm -rf "twd_$twd_id/"
 		cd "$basedir"
 	fi
 }
