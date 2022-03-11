@@ -845,6 +845,7 @@ case_command() {
 		;;
 		"!owo")
 			if [[ "$reply_to_text" ]]; then
+				reply=$reply_to_text
 				numberspace=$(tr -dc ' ' <<< "$reply" | wc -c)
 
 				[[ "$numberspace" -eq "0" ]] && reply="$reply " && numberspace=1
