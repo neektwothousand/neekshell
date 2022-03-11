@@ -371,7 +371,7 @@ case_command() {
 					gallery_type=$(jshon -Q -e 0 -e 1 -e type -u <<< "$gallery_json")
 					if [[ "$gallery_type" == "ugoira" ]]; then
 						twd
-						gallery-dl -q --ugoira-conv-lossless -d . -f out.webm "${arg[0]}"
+						gallery-dl -q --ugoira-conv-lossless -d . -D . -f out.webm "${arg[0]}"
 						ffmpeg -v error -i out.webm -vcodec h264 -an out.mp4
 						animation_id="@out.mp4"
 						loading 2
