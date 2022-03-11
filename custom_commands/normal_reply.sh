@@ -133,62 +133,76 @@ case_command() {
 		;;
 		"!convert")
 			[[ -e "$basedir/powersave" ]] && return
-			if [[ "$reply_to_id" != "" ]]; then
+			if [[ "$reply_to_id" ]] && [[ "${arg[0]}" ]]; then
 				twd
 				get_reply_id reply
 				get_file_type reply
 				case "$file_type" in
-					video)
-						media_id=$video_id
+					video|animation)
+						input_codecs=$(ffprobe -v error -show_streams "$file_path" | grep "^codec_name")
+						case "$file_type" in
+						video) media_id=$video_id ;;
+						animation) media_id=$animation_id ;;
+						esac
+						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
+						case "${arg[0]}" in
+							animation)
+								loading 1
+								out_file="convert.mp4"
+								if [[ "$(grep "^codec_name=h264$" <<< "$input_codecs")" ]]; then
+									out_vcodec=copy
+								else
+									out_vcodec=h264
+								fi
+								err_out=$(ffmpeg -v error -i "$file_path" -vcodec $out_vcodec -an "$out_file")
+								loading 2
+								animation_id="@$out_file"
+								tg_method send_animation upload
+							;;
+						esac
 					;;
-					photo)
+					photo|sticker)
 						media_id=$photo_id
-					;;
-					sticker)
-						media_id=$sticker_id
+						case "$file_type" in
+						photo) media_id=$photo_id ;;
+						sticker) media_id=$sticker_id ;;
+						esac
+						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
+						case "${arg[0]}" in
+							webp)
+								loading 1
+								out_file="convert.webp"
+								err_out=$(convert "$file_path" "$out_file")
+								loading 2
+								sticker_id="@$out_file"
+								tg_method send_sticker upload
+							;;
+							jpg)
+								loading 1
+								out_file="convert.jpg"
+								err_out=$(convert "$file_path" "$out_file")
+								loading 2
+								photo_id="@$out_file"
+								tg_method send_photo upload
+							;;
+							png)
+								loading 1
+								out_file="convert.png"
+								err_out=$(convert "$file_path" "$out_file")
+								loading 2
+								document_id="@$out_file"
+								tg_method send_document upload
+							;;
+						esac
 					;;
 				esac
-				if [[ "$media_id" ]]; then
-					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
-					ext=$(sed 's/.*\.//' <<< "$file_path")
-					input_codecs=$(ffprobe -v error -show_streams "$file_path" | grep "^codec_name")
-					loading 1
-					case "${arg[0]}" in
-						animation)
-							out_file="convert.mp4"
-							if [[ "$(grep "^codec_name=h264$" <<< "$input_codecs")" ]]; then
-								out_vcodec=copy
-							else
-								out_vcodec=h264
-							fi
-							err_out=$(ffmpeg -v error -i "$file_path" -vcodec $out_vcodec -an "$out_file")
-							loading 2
-							animation_id="@$out_file"
-							tg_method send_animation upload
-						;;
-						webp)
-							out_file="convert.webp"
-							err_out=$(convert "$file_path" "$out_file")
-							loading 2
-							sticker_id="@$out_file"
-							tg_method send_sticker upload
-						;;
-						jpg)
-							out_file="convert.jpg"
-							err_out=$(convert "$file_path" "$out_file")
-							loading 2
-							photo_id="@$out_file"
-							tg_method send_photo upload
-						;;
-					esac
-					loading 3
-					rm -f "$out_file"
+				loading 3
+				rm -f "$out_file"
 
-					if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "false" ]] \
-					&& [[ "$err_out" ]]; then
-						text_id=$err_out
-						tg_method send_message
-					fi
+				if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "false" ]] \
+				&& [[ "$err_out" ]]; then
+					text_id=$err_out
+					tg_method send_message
 				fi
 			fi
 		;;
