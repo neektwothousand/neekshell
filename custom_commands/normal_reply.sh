@@ -372,7 +372,7 @@ case_command() {
 					if [[ "$gallery_type" == "ugoira" ]]; then
 						twd
 						gallery-dl -q --ugoira-conv-lossless -d . -D . -f out.webm "${arg[0]}"
-						ffmpeg -v error -i out.webm -vcodec h264 -an out.mp4
+						ffmpeg -v error -i out.webm -vcodec h264 -crf 14 -an out.mp4
 						animation_id="@out.mp4"
 						loading 2
 						tg_method send_animation upload
