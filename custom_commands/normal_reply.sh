@@ -1149,12 +1149,13 @@ case_command() {
 			markdown=("<code>" "</code>")
 			parse_mode=html
 			if [[ $(is_admin) ]]; then
+				bin=$(sed "s/^$command //" <<< "$normal_message")
 				case "$normal_message" in
 					"!bin "*)
-						text_id=$(mksh -c "${arg[*]}" 2>&1)
+						text_id=$(mksh -c "$bin" 2>&1)
 					;;
 					"!archbin "*)
-						text_id=$(ssh neek@192.168.1.25 -p 24 "${arg[*]}")
+						text_id=$(ssh neek@192.168.1.25 -p 24 "$bin")
 					;;
 				esac
 				if [[ "$text_id" = "" ]]; then
