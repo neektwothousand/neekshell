@@ -723,15 +723,15 @@ case_command() {
 							fi
 						done
 						ffmpeg -v error \
-							-i "audio.$ext" -vn -acodec libmp3lame \
+							-i "audio.$ext" -vn -acodec aac \
 							-b:a $(bc <<< "$br/2") \
 							-ar $sr \
-							-strict -2 "audio-jpg.mp3"
+							-strict -2 "audio-jpg.aac"
 						loading 2
-						audio_id="@audio-jpg.mp3"
+						audio_id="@audio-jpg.aac"
 						tg_method send_audio upload
 						loading 3
-						rm -f "audio.$ext" "audio-jpg.mp3"
+						rm -f "audio.$ext" "audio-jpg.aac"
 					;;
 				esac
 			else
