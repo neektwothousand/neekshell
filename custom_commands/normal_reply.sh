@@ -28,7 +28,7 @@ command_help() {
 case_command() {
 	case "$command" in
 		"!chat")
-			if [[ "$type" = "private" ]] || [[ $(is_admin) ]] ; then
+			if [[ "$chat_type" = "private" ]] || [[ $(is_status admins) ]] ; then
 				get_reply_id self
 				case "${arg[0]}" in
 					"create")
@@ -54,16 +54,15 @@ case_command() {
 						if [[ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" = "" ]]; then
 							case "${arg[0]}" in
 								"join")
-									if [[ "$type" = "private" ]]; then
+									if [[ "$chat_type" = "private" ]]; then
 										text_id="Select chat to join:"
 										num_bot_chat=$(ls -1 "$bot_chat_dir" | wc -l)
 										list_bot_chat=$(ls -1 "$bot_chat_dir")
 										for j in $(seq 0 $((num_bot_chat - 1))); do
 											button_text[$j]=$(sed -n $((j+1))p <<< "$list_bot_chat")
 										done
-										markup_id=$(json_array inline button)
-									elif [[ "$type" != "private" ]]; then
-										if [[ $(is_admin) ]]; then
+									elif [[ "$chat_type" != "private" ]]; then
+										if [[ $(is_status admins) ]]; then
 											join_chat=${arg[1]}
 											sed -i "s/\(users: \)/\1$chat_id /" $bot_chat_dir"$join_chat"
 											text_id="joined $join_chat"
@@ -75,7 +74,7 @@ case_command() {
 									fi
 								;;
 								"join"*)
-									if [[ "$type" = "private" ]]; then
+									if [[ "$chat_type" = "private" ]]; then
 										join_chat=$(sed 's/^join//' <<< "${arg[0]}")
 										sed -i "s/\(users: \)/\1$user_id /" $bot_chat_dir"$join_chat"
 										text_id="joined $join_chat"
@@ -88,13 +87,13 @@ case_command() {
 					;;
 					"leave")
 						if [[ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" != "" ]]; then
-							if [[ "$type" = "private" ]]; then
+							if [[ "$chat_type" = "private" ]]; then
 								leave_chat=$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir" | cut -d : -f 1 | cut -f 3 -d '/')
 								text_id="Select chat to leave:"
 								sed -i "s/$chat_id //" $bot_chat_dir"$leave_chat"
 								text_id="$leave_chat is no more"
-							elif [[ "$type" != "private" ]]; then
-								if [[ $(is_admin) ]]; then
+							elif [[ "$chat_type" != "private" ]]; then
+								if [[ $(is_status admins) ]]; then
 									leave_chat=${arg[1]}
 									sed -i "s/$chat_id //" $bot_chat_dir"$leave_chat"
 									text_id="$leave_chat is no more"
@@ -198,7 +197,6 @@ case_command() {
 				esac
 				loading 3
 				rm -f "$out_file"
-
 				if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "false" ]] \
 				&& [[ "$err_out" ]]; then
 					text_id=$err_out
@@ -663,7 +661,7 @@ case_command() {
 						fi
 						loading 1
 						video_info=$(ffprobe -v error \
-							-show_entries stream=duration,width,height,r_frame_rate \
+							-show_entries stream=sample_rate,bit_rate,duration,width,height,r_frame_rate \
 							-of default=noprint_wrappers=1 "$file_path")
 						res[0]=$(sed -n 's/^width=//p' <<< "$video_info")
 						res[1]=$(sed -n 's/^height=//p' <<< "$video_info")
@@ -832,7 +830,12 @@ case_command() {
 						| grep 'meta itemprop="name"' \
 						| sed -e 's/.*<meta itemprop="name" content="//' -e 's/".*//')
 					loading 2
-					json_array telegraph
+					GRAPHTOKEN=$(jshon -Q -e result -e access_token -u < "$basedir/telegraph_data")
+					GRAPHAPI="https://api.telegra.ph"
+					for x in $(seq 0 $((${#graph_element[@]}-1))); do
+						graph_content[$x]="{\"tag\":\"img\",\"attrs\":{\"src\":\"${graph_element[$x]}\"}},"
+					done
+					graph_content="[$(printf '%s' "${graph_content[*]}" | head -c -1)]"
 					text_id=$(curl -s "$GRAPHAPI/createPage" -X POST -H 'Content-Type: application/json' \
 						-d "{\"access_token\":\"$GRAPHTOKEN\",\"title\":\"$graph_title\",\"content\":${graph_content}}" \
 						| jshon -Q -e result -e url -u)
@@ -1148,7 +1151,7 @@ case_command() {
 		"!bin"|"!archbin")
 			markdown=("<code>" "</code>")
 			parse_mode=html
-			if [[ $(is_admin) ]]; then
+			if [[ $(is_status admins) ]]; then
 				bin=$(sed "s/^$command //" <<< "$normal_message")
 				case "$normal_message" in
 					"!bin "*)
@@ -1168,7 +1171,7 @@ case_command() {
 			tg_method send_message
 		;;
 		"!broadcast")
-			if [[ $(is_admin) ]]; then
+			if [[ $(is_status admins) ]]; then
 				listchats=$(printf '%s\n' "$(grep -r users "$basedir/db/bot_chats/" | sed 's/.*: //' | tr ' ' '\n' | sed '/^$/d')" "$(dir -1 "$basedir/db/chats/")" | sort -u | grep -vw -- "$chat_id")
 				numchats=$(wc -l <<< "$listchats")
 				if [[ "${arg[0]}" ]]; then
@@ -1196,7 +1199,7 @@ case_command() {
 			fi
 		;;
 		"!db")
-			if [[ $(is_admin) ]]; then
+			if [[ $(is_status admins) ]]; then
 				case "${arg[0]}" in
 					"chats")
 						for x in $(seq $(dir -1 "$basedir/db/chats/" | wc -l)); do
@@ -1224,7 +1227,7 @@ case_command() {
 			fi
 		;;
 		"!del"|"!delete")
-			if [[ $(is_admin) ]] \
+			if [[ $(is_status admins) ]] \
 			&& [[ "$reply_to_user_id" == "$(jshon -Q -e result -e id -u < botinfo)" ]]; then
 				to_delete_id=$reply_to_id
 				tg_method delete_message
@@ -1232,7 +1235,7 @@ case_command() {
 		;;
 		"!exit")
 			get_reply_id self
-			if [[ $(is_admin) ]]; then
+			if [[ $(is_status admins) ]]; then
 				text_id="goodbye"
 				tg_method send_message
 				tg_method leave_chat
@@ -1244,7 +1247,7 @@ case_command() {
 			fi
 		;;
 		"!loading")
-			if [[ $(is_admin) ]]; then
+			if [[ $(is_status admins) ]]; then
 				cd "$tmpdir"
 				case "${arg[0]}" in
 					start)
@@ -1292,7 +1295,7 @@ case_command() {
 			fi
 		;;
 		"!powersave")
-			if [[ $(is_admin) ]]; then
+			if [[ $(is_status admins) ]]; then
 				if [[ ! -e "$basedir/powersave" ]]; then
 					touch "$basedir/powersave"
 					text_id="powersave set"
@@ -1305,7 +1308,7 @@ case_command() {
 			fi
 		;;
 		"!set")
-			if [[ $(is_admin) ]]; then
+			if [[ $(is_status admins) ]]; then
 				set_username=$(sed 's/^@//' <<< "${arg[1]}")
 				set_file=$(grep -ir -- "$set_username" "$basedir/db/users/" | head -n 1 | cut -d : -f 1)
 				set_id=$(grep '^id' "$set_file" | sed 's/^id: //')
@@ -1630,7 +1633,7 @@ case_chat_id
 case_user_id
 
 case "$file_type" in
-	"new_members")
+	"new_chat_members")
 		if [[ "$(jshon -Q -e 0 -e id -u <<< "$new_members")" == "$(jshon -Q -e result -e id -u < botinfo)" ]]; then
 			voice_id="https://archneek.zapto.org/webaudio/oh_my.ogg"
 		else

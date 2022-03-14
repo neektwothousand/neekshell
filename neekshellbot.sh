@@ -46,7 +46,7 @@ update_db() {
 			printf '%s\n' \
 				"title: $chat_title" \
 				"id: $chat_id" \
-				"type: $type" > "$file_chat"
+				"type: $chat_type" > "$file_chat"
 		else
 			if [[ "title: $chat_title" != "$(grep -- "^title" "$file_chat")" ]]; then
 				sed -i "s/^title: .*/title: $chat_title/" "$file_chat"
@@ -54,17 +54,12 @@ update_db() {
 		fi
 	fi
 }
-is_admin() {
-	[[ ! "$user_id" ]] && user_id=null
-	[[ ! "$inline_user_id" ]] && inline_user_id=null
-	[[ ! "$callback_user_id" ]] && callback_user_id=null
-	grep -w -- "^$user_id\|^$inline_user_id\|^$callback_user_id" admins
-}
-is_banned() {
-	[[ ! "$user_id" ]] && user_id=null
-	[[ ! "$inline_user_id" ]] && inline_user_id=null
-	[[ ! "$callback_user_id" ]] && callback_user_id=null
-	grep -w -- "^$user_id\|^$inline_user_id\|^$callback_user_id" banned
+is_status() {
+	s_file=$1
+	if [[ -e "$s_file" ]]; then
+		[[ ! "$user_id" ]] && user_id=null
+		grep -w -- "^$user_id" "$s_file"
+	fi
 }
 is_chat_admin() {
 	for x in "$user_id" "$(jshon -Q -e result -e id -u < botinfo)"; do
@@ -101,123 +96,6 @@ loading() {
 		;;
 	esac
 }
-json_array() {
-	case "$1" in
-		mediagroup)
-			if [[ "${caption}" != "" ]]; then
-				caption=$(sed 's/"/\\"/g' <<< "$caption")
-				if [[ "$parse_mode" ]]; then
-					obj[0]=$(printf '%s' "{" \
-						"\"type\":\"photo\"," \
-						"\"media\":\"${media[0]}\"," \
-						"\"caption\":\"${caption}\"," \
-						"\"parse_mode\":\"$parse_mode\"" \
-					"},")
-				else
-					obj[0]=$(printf '%s' "{" \
-						"\"type\":\"photo\"," \
-						"\"media\":\"${media[0]}\"," \
-						"\"caption\":\"${caption}\"" \
-					"},")
-				fi
-				for x in $(seq 1 $j); do
-					obj[$x]=$(printf '%s' "{" \
-						"\"type\":\"photo\"," \
-						"\"media\":\"${media[$x]}\"" \
-					"},")
-				done
-			else
-				for x in $(seq 0 $j); do
-					obj[$x]=$(printf '%s' "{" \
-						"\"type\":\"photo\"," \
-						"\"media\":\"${media[$x]}\"" \
-					"},")
-				done
-			fi
-			printf '%s' "[ $(printf '%s' "${obj[@]}" | head -c -1) ]"
-		;;
-		inline)
-			if [[ "$j" == "" ]]; then
-				j=0
-			fi
-			case "$2" in
-				article)
-					for x in $(seq 0 $j); do
-						message_text[$x]="${markdown[0]}$(sed -e "s/\\\\/\\\\\\\/g" -e 's/"/\\"/g' -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "${message_text[$x]}" | perl -pe 's/\n/\\n/g')${markdown[1]}"
-						title[$x]="$(sed -e 's/"/\\"/g' -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "${title[$x]}" | perl -pe 's/\n/\\n/g')"
-						description[$x]="$(sed -e 's/"/\\"/g' -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "${description[$x]}" | perl -pe 's/\n/\\n/g')"
-						if [[ "${markup_id[$x]}" != "" ]]; then
-							obj[$x]=$(printf '%s' "{\"type\":\"article\"," \
-								"\"id\":\"$RANDOM\"," \
-								"\"title\":\"${title[$x]}\"," \
-								"\"input_message_content\":" \
-									"{\"message_text\":\"${message_text[$x]}\"," \
-									"\"parse_mode\":\"html\"}," \
-								"\"reply_markup\":${markup_id[$x]}," \
-								"\"description\":\"${description[$x]}\"},")
-						else
-							obj[$x]=$(printf '%s' "{\"type\":\"article\"," \
-								"\"id\":\"$RANDOM\"," \
-								"\"title\":\"${title[$x]}\"," \
-								"\"input_message_content\":" \
-									"{\"message_text\":\"${message_text[$x]}\"," \
-									"\"parse_mode\":\"html\"}," \
-								"\"description\":\"${description[$x]}\"},")
-						fi
-					done
-					printf '%s' "[ $(printf '%s' "${obj[@]}" | head -c -1) ]"
-				;;
-				photo)
-					for x in $(seq 0 $j); do
-						obj[$x]=$(printf '%s' "{\"type\":\"photo\"," \
-							"\"id\":\"$RANDOM\"," \
-							"\"photo_url\":\"${photo_url[$x]}\"," \
-							"\"thumb_url\":\"${thumb_url[$x]}\"," \
-							"\"photo_width\":${photo_width[$x]}," \
-							"\"photo_height\":${photo_height[$x]}," \
-							"\"caption\":\"${caption[$x]}\"},")
-					done
-					printf '%s' "[ $(printf '%s' "${obj[@]}" | sed -E 's/(.*)},/\1}/') ]"
-				;;
-				gif)
-					for x in $(seq 0 $j); do
-						obj[$x]=$(printf '%s' "{\"type\":\"gif\"," \
-							"\"id\":\"$RANDOM\"," \
-							"\"gif_url\":\"${gif_url[$x]}\"," \
-							"\"thumb_url\":\"${thumb_url[$x]}\"," \
-							"\"caption\":\"${caption[$x]}\"},")
-					done
-					printf '%s' "[ $(printf '%s' "${obj[@]}" | sed -E 's/(.*)},/\1}/') ]"
-				;;
-				button)
-					if [[ "$button_data" == "" ]] && [[ "$button_url" == "" ]]; then
-						button_data=("${button_text[@]}")
-					fi
-					if [[ "$button_data" != "" ]]; then
-						for x in $(seq 0 $j); do
-							obj[$x]=$(printf '%s' "[{\"text\":\"${button_text[$x]}\"," \
-								"\"callback_data\":\"${button_data[$x]}\"}],")
-						done
-					elif [[ "$button_url" != "" ]]; then
-						for x in $(seq 0 $j); do
-							obj[$x]=$(printf '%s' "[{\"text\":\"${button_text[$x]}\"," \
-								"\"url\":\"${button_url[$x]}\"}],")
-						done
-					fi
-					printf '%s' "{\"inline_keyboard\":[$(sed -E 's/(.*)],/\1]/' <<< "${obj[@]}")]}"
-				;;
-			esac
-		;;
-		telegraph)
-			GRAPHTOKEN=$(jshon -Q -e result -e access_token -u < "$basedir/telegraph_data")
-			GRAPHAPI="https://api.telegra.ph"
-			for x in $(seq 0 $j); do
-				graph_content[$x]="{\"tag\":\"img\",\"attrs\":{\"src\":\"${graph_element[$x]}\"}},"
-			done
-			graph_content="[$(printf '%s' "${graph_content[*]}" | head -c -1)]"
-		;;
-	esac
-}
 get_reply_id() {
 	case $1 in
 		any)
@@ -237,62 +115,85 @@ get_reply_id() {
 }
 get_file_type() {
 	[[ "$1" = "reply" ]] && message=$reply_to_message
-	if [[ "$(jshon -Q -e text -u <<< "$message")" != "" ]]; then
-		text_id=$(jshon -Q -e text -u <<< "$message")
-		if [[ ! -e botinfo ]]; then
-			tg_method get_me
-			printf '%s\n' "$curl_result" > botinfo
-		fi
-		text_id=${text_id/@$(jshon -Q -e result -e username -u < botinfo)/}
-		file_type="text"
-	elif [[ "$(jshon -Q -e sticker -e file_id -u <<< "$message")" != "" ]]; then
-		sticker_id=$(jshon -Q -e sticker -e file_id -u <<< "$message")
-		file_type="sticker"
-	elif [[ "$(jshon -Q -e animation -e file_id -u <<< "$message")" != "" ]]; then
-		animation_id=$(jshon -Q -e animation -e file_id -u <<< "$message")
-		file_type="animation"
-	elif [[ "$(jshon -Q -e photo -e 0 -e file_id -u <<< "$message")" != "" ]]; then
-		last_photo=$(($(jshon -Q -e photo -l <<< "$message") - 1))
-		photo_id=$(jshon -Q -e photo -e $last_photo -e file_id -u <<< "$message")
-		file_type="photo"
-	elif [[ "$(jshon -Q -e video -e file_id -u <<< "$message")" != "" ]]; then
-		video_id=$(jshon -Q -e video -e file_id -u <<< "$message")
-		file_type="video"
-	elif [[ "$(jshon -Q -e audio -e file_id -u <<< "$message")" != "" ]]; then
-		audio_id=$(jshon -Q -e audio -e file_id -u <<< "$message")
-		file_type="audio"
-	elif [[ "$(jshon -Q -e voice -e file_id -u <<< "$message")" != "" ]]; then
-		voice_id=$(jshon -Q -e voice -e file_id -u <<< "$message")
-		file_type="voice"
-	elif [[ "$(jshon -Q -e document -e file_id -u <<< "$message")" != "" ]]; then
-		document_id=$(jshon -Q -e document -e file_id -u <<< "$message")
-		file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$document_id" | jshon -Q -e result -e file_path -u)
-		ext=$(sed 's/.*\.//' <<< "$file_path")
-		case "$ext" in
-			jpg|png|jpeg|JPG|PNG|JPEG)
-				file_type=photo
-				photo_id=$document_id
-			;;
-			gif|GIF)
-				file_type=animation
-				animation_id=$document_id
-			;;
-			mp4|webm|avi|mkv|MP4|WEBM|AVI|MKV)
-				file_type=video
-				video_id=$document_id
-			;;
-			mp3|ogg|flac|wav|MP3|OGG|FLAC|WAV)
-				file_type=audio
-				audio_id=$document_id
-			;;
-			*)
-				file_type=document
-			;;
-		esac
-	elif [[ "$(jshon -Q -e new_chat_members <<< "$message")" != "" ]]; then
-		new_members=$(jshon -Q -e new_chat_members <<< "$message")
-		file_type="new_members"
-	fi
+	file_type=$(jshon -Q -k <<< "$message" \
+		| grep -o "^text\|^sticker\|^animation\|^photo\|^video\|^audio\|^voice\|^document\|^new_chat_members")
+	case "$file_type" in
+		text)
+			text_id=$(jshon -Q -e text -u <<< "$message")
+			if [[ ! -e botinfo ]]; then
+				tg_method get_me
+				printf '%s\n' "$curl_result" > botinfo
+			fi
+			text_id=${text_id/@$(jshon -Q -e result -e username -u < botinfo)/}
+		;;
+		sticker)
+			sticker_id=$(jshon -Q -e sticker -e file_id -u <<< "$message")
+		;;
+		animation)
+			animation_id=$(jshon -Q -e animation -e file_id -u <<< "$message")
+		;;
+		photo)
+			last_photo=$(($(jshon -Q -e photo -l <<< "$message") - 1))
+			photo_id=$(jshon -Q -e photo -e $last_photo -e file_id -u <<< "$message")
+		;;
+		video)
+			video_id=$(jshon -Q -e video -e file_id -u <<< "$message")
+		;;
+		audio)
+			audio_id=$(jshon -Q -e audio -e file_id -u <<< "$message")
+		;;
+		voice)
+			voice_id=$(jshon -Q -e voice -e file_id -u <<< "$message")
+		;;
+		document)
+			document_id=$(jshon -Q -e document -e file_id -u <<< "$message")
+			file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$document_id" | jshon -Q -e result -e file_path -u)
+			ext=$(sed 's/.*\.//' <<< "$file_path")
+			case "$ext" in
+				jpg|png|jpeg|JPG|PNG|JPEG)
+					file_type=photo
+					photo_id=$document_id
+				;;
+				gif|GIF)
+					file_type=animation
+					animation_id=$document_id
+				;;
+				mp4|webm|avi|mkv|MP4|WEBM|AVI|MKV)
+					file_type=video
+					video_id=$document_id
+				;;
+				mp3|ogg|flac|wav|MP3|OGG|FLAC|WAV)
+					file_type=audio
+					audio_id=$document_id
+				;;
+				*)
+					file_type=document
+				;;
+			esac
+		;;
+		new_chat_members)
+			new_members=$(jshon -Q -e new_chat_members <<< "$message")
+		;;
+	esac
+}
+get_message_user_info() {
+	case "$2" in
+		reply) x=1 ;;
+		*) x=0 ;;
+	esac
+	case "$(grep -o "^sender_chat\|^from" <<< "${message_key[$x]}")" in
+		from)
+			user_id[$x]=$(jshon -Q -e from -e id -u <<< "$1")
+			user_tag[$x]=$(jshon -Q -e from -e username -u <<< "$1")
+			user_fname[$x]=$(jshon -Q -e from -e first_name -u <<< "$1")
+			user_lname[$x]=$(jshon -Q -e from -e last_name -u <<< "$1")
+		;;
+		sender_chat)
+			user_id[$x]=$(jshon -Q -e sender_chat -e id -u "$1")
+			user_tag[$x]=$(jshon -Q -e sender_chat -e username -u <<< "$1")
+			user_fname[$x]=$(jshon -Q -e sender_chat -e title -u <<< "$1")
+		;;
+	esac
 }
 get_normal_reply() {
 	case "$command" in
@@ -303,7 +204,7 @@ get_normal_reply() {
 					text_id="this is a mksh bot, use !source to download"
 				;;
 				"help"|"/start")
-					if [[ "$type" == "private" ]]; then
+					if [[ "$chat_type" == "private" ]]; then
 						set +f
 						text_id=$(printf '%s\n' "$(cat help/* 2>/dev/null \
 							| grep -A 1 '^Usage' | grep -v '^Usage\|--' | sed 's/^  //' | sort)" "" 'send !help <command> for details')
@@ -322,7 +223,7 @@ get_normal_reply() {
 		"!help"|"!bahelp"|"!cahelp")
 			get_reply_id self
 			if [[ ! "${arg[0]}" ]]; then
-				if [[ "$type" == "private" ]]; then
+				if [[ "$chat_type" == "private" ]]; then
 					set +f
 					case "$command" in
 						"!help")
@@ -376,102 +277,88 @@ get_normal_reply() {
 	esac
 }
 get_inline_reply() {
-	case $inline_message in
+	case "$inline_message" in
 		"ok")
 			title="Ok"
 			message_text="Ok"
 			description="Alright"
-			return_query=$(json_array inline article)
-			tg_method send_inline
+			tg_method send_inline article
 		;;
 	esac
 }
 get_button_reply() {
-	case $callback_message_text in
+	case "$callback_message_text" in
 		test)
-			text_id="$callback_data"
+			text_id=$callback_data
 			tg_method button_reply
-			chat_id=$callback_user_id
+			chat_id=$user_id
 			tg_method send_message
 		;;
 	esac
 }
 process_reply() {
-	message_type=$(jshon -Q <<< "$input" | sed -n 3p | sed -e 's/^\s"//' -e 's/".*//')
-	case "$message_type" in
-		message)
-			message=$(jshon -Q -e message <<< "$input")
+	keys=$(jshon -Q -k <<< "$input")
+	update_type=$(grep -o "^message\|^channel_post\|^inline_query\|^callback_query" <<< "$keys")
+	case "$update_type" in
+		message|channel_post)
+			case "$update_type" in
+				message)
+					message=$(jshon -Q -e message <<< "$input")
+				;;
+				channel_post)
+					message=$(jshon -Q -e channel_post <<< "$input")
+				;;
+			esac
+			message_key[0]=$(jshon -Q -k <<< "$message")
+			jsp=($(jshon -Q \
+				-e message_id -u -p \
+				-e chat -e type -u -p \
+					-e id -u <<< "$message"))
+			message_id=${jsp[0]} chat_type=${jsp[1]} chat_id=${jsp[2]}
+			get_message_user_info "$message"
+			if [[ "$(grep -o "^reply_to_message" <<< "${message_key[0]}")" ]]; then
+				message_key[1]=$(jshon -Q -k <<< "$message")
+				reply_to_message=$(jshon -Q -e reply_to_message <<< "$message")
+				reply_to_id=$(jshon -Q -e id -u <<< "$reply_to_message")
+				get_message_user_info "$reply_to_message" reply
+			fi
+			if [[ "$chat_type" == "private" ]]; then
+				chat_title=$user_fname
+			else
+				chat_title=$(jshon -Q -e chat -e title -u <<< "$message")
+			fi
+			update_db
+			get_file_type
+			if [[ "$file_type" != "text" ]]; then
+				caption=$(jshon -Q -e caption -u <<< "$message")
+			fi
 		;;
-		channel_post)
-			message=$(jshon -Q -e channel_post <<< "$input")
+		inline_query)
+			inline=$(jshon -Q -e inline_query <<< "$input")
+			message_key[0]=$(jshon -Q -k <<< "$inline")
+			inline_id=$(jshon -Q -e id -u <<< "$inline")
+			get_message_user_info "$inline"
+			inline_message=$(jshon -Q -e query -u <<< "$inline")
+			im_arg=$(cut -f 2- -d ' ' <<< "$inline_message")
+		;;
+		callback_query)
+			callback=$(jshon -Q -e callback_query <<< "$input")
+			message_key[0]=$(jshon -Q -k <<< "$callback")
+			callback_id=$(jshon -Q -e id -u <<< "$callback")
+			callback_data=$(jshon -Q -e data -u <<< "$callback")
+			callback_caption=$(jshon -Q -e message -e caption -u <<< "$callback")
+			callback_chat_id=$(jshon -Q -e message -e chat -e id -u <<< "$callback")
+			callback_message_id=$(jshon -Q -e message -e message_id -u <<< "$callback")
+			callback_message_text=$(jshon -Q -e message -e text -u <<< "$callback")
+			get_message_user_info "$callback"
+			message=$(jshon -Q -e message <<< "$callback")
+			get_file_type
 		;;
 	esac
-	inline=$(jshon -Q -e inline_query <<< "$input")
-	callback=$(jshon -Q -e callback_query <<< "$input")
-	if [[ "$message" != "" ]]; then
-		message_id=$(jshon -Q -e message_id -u <<< "$message")
-		type=$(jshon -Q -e chat -e type -u <<< "$message")
-		chat_id=$(jshon -Q -e chat -e id -u <<< "$message")
-		user_id=$(jshon -Q -e from -e id -u <<< "$message")
-		reply_to_message=$(jshon -Q -e reply_to_message <<< "$message")
-		if [[ "$(grep -w -- "777000\|1087968824" <<< "$user_id")" = "" ]]; then
-			user_tag=$(jshon -Q -e from -e username -u <<< "$message")
-			user_fname=$(jshon -Q -e from -e first_name -u <<< "$message")
-			user_lname=$(jshon -Q -e from -e last_name -u <<< "$message")
-		else
-			user_id=$(jshon -Q -e sender_chat -e id -u <<< "$message")
-			user_tag=$(jshon -Q -e sender_chat -e username -u <<< "$message")
-			user_fname=$(jshon -Q -e sender_chat -e title -u <<< "$message")
-		fi
-		if [[ "$reply_to_message" != "" ]]; then
-			reply_to_id=$(jshon -Q -e message_id -u <<< "$reply_to_message")
-			reply_to_user_id=$(jshon -Q -e from -e id -u <<< "$reply_to_message")
-			reply_to_text=$(jshon -Q -e text -u <<< "$reply_to_message")
-			reply_to_caption=$(jshon -Q -e caption -u <<< "$reply_to_message")
-			if [[ "$(grep -w -- "777000\|1087968824" <<< "$reply_to_user_id")" != "" ]]; then
-				reply_to_user_id=$(jshon -Q -e sender_chat -e id -u <<< "$reply_to_message")
-				reply_to_user_tag=$(jshon -Q -e sender_chat -e username -u <<< "$reply_to_message")
-				reply_to_user_fname=$reply_to_user_tag
-			else
-				reply_to_user_tag=$(jshon -Q -e from -e username -u <<< "$reply_to_message")
-				reply_to_user_fname=$(jshon -Q -e from -e first_name -u <<< "$reply_to_message")
-				reply_to_user_lname=$(jshon -Q -e from -e last_name -u <<< "$reply_to_message")
-			fi
-		fi
-		if [[ "$type" == "private" ]]; then
-			chat_title=$user_fname
-		else
-			chat_title=$(jshon -Q -e chat -e title -u <<< "$message")
-		fi
-		update_db
-		get_file_type
-		if [[ "$file_type" != "text" ]]; then
-			caption=$(jshon -Q -e caption -u <<< "$message")
-		fi
-	elif [[ "$callback" != "" ]]; then
-		callback_user=$(jshon -Q -e from -e username -u <<< "$callback")
-		callback_user_id=$(jshon -Q -e from -e id -u <<< "$callback")
-		callback_fname=$(jshon -Q -e from -e first_name -u <<< "$callback")
-		callback_lname=$(jshon -Q -e from -e last_name -u <<< "$callback")
-		callback_id=$(jshon -Q -e id -u <<< "$callback")
-		callback_data=$(jshon -Q -e data -u <<< "$callback")
-		callback_message_text=$(jshon -Q -e message -e text -u <<< "$callback")
-		user_id=$callback_user_id user_fname=$callback_fname
-	elif [[ "$inline" != "" ]]; then
-		inline_user_id=$(jshon -Q -e from -e id -u <<< "$inline")
-		inline_id=$(jshon -Q -e id -u <<< "$inline")
-		inline_user=$(jshon -Q -e from -e username -u <<< "$inline")
-		inline_user_id=$(jshon -Q -e from -e id -u <<< "$inline")
-		inline_fname=$(jshon -Q -e from -e first_name -u <<< "$inline")
-		inline_lname=$(jshon -Q -e from -e last_name -u <<< "$inline")
-		inline_message=$(jshon -Q -e query -u <<< "$inline")
-		im_arg=$(cut -f 2- -d ' ' <<< "$inline_message")
-		user_id=$inline_user_id user_fname=$inline_fname
-	fi
-	if [[ $(is_banned) ]]; then
+	if [[ $(is_status banned) ]]; then
 		exit
 	fi
-	if [[ "$type" = "private" ]] || [[ "$inline" != "" ]] || [[ "$callback" != "" ]]; then
+	if [[ "$chat_type" == "private" ]] || [[ "$inline" ]] || [[ "$callback" ]]; then
 		bot_chat_dir="db/bot_chats/"
 		bot_chat_user_id=$user_id
 	else
@@ -502,39 +389,22 @@ process_reply() {
 				no_args=true
 			fi
 		;;
-		photo)
-			normal_message=$photo_id
-		;;
-		animation)
-			normal_message=$animation_id
-		;;
-		video)
-			normal_message=$video_id
-		;;
-		sticker)
-			normal_message=$sticker_id
-		;;
-		audio)
-			normal_message=$audio_id
-		;;
-		voice)
-			normal_message=$voice_id
-		;;
-		document)
-			normal_message=$document_id
-		;;
 	esac
 	source tg_method.sh
-	if [[ "$message" ]]; then
-		get_normal_reply
-		[[ ! "$curl_result" ]] && source custom_commands/normal_reply.sh
-	elif [[ "$inline_message" ]]; then
-		get_inline_reply
-		[[ ! "$curl_result" ]] && source custom_commands/inline_reply.sh
-	elif [[ "$callback_data" ]]; then
-		get_button_reply
-		[[ ! "$curl_result" ]] && source custom_commands/button_reply.sh
-	fi
+	case "$update_type" in
+		message|channel_post)
+			get_normal_reply
+			[[ ! "$curl_result" ]] && source custom_commands/normal_reply.sh
+		;;
+		inline_query)
+			get_inline_reply
+			[[ ! "$curl_result" ]] && source custom_commands/inline_reply.sh
+		;;
+		callback_query)
+			get_button_reply
+			[[ ! "$curl_result" ]] && source custom_commands/button_reply.sh
+		;;
+	esac
 }
 input=$1
 basedir=$(realpath .)

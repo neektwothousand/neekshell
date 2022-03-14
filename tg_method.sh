@@ -5,6 +5,10 @@ tg_method() {
 				text_id="${markdown[0]}$(sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "$text_id")${markdown[1]}"
 			elif [[ "$caption" ]]; then
 				caption="${markdown[0]}$(sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "$caption")${markdown[1]}"
+			elif [[ "$message_text" ]]; then
+				for x in $(seq 0 $((${#message_text[@]}-1))); do
+					message_text[$x]="${markdown[0]}$(sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' <<< "${message_text[$x]}")${markdown[1]}"
+				done
 			fi
 		fi
 	fi
@@ -12,6 +16,10 @@ tg_method() {
 		text_id=$(head -c 4096 <<< "$text_id")
 	elif [[ "$caption" ]]; then
 		caption=$(head -c 1024 <<< "$caption")
+	fi
+	if [[ "$button_text" ]]; then
+		json_array inline button
+		markup_id=$(jshon -Q -e 0 -e reply_markup <<< "$obj")
 	fi
 	case $2 in
 		upload)
@@ -110,7 +118,7 @@ tg_method() {
 		send_inline)
 			curl -s "$TELEAPI/answerInlineQuery" \
 				$curl_f "inline_query_id=$inline_id" \
-				$curl_f "results=$return_query" \
+				$curl_f "results=$(json_array inline $2)" \
 				$curl_f "next_offset=$offset" \
 				$curl_f "cache_time=0" \
 				$curl_f "is_personal=true"
@@ -120,14 +128,6 @@ tg_method() {
 				$curl_f "chat_id=$chat_id" \
 				$curl_f "from_chat_id=$from_chat_id" \
 				$curl_f "message_id=$forward_id"
-		;;
-		inline_reply)
-			curl -s "$TELEAPI/answerInlineQuery" \
-				$curl_f "inline_query_id=$inline_id" \
-				$curl_f "results=$return_query" \
-				$curl_f "next_offset=$offset" \
-				$curl_f "cache_time=100" \
-				$curl_f "is_personal=true"
 		;;
 		button_reply)
 			curl -s "$TELEAPI/answerCallbackQuery" \
@@ -155,6 +155,9 @@ tg_method() {
 				-H 'Content-Type: application/json'
 		;;
 		edit_reply_markup)
+			if [[ ! "$inline_message_id" ]]; then
+				inline_message_id=$(jshon -Q -e inline_message_id -u <<< "$callback")
+			fi
 			curl -s "$TELEAPI/editMessageReplyMarkup" \
 				$curl_f "inline_message_id=$inline_message_id" \
 				$curl_f "reply_markup=$markup_id"
@@ -246,4 +249,130 @@ tg_method() {
 			tg_method $@
 		fi
 	fi
+}
+json_array() {
+	case "$1" in
+		mediagroup)
+			x=$((${#media[@]}-1))
+			obj=$(jshon -Q -n [] -n {} \
+				-s "photo" -i type \
+				-s "${media[$x]}" -i media \
+				-i $x)
+			for x in $(seq $((${#media[@]}-2)) -1 1); do
+				obj=$(jshon -Q -n {} \
+					-s "photo" -i type \
+					-s "${media[$x]}" -i media \
+					-i $x <<< "$obj")
+			done
+			jshon -Q -n {} \
+				-s "photo" -i type \
+				-s "${media[0]}" -i media \
+				-s "$caption" -i caption \
+				-s "$parse_mode" -i parse_mode \
+				-i $x <<< "$obj" | sed "s/^\s*//" | tr -d '\n'
+		;;
+		inline)
+			case "$2" in
+				article)
+					if [[ "$button_text" ]]; then
+						x=${#message_text[@]}
+					else
+						x=$((${#message_text[@]}-1))
+						obj=$(jshon -Q \
+							-n [] -n {} \
+							-s article -i type \
+							-s "${title[$x]}" -i title \
+							-s "$RANDOM" -i id \
+								-n {} \
+								-s "${message_text[$x]}" -i message_text \
+								-s "$parse_mode" -i parse_mode \
+							-i input_message_content \
+							-s "${description[$x]}" -i description \
+							-i $x)
+					fi
+					for x in $(seq $(($x-1)) -1 0); do
+						obj=$(jshon -Q \
+							-e 0 \
+							-s article -i type \
+							-s "${title[$x]}" -i title \
+							-s "$RANDOM" -i id \
+								-n {} \
+								-s "${message_text[$x]}" -i message_text \
+								-s "$parse_mode" -i parse_mode \
+							-i input_message_content \
+							-s "${description[$x]}" -i description \
+							-p <<< "$obj")
+					done
+					printf '%s' "$obj" | sed "s/^\s*//" | tr -d '\n'
+				;;
+				photo)
+					x=$((${#photo_url[@]}-1))
+					obj=$(jshon -Q -n [] -n {} \
+						-s "photo" -i type \
+						-s "$RANDOM" -i id \
+						-s "${photo_url[$x]}" -i photo_url \
+						-s "${thumb_url[$x]}" -i thumb_url \
+						-n "${photo_width[$x]}" -i photo_width \
+						-n "${photo_height[$x]}" -i photo_height \
+						-s "${caption[$x]}" -i caption \
+						-i $x)
+					for x in $(seq $((${#photo_url[@]}-2)) -1 0); do
+						obj=$(jshon -Q -n {} \
+							-s "photo" -i type \
+							-s "$RANDOM" -i id \
+							-s "${photo_url[$x]}" -i photo_url \
+							-s "${thumb_url[$x]}" -i thumb_url \
+							-n "${photo_width[$x]}" -i photo_width \
+							-n "${photo_height[$x]}" -i photo_height \
+							-s "${caption[$x]}" -i caption \
+							-i $x <<< "$obj")
+					done
+					printf '%s' "$obj" | sed "s/^\s*//" | tr -d '\n'
+				;;
+				gif)
+					x=$((${#gif_url[@]}-1))
+					obj=$(jshon -Q -n [] -n {} \
+						-s "$RANDOM" -i id \
+						-s "${gif_url[$x]}" -i gif_url \
+						-s "${thumb_url[$x]}" -i thumb_url \
+						-s "${caption[$x]}" -i caption \
+						-i $x)
+					for x in $(seq $((${#gif_url[@]}-2)) -1 0); do
+						obj=$(jshon -Q -n {} \
+							-s "$RANDOM" -i id \
+							-s "${gif_url[$x]}" -i gif_url \
+							-s "${thumb_url[$x]}" -i thumb_url \
+							-s "${caption[$x]}" -i caption \
+							-i $x <<< "$obj")
+					done
+					printf '%s' "$obj" | sed "s/^\s*//" | tr -d '\n'
+				;;
+				button)
+					obj=$(jshon -Q -n [] -n {} -n {} -n [] -n [] -i -1 -i inline_keyboard -i reply_markup -i $x)
+					if [[ "$button_data" == "" ]] && [[ "$button_url" == "" ]]; then
+						button_data=("${button_text[@]}")
+					fi
+					if [[ "$button_data" != "" ]]; then
+						for x in $(seq $((${#button_text[@]}-1)) -1 0); do
+							obj=$(jshon -e 0 -e reply_markup \
+								-e inline_keyboard \
+								-e 0 -n {} \
+								-s "${button_text[$x]}" -i text \
+								-s "${button_data[$x]}" -i callback_data \
+								-i $x -p -p -p -p <<< "$obj")
+						done
+					elif [[ "$button_url" != "" ]]; then
+						for x in $(seq $((${#button_text[@]}-2)) -1 0); do
+							obj=$(jshon -e 0 -e reply_markup \
+								-e inline_keyboard \
+								-e 0 -n {} \
+								-s "${button_text[$x]}" -i text \
+								-s "${button_url[$x]}" -i url \
+								-i $x -p -p -p -p <<< "$obj")
+						done
+					fi
+				;;
+			esac
+		;;
+	esac
 }
