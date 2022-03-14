@@ -66,7 +66,7 @@ get_tw() {
 					-an "video-toptext.$ext"
 			;;
 			mp4|MP4)
-				case "$file_type" in
+				case "${file_type[1]}" in
 					animation)
 						ffmpeg -v error -y -i "video.$ext" \
 							-vf "pad=h=$nh:y=$ypad_cord:color=white,$drawtext" \

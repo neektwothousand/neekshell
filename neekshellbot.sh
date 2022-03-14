@@ -28,15 +28,15 @@ update_db() {
 			fi
 		fi
 	fi
-	if [[ "$reply_to_message" != "" ]]; then
+	if [[ "${message[1]}" != "" ]]; then
 		[[ ! -d db/users/ ]] && mkdir -p db/users/
-		file_reply_user=db/users/"$reply_to_user_id"
+		file_reply_user=db/users/"${user_id[1]}"
 		if [[ ! -e "$file_reply_user" ]]; then
 			printf '%s\n' \
-				"tag: $reply_to_user_tag" \
-				"id: $reply_to_user_id" \
-				"fname: $reply_to_user_fname" \
-				"lname: $reply_to_user_lname" > "$file_reply_user"
+				"tag: ${user_tag[1]}" \
+				"id: ${user_id[1]}" \
+				"fname: ${user_fname[1]}" \
+				"lname: ${user_lname[1]}" > "$file_reply_user"
 		fi
 	fi
 	if [[ "$chat_id" != "" ]]; then
@@ -99,8 +99,8 @@ loading() {
 get_reply_id() {
 	case $1 in
 		any)
-			if [[ "$reply_to_message" != "" ]]; then
-				reply_id=$reply_to_id
+			if [[ "${message[1]}" != "" ]]; then
+				reply_id=${message_id[1]}
 			else
 				reply_id=$message_id
 			fi
@@ -109,89 +109,7 @@ get_reply_id() {
 			reply_id=$message_id
 		;;
 		reply)
-			reply_id=$reply_to_id
-		;;
-	esac
-}
-get_file_type() {
-	[[ "$1" = "reply" ]] && message=$reply_to_message
-	file_type=$(jshon -Q -k <<< "$message" \
-		| grep -o "^text\|^sticker\|^animation\|^photo\|^video\|^audio\|^voice\|^document\|^new_chat_members")
-	case "$file_type" in
-		text)
-			text_id=$(jshon -Q -e text -u <<< "$message")
-			if [[ ! -e botinfo ]]; then
-				tg_method get_me
-				printf '%s\n' "$curl_result" > botinfo
-			fi
-			text_id=${text_id/@$(jshon -Q -e result -e username -u < botinfo)/}
-		;;
-		sticker)
-			sticker_id=$(jshon -Q -e sticker -e file_id -u <<< "$message")
-		;;
-		animation)
-			animation_id=$(jshon -Q -e animation -e file_id -u <<< "$message")
-		;;
-		photo)
-			last_photo=$(($(jshon -Q -e photo -l <<< "$message") - 1))
-			photo_id=$(jshon -Q -e photo -e $last_photo -e file_id -u <<< "$message")
-		;;
-		video)
-			video_id=$(jshon -Q -e video -e file_id -u <<< "$message")
-		;;
-		audio)
-			audio_id=$(jshon -Q -e audio -e file_id -u <<< "$message")
-		;;
-		voice)
-			voice_id=$(jshon -Q -e voice -e file_id -u <<< "$message")
-		;;
-		document)
-			document_id=$(jshon -Q -e document -e file_id -u <<< "$message")
-			file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$document_id" | jshon -Q -e result -e file_path -u)
-			ext=$(sed 's/.*\.//' <<< "$file_path")
-			case "$ext" in
-				jpg|png|jpeg|JPG|PNG|JPEG)
-					file_type=photo
-					photo_id=$document_id
-				;;
-				gif|GIF)
-					file_type=animation
-					animation_id=$document_id
-				;;
-				mp4|webm|avi|mkv|MP4|WEBM|AVI|MKV)
-					file_type=video
-					video_id=$document_id
-				;;
-				mp3|ogg|flac|wav|MP3|OGG|FLAC|WAV)
-					file_type=audio
-					audio_id=$document_id
-				;;
-				*)
-					file_type=document
-				;;
-			esac
-		;;
-		new_chat_members)
-			new_members=$(jshon -Q -e new_chat_members <<< "$message")
-		;;
-	esac
-}
-get_message_user_info() {
-	case "$2" in
-		reply) x=1 ;;
-		*) x=0 ;;
-	esac
-	case "$(grep -o "^sender_chat\|^from" <<< "${message_key[$x]}")" in
-		from)
-			user_id[$x]=$(jshon -Q -e from -e id -u <<< "$1")
-			user_tag[$x]=$(jshon -Q -e from -e username -u <<< "$1")
-			user_fname[$x]=$(jshon -Q -e from -e first_name -u <<< "$1")
-			user_lname[$x]=$(jshon -Q -e from -e last_name -u <<< "$1")
-		;;
-		sender_chat)
-			user_id[$x]=$(jshon -Q -e sender_chat -e id -u "$1")
-			user_tag[$x]=$(jshon -Q -e sender_chat -e username -u <<< "$1")
-			user_fname[$x]=$(jshon -Q -e sender_chat -e title -u <<< "$1")
+			reply_id=${message_id[1]}
 		;;
 	esac
 }
@@ -296,8 +214,115 @@ get_button_reply() {
 		;;
 	esac
 }
+get_message_info() {
+	message_key[0]=$(jshon -Q -k <<< "$1")
+	if [[ "$(grep "^reply_to_message" <<< "${message_key[0]}")" ]]; then
+		x=1
+		message[$x]=$(jshon -Q -e reply_to_message <<< "$1")
+		message_key[$x]=$(jshon -Q -k <<< "${message[$x]}")
+	else
+		x=0
+	fi
+	for x in $(seq 0 $x); do
+		file_type[$x]=$(jshon -Q -k <<< "${message[$x]}" \
+			| grep -o "^text\|^sticker\|^animation\|^photo\|^video\|^audio\|^voice\|^document\|^new_chat_members" \
+			| head -n 1)
+		case "${file_type[$x]}" in
+			text)
+				user_text[$x]=$(jshon -Q -e text -u <<< "${message[$x]}")
+				if [[ ! -e botinfo ]]; then
+					tg_method get_me
+					printf '%s\n' "$curl_result" > botinfo
+				fi
+				user_text[$x]=${user_text[$x]/@$(jshon -Q -e result -e username -u < botinfo)/}
+			;;
+			sticker)
+				sticker_id[$x]=$(jshon -Q -e sticker -e file_id -u <<< "${message[$x]}")
+			;;
+			animation)
+				animation_id[$x]=$(jshon -Q -e animation -e file_id -u <<< "${message[$x]}")
+			;;
+			photo)
+				last_photo=$(($(jshon -Q -e photo -l <<< "${message[$x]}") - 1))
+				photo_id[$x]=$(jshon -Q -e photo -e $last_photo -e file_id -u <<< "${message[$x]}")
+			;;
+			video)
+				video_id[$x]=$(jshon -Q -e video -e file_id -u <<< "${message[$x]}")
+			;;
+			audio)
+				audio_id[$x]=$(jshon -Q -e audio -e file_id -u <<< "${message[$x]}")
+			;;
+			voice)
+				voice_id[$x]=$(jshon -Q -e voice -e file_id -u <<< "${message[$x]}")
+			;;
+			document)
+				document_id[$x]=$(jshon -Q -e document -e file_id -u <<< "${message[$x]}")
+				file_path[$x]=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=${document_id[$x]}" | jshon -Q -e result -e file_path -u)
+				ext[$x]=$(sed 's/.*\.//' <<< "${file_path[$x]}")
+				case "${ext[$x]}" in
+					jpg|png|jpeg|JPG|PNG|JPEG)
+						file_type[$x]=photo
+						photo_id[$x]=${document_id[$x]}
+					;;
+					gif|GIF)
+						file_type[$x]=animation
+						animation_id[$x]=${document_id[$x]}
+					;;
+					mp4|webm|avi|mkv|MP4|WEBM|AVI|MKV)
+						file_type[$x]=video
+						video_id[$x]=${document_id[$x]}
+					;;
+					mp3|ogg|flac|wav|MP3|OGG|FLAC|WAV)
+						file_type[$x]=audio
+						audio_id[$x]=${document_id[$x]}
+					;;
+					*)
+						file_type[$x]=document
+					;;
+				esac
+			;;
+			new_chat_members)
+				new_members[$x]=$(jshon -Q -e new_chat_members <<< "${message[$x]}")
+			;;
+		esac
+		
+		jsp=($(jshon -Q \
+			-e message_id -u -p \
+			-e chat -e type -u -p \
+				-e id -u <<< "${message[$x]}"))
+		message_id[$x]=${jsp[0]} chat_type[$x]=${jsp[1]} chat_id[$x]=${jsp[2]}
+		case "$(grep -o "^sender_chat\|^from" <<< "${message_key[$x]}")" in
+			from)
+				jsp=($(jshon -Q -e from \
+					-e id -u -p \
+					-e username -u -p \
+					-e first_name -u -p \
+					-e last_name -u <<< "${message[$x]}"))
+				user_id[$x]=${jsp[0]} user_tag[$x]=${jsp[1]} \
+				user_fname[$x]=${jsp[2]} user_lname[$x]=${jsp[3]}
+			;;
+			sender_chat)
+				jsp=($(jshon -Q -e sender_chat \
+					-e id -u -p \
+					-e username -u -p \
+					-e title -u <<< "${message[$x]}"))
+				user_id[$x]=${jsp[0]} user_tag[$x]=${jsp[1]} \
+				user_fname[$x]=${jsp[2]}
+			;;
+		esac
+		
+		if [[ "${chat_type[$x]}" == "private" ]]; then
+			chat_title[$x]=${user_fname[$x]}
+		else
+			chat_title[$x]=$(jshon -Q -e chat -e title -u <<< "${message[$x]}")
+		fi
+		if [[ "${file_type[$x]}" != "text" ]]; then
+			caption[$x]=$(jshon -Q -e caption -u <<< "${message[$x]}")
+		fi
+	done
+}
 process_reply() {
-	keys=$(jshon -Q -k <<< "$input")
+	keys=$(jshon -Q -k <<< "$input") x=0
 	update_type=$(grep -o "^message\|^channel_post\|^inline_query\|^callback_query" <<< "$keys")
 	case "$update_type" in
 		message|channel_post)
@@ -309,50 +334,28 @@ process_reply() {
 					message=$(jshon -Q -e channel_post <<< "$input")
 				;;
 			esac
-			message_key[0]=$(jshon -Q -k <<< "$message")
-			jsp=($(jshon -Q \
-				-e message_id -u -p \
-				-e chat -e type -u -p \
-					-e id -u <<< "$message"))
-			message_id=${jsp[0]} chat_type=${jsp[1]} chat_id=${jsp[2]}
-			get_message_user_info "$message"
-			if [[ "$(grep -o "^reply_to_message" <<< "${message_key[0]}")" ]]; then
-				message_key[1]=$(jshon -Q -k <<< "$message")
-				reply_to_message=$(jshon -Q -e reply_to_message <<< "$message")
-				reply_to_id=$(jshon -Q -e id -u <<< "$reply_to_message")
-				get_message_user_info "$reply_to_message" reply
-			fi
-			if [[ "$chat_type" == "private" ]]; then
-				chat_title=$user_fname
-			else
-				chat_title=$(jshon -Q -e chat -e title -u <<< "$message")
-			fi
+			get_message_info "$message"
 			update_db
-			get_file_type
-			if [[ "$file_type" != "text" ]]; then
-				caption=$(jshon -Q -e caption -u <<< "$message")
-			fi
 		;;
 		inline_query)
 			inline=$(jshon -Q -e inline_query <<< "$input")
-			message_key[0]=$(jshon -Q -k <<< "$inline")
+			message_key=$(jshon -Q -k <<< "$inline")
 			inline_id=$(jshon -Q -e id -u <<< "$inline")
-			get_message_user_info "$inline"
 			inline_message=$(jshon -Q -e query -u <<< "$inline")
 			im_arg=$(cut -f 2- -d ' ' <<< "$inline_message")
+			get_message_info "$message"
 		;;
 		callback_query)
 			callback=$(jshon -Q -e callback_query <<< "$input")
-			message_key[0]=$(jshon -Q -k <<< "$callback")
+			message_key=$(jshon -Q -k <<< "$callback")
 			callback_id=$(jshon -Q -e id -u <<< "$callback")
 			callback_data=$(jshon -Q -e data -u <<< "$callback")
 			callback_caption=$(jshon -Q -e message -e caption -u <<< "$callback")
 			callback_chat_id=$(jshon -Q -e message -e chat -e id -u <<< "$callback")
 			callback_message_id=$(jshon -Q -e message -e message_id -u <<< "$callback")
 			callback_message_text=$(jshon -Q -e message -e text -u <<< "$callback")
-			get_message_user_info "$callback"
 			message=$(jshon -Q -e message <<< "$callback")
-			get_file_type
+			get_message_info "$message"
 		;;
 	esac
 	if [[ $(is_status banned) ]]; then
@@ -367,22 +370,16 @@ process_reply() {
 	fi
 	case "$file_type" in
 		text)
-			pf=$(head -n 1 <<< "$text_id" | grep -o '^.')
+			pf=$(head -n 1 <<< "$user_text" | grep -o '^.')
 			case "$pf" in
 				"/"|"$"|"&"|"%"|";"|"!")
-					normal_message=$text_id
-					command=$(head -n 1 <<< "$normal_message" | sed -e "s/ .*//" -e "s/^./!/")
-				;;
-				*)
-					normal_message=$text_id
+					command=$(head -n 1 <<< "$user_text" | sed -e "s/ .*//" -e "s/^./!/")
 				;;
 			esac
 
-			unset text_id
-
-			if [[ "$(grep "[^ ] [^ ]" <<< "$normal_message")" ]]; then
+			if [[ "$(grep "[^ ] [^ ]" <<< "$user_text")" ]]; then
 				if [[ "$command" ]]; then
-					arg=($(sed "s/^\s*$command\s*//" <<< "$normal_message" \
+					arg=($(sed "s/^\s*$command\s*//" <<< "$user_text" \
 						| tr '\n' ' ' | grep -oP "^([^\s]*\s*){10}"))
 				fi
 			else

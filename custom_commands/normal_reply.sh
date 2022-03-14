@@ -132,16 +132,15 @@ case_command() {
 		;;
 		"!convert")
 			[[ -e "$basedir/powersave" ]] && return
-			if [[ "$reply_to_id" ]] && [[ "${arg[0]}" ]]; then
+			if [[ "${message_id[1]}" ]] && [[ "${arg[0]}" ]]; then
 				twd
 				get_reply_id reply
-				get_file_type reply
-				case "$file_type" in
+				case "${file_type[1]}" in
 					video|animation)
 						input_codecs=$(ffprobe -v error -show_streams "$file_path" | grep "^codec_name")
-						case "$file_type" in
-						video) media_id=$video_id ;;
-						animation) media_id=$animation_id ;;
+						case "${file_type[1]}" in
+						video) media_id=${video_id[1]} ;;
+						animation) media_id=${animation_id[1]} ;;
 						esac
 						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
 						case "${arg[0]}" in
@@ -161,10 +160,9 @@ case_command() {
 						esac
 					;;
 					photo|sticker)
-						media_id=$photo_id
-						case "$file_type" in
-						photo) media_id=$photo_id ;;
-						sticker) media_id=$sticker_id ;;
+						case "${file_type[1]}" in
+						photo) media_id=${photo_id[1]} ;;
+						sticker) media_id=${sticker_id[1]} ;;
 						esac
 						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
 						case "${arg[0]}" in
@@ -215,7 +213,7 @@ case_command() {
 				user_command=$(tr -d '/' <<< "$user_command")
 				[[ ! -d custom_commands/user_generated/ ]] \
 					&& mkdir custom_commands/user_generated/
-				printf '%s\n' "$normal_message" \
+				printf '%s\n' "$user_text" \
 					| sed "s/$command ${arg[0]} //" \
 					> "custom_commands/user_generated/$chat_id-$user_command"
 				text_id="$user_command set"
@@ -226,9 +224,9 @@ case_command() {
 		;;
 		"!deemix")
 			[[ -e "$basedir/powersave" ]] && return
-			if [[ "$reply_to_text" != "" ]] || [[ "${arg[0]}" != "" ]]; then
-				if [[ "$reply_to_text" != "" ]]; then
-					deemix_link=$(grep -o 'https://www.deezer.*\|https://deezer.*' <<< "$reply_to_text" | cut -f 1 -d ' ')
+			if [[ "${user_text[1]}" != "" ]] || [[ "${arg[0]}" != "" ]]; then
+				if [[ "${user_text[1]}" != "" ]]; then
+					deemix_link=$(grep -o 'https://www.deezer.*\|https://deezer.*' <<< "${user_text[1]}" | cut -f 1 -d ' ')
 				elif [[ "${arg[0]}" != "" ]]; then
 					deemix_link=${arg[0]}
 				fi
@@ -284,11 +282,11 @@ case_command() {
 			get_reply_id self
 			case "${arg[0]}" in
 				[0-9]*|[0-9]*"*"[0-9]*)
-					if [[ "$(grep "*" <<< "$normal_message")" != "" ]]; then
-						normaldice=$(sed "s/!d//" <<< "$normal_message" | cut -d "*" -f 1)
-						mul=$(sed "s/!d//" <<< "$normal_message" | cut -d "*" -f 2)
+					if [[ "$(grep "*" <<< "$user_text")" != "" ]]; then
+						normaldice=$(sed "s/!d//" <<< "$user_text" | cut -d "*" -f 1)
+						mul=$(sed "s/!d//" <<< "$user_text" | cut -d "*" -f 2)
 					else
-						normaldice=$(sed "s/!d//" <<< "$normal_message")
+						normaldice=$(sed "s/!d//" <<< "$user_text")
 						mul=1
 					fi
 					for x in $(seq "$mul"); do
@@ -319,20 +317,19 @@ case_command() {
 			fi
 		;;
 		"!ffprobe")
-			if [[ "$reply_to_message" ]]; then
-				get_file_type reply
-				case "$file_type" in
+			if [[ "${message_id[1]}" ]]; then
+				case "${file_type[1]}" in
 					animation)
-						media_id=$animation_id
+						media_id=${animation_id[1]}
 					;;
 					photo)
-						media_id=$photo_id
+						media_id=${photo_id[1]}
 					;;
 					video)
-						media_id=$video_id
+						media_id=${video_id[1]}
 					;;
 					sticker)
-						media_id=$sticker_id
+						media_id=${sticker_id[1]}
 					;;
 				esac
 				if [[ "$media_id" ]]; then
@@ -384,12 +381,12 @@ case_command() {
 			fi
 		;;
 		"!gayscale"|"!gs")
-			if [[ "$reply_to_user_id" = "" ]]; then
+			if [[ "${user_id[1]}" = "" ]]; then
 				gs_id=$user_id
 				gs_fname=$user_fname
 			else
-				gs_id=$reply_to_user_id
-				gs_fname=$reply_to_user_fname
+				gs_id=${user_id[1]}
+				gs_fname=${user_fname[1]}
 			fi
 			[[ ! -d "$basedir/.lock+/gs/" ]] && mkdir -p "$basedir/.lock+/gs/"
 			lockfile="$basedir/.lock+/gs/$gs_id-lock"
@@ -431,37 +428,36 @@ case_command() {
 		;;
 		"!gtt"|"!gbt")
 			[[ -e "$basedir/powersave" ]] && return
-			if [[ "$reply_to_message" != "" ]]; then
+			if [[ "${message_id[1]}" != "" ]]; then
 				twd
 				get_reply_id reply
-				get_file_type reply
-				case "$file_type" in
+				case "${file_type[1]}" in
 					animation|photo|video|sticker)
-						case "$file_type" in
+						case "${file_type[1]}" in
 							animation)
-								media_id=$animation_id
+								media_id=${animation_id[1]}
 							;;
 							video)
-								media_id=$video_id
+								media_id=${video_id[1]}
 							;;
 						esac
 						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
 						ext=$(sed 's/.*\.//' <<< "$file_path")
 						cp "$file_path" "video.$ext"
-						toptext=$(sed -e "s/$(head -n 1 <<< "$normal_message" | cut -f 1 -d ' ') //" -e "s/,/\\\,/g" <<< "$normal_message")
+						toptext=$(sed -e "s/$(head -n 1 <<< "$user_text" | cut -f 1 -d ' ') //" -e "s/,/\\\,/g" <<< "$user_text")
 						loading 1
-						case "$normal_message" in
-							"!giftoptext "*|"!ifunny "*|"!gtt "*)
+						case "$command" in
+							"!gtt")
 								source "$basedir/tools/toptext.sh" \
 									"$toptext"
 							;;
-							"!gifbottomtext "*|"!gbt "*)
+							"!gbt")
 								source "$basedir/tools/toptext.sh" \
 									"$toptext" "bottom"
 							;;
 						esac
 						loading 2
-						case "$file_type" in
+						case "${file_type[1]}" in
 							animation)
 								animation_id="@video-toptext.$ext"
 								tg_method send_animation upload
@@ -477,12 +473,11 @@ case_command() {
 			fi
 		;;
 		"!hide"|"!unhide")
-			if [[ "$reply_to_message" ]]; then
-				get_file_type reply
-				if [[ "$file_type" == "photo" ]]; then
+			if [[ "${message_id[1]}" ]]; then
+				if [[ "${file_type[1]}" == "photo" ]]; then
 					twd
 					get_reply_id reply
-					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$photo_id" | jshon -Q -e result -e file_path -u)
+					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=${photo_id[1]}" | jshon -Q -e result -e file_path -u)
 					ext=$(sed 's/.*\.//' <<< "$file_path")
 					cp "$file_path" "pic.$ext"
 					if [[ "${arg[1]}" == "" ]]; then
@@ -597,17 +592,16 @@ case_command() {
 		;;
 		"!jpg")
 			[[ -e "$basedir/powersave" ]] && return
-			if [[ "$reply_to_id" != "" ]]; then
+			if [[ "${message_id[1]}" != "" ]]; then
 				twd
 				get_reply_id reply
-				get_file_type reply
-				case "$file_type" in
+				case "${file_type[1]}" in
 					text)
-						text_id=$(sed -E 's/(.).(.)/\1\2/g' <<< "$reply_to_text")
+						text_id=$(sed -E 's/(.).(.)/\1\2/g' <<< "${user_text[1]}")
 						tg_method send_message
 					;;
 					photo)
-						tg_method get_file "$photo_id"
+						tg_method get_file "${photo_id[1]}"
 						file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
 						ext=$(sed 's/.*\.//' <<< "$file_path")
 						if [[ "$(grep "png\|jpg\|jpeg" <<< "$ext")" != "" ]]; then
@@ -629,7 +623,7 @@ case_command() {
 						fi
 					;;
 					sticker)
-						tg_method get_file "$sticker_id"
+						tg_method get_file "${sticker_id[1]}"
 						file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
 						cp "$file_path" "sticker.webp"
 						res=($(ffprobe -v error -show_streams "sticker.webp" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
@@ -645,13 +639,13 @@ case_command() {
 						rm -f "sticker.webp" "sticker.jpg"
 					;;
 					video|animation)
-						if [[ "$file_type" == "video" ]]; then
+						if [[ "${file_type[1]}" == "video" ]]; then
 							audio_c="-c:a aac"
-						elif [[ "$file_type" == "animation" ]]; then
-							video_id=$animation_id
+						elif [[ "${file_type[1]}" == "animation" ]]; then
+							video_id[1]=${animation_id[1]}
 							audio_c="-an"
 						fi
-						tg_method get_file "$video_id"
+						tg_method get_file "${video_id[1]}"
 						file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
 						ext=$(sed 's/.*\.//' <<< "$file_path")
 						if [[ "$ext" == "gif" ]]; then
@@ -669,7 +663,7 @@ case_command() {
 						res[1]=$(bc <<< "${res[1]}/1.5")
 						[[ "$((${res[0]}%2))" -eq "0" ]] || res[0]=$((${res[0]}-1))
 						[[ "$((${res[1]}%2))" -eq "0" ]] || res[1]=$((${res[1]}-1))
-						if [[ "$file_type" == "video" ]]; then
+						if [[ "${file_type[1]}" == "video" ]]; then
 							br=$(sed -n 's/^bit_rate=//p' <<< "$video_info" | head -n 1)
 							sr=$(sed -n 's/^sample_rate=//p' <<< "$video_info" | head -n 1)
 							if [[ "$br" ]] && [[ "$sr" ]]; then
@@ -693,7 +687,7 @@ case_command() {
 							-vf "scale=${res[0]}:${res[1]}" -sws_flags fast_bilinear \
 							-crf 50 $audio_c "video-low.mp4"
 						loading 2
-						if [[ "$file_type" == "video" ]]; then
+						if [[ "${file_type[1]}" == "video" ]]; then
 							video_id="@video-low.mp4"
 							tg_method send_video upload
 						else
@@ -704,7 +698,7 @@ case_command() {
 						rm -f -- "video.mp4" "video-low.mp4"
 					;;
 					audio|voice)
-						[[ "$file_type" == "voice" ]] && audio_id=$voice_id
+						[[ "${file_type[1]}" == "voice" ]] && audio_id=$voice_id
 						tg_method get_file "$audio_id"
 						file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
 						ext=$(sed 's/.*\.//' <<< "$file_path")
@@ -756,7 +750,7 @@ case_command() {
 		;;
 		"!me")
 			if [[ "${arg[0]}" ]]; then
-				text_id="> $user_fname $(sed "s/^$command //" <<< "$normal_message")"
+				text_id="> $user_fname $(sed "s/^$command //" <<< "$user_text")"
 				tg_method send_message
 				to_delete_id=$message_id
 				tg_method delete_message
@@ -847,8 +841,8 @@ case_command() {
 			fi
 		;;
 		"!owo")
-			if [[ "$reply_to_text" ]]; then
-				reply=$reply_to_text
+			if [[ "${user_text[1]}" ]]; then
+				reply=${user_text[1]}
 				numberspace=$(tr -dc ' ' <<< "$reply" | wc -c)
 
 				[[ "$numberspace" -eq "0" ]] && reply="$reply " && numberspace=1
@@ -864,8 +858,8 @@ case_command() {
 			else
 				command_help
 			fi
-			if [[ "$reply_to_user_id" == "$(jshon -Q -e result -e id -u < botinfo)" ]]; then
-				edit_id=$reply_to_id
+			if [[ "${user_id[1]}" == "$(jshon -Q -e result -e id -u < botinfo)" ]]; then
+				edit_id=${message_id[1]}
 				edit_text=$text_id
 				tg_method edit_text
 			else
@@ -891,15 +885,14 @@ case_command() {
 			fi
 		;;
 		"!sauce")
-			if [[ "$reply_to_message" != "" ]]; then
-				get_file_type reply
-				case "$file_type" in
+			if [[ "${message_id[1]}" != "" ]]; then
+				case "${file_type[1]}" in
 					"photo"|"animation"|"video")
 						request_id=$RANDOM
-						case "$file_type" in
-							photo) media_id=$photo_id ;;
-							animation) media_id=$animation_id ;;
-							video) media_id=$video_id ;;
+						case "${file_type[1]}" in
+							photo) media_id=${photo_id[1]} ;;
+							animation) media_id=${animation_id[1]} ;;
+							video) media_id=${video_id[1]} ;;
 						esac
 						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
 						ext=$(sed 's/.*\.//' <<< "$file_path")
@@ -936,9 +929,9 @@ case_command() {
 			fi
 		;;
 		"!sed")
-			[[ "$reply_to_caption" != "" ]] && reply_to_text=$reply_to_caption
-			if [[ "$reply_to_text" != "" ]]; then
-				text_id=$(sed --sandbox "${arg[*]}" <<< "$reply_to_text" 2>&1)
+			[[ "${caption[1]}" != "" ]] && user_text[1]=${caption[1]}
+			if [[ "${user_text[1]}" != "" ]]; then
+				text_id=$(sed --sandbox "${arg[*]}" <<< "${user_text[1]}" 2>&1)
 				get_reply_id reply
 			else
 				command_help
@@ -958,10 +951,10 @@ case_command() {
 			cd "$basedir"
 		;;
 		"!tag")
-			if [[ "$reply_to_text" == "" ]]; then
-				text_id=$(sed "s/$command ${arg[0]} //" <<< "$normal_message")
+			if [[ "${user_text[1]}" == "" ]]; then
+				text_id=$(sed "s/$command ${arg[0]} //" <<< "$user_text")
 			else
-				text_id=$reply_to_text
+				text_id=${user_text[1]}
 			fi
 			tag_name=${arg[0]}
 			case "$tag_name" in
@@ -1011,12 +1004,12 @@ case_command() {
 			fi
 		;;
 		"!trad")
-			if [[ "$reply_to_text" ]]; then
-				to_trad=$reply_to_text
-			elif [[ "$reply_to_caption" ]]; then
-				to_trad=$reply_to_caption
+			if [[ "${user_text[1]}" ]]; then
+				to_trad=${user_text[1]}
+			elif [[ "${caption[1]}" ]]; then
+				to_trad=${caption[1]}
 			elif [[ "${arg[0]}" ]]; then
-				to_trad=$(sed "s/$command //" <<< "$normal_message")
+				to_trad=$(sed "s/$command //" <<< "$user_text")
 			fi
 			if [[ "$to_trad" ]]; then
 				text_id=$(trans :en -j -b "$to_trad")
@@ -1031,23 +1024,22 @@ case_command() {
 		;;
 		"!videosticker")
 			[[ -e "$basedir/powersave" ]] && return
-			if [[ "$reply_to_message" ]]; then
-				get_file_type reply
+			if [[ "${message_id[1]}" ]]; then
 				get_reply_id self
-				if [[ "$file_type" == "animation" ]]; then
-					tg_method get_file "$animation_id"
+				if [[ "${file_type[1]}" == "animation" ]]; then
+					tg_method get_file "${animation_id[1]}"
 					file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
 					ext=$(sed 's/.*\.//' <<< "$file_path")
 					case "$ext" in
 						mp4|gif|MP4|GIF)
-							video_id=$animation_id
-							file_type=video
+							video_id[1]=${animation_id[1]}
+							file_type[1]=video
 						;;
 					esac
 				fi
-				if [[ "$file_type" == "video" ]]; then
+				if [[ "${file_type[1]}" == "video" ]]; then
 					[[ ! "$file_path" ]] \
-						&& tg_method get_file "$video_id" \
+						&& tg_method get_file "${video_id[1]}" \
 						&& file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
 					video_info=$(ffprobe -v error \
 						-show_entries stream=duration,width,height,r_frame_rate \
@@ -1092,8 +1084,8 @@ case_command() {
 			fi
 		;;
 		"!wget")
-			if [[ "$reply_to_text" != "" ]]; then
-				wget_link=$reply_to_text
+			if [[ "${user_text[1]}" != "" ]]; then
+				wget_link=${user_text[1]}
 			else
 				wget_link=${arg[0]}
 			fi
@@ -1116,8 +1108,8 @@ case_command() {
 		"!ytdl")
 			[[ -e "$basedir/powersave" ]] && return
 			get_reply_id self
-			if [[ "$reply_to_text" != "" ]]; then
-				ytdl_link=$reply_to_text
+			if [[ "${user_text[1]}" != "" ]]; then
+				ytdl_link=${user_text[1]}
 			else
 				ytdl_link=${arg[0]}
 			fi
@@ -1152,8 +1144,8 @@ case_command() {
 			markdown=("<code>" "</code>")
 			parse_mode=html
 			if [[ $(is_status admins) ]]; then
-				bin=$(sed "s/^$command //" <<< "$normal_message")
-				case "$normal_message" in
+				bin=$(sed "s/^$command //" <<< "$user_text")
+				case "$user_text" in
 					"!bin "*)
 						text_id=$(mksh -c "$bin" 2>&1)
 					;;
@@ -1180,9 +1172,9 @@ case_command() {
 						chat_id=$(sed -n ${x}p <<< "$listchats")
 						tg_method send_message
 					done
-				elif [[ "$reply_to_message" != "" ]]; then
+				elif [[ "${message_id[1]}" != "" ]]; then
 					from_chat_id=$chat_id
-					copy_id=$reply_to_id
+					copy_id=${message_id[1]}
 					for x in $(seq "$numchats"); do
 						chat_id=$(sed -n ${x}p <<< "$listchats")
 						tg_method copy_message
@@ -1217,8 +1209,8 @@ case_command() {
 						tg_method send_message
 					;;
 					"get")
-						if [[ "$reply_to_user_id" ]]; then
-							text_id=$(cat "$basedir/db/users/$reply_to_user_id")
+						if [[ "${user_id[1]}" ]]; then
+							text_id=$(cat "$basedir/db/users/${user_id[1]}")
 							get_reply_id any
 							tg_method send_message
 						fi
@@ -1228,8 +1220,8 @@ case_command() {
 		;;
 		"!del"|"!delete")
 			if [[ $(is_status admins) ]] \
-			&& [[ "$reply_to_user_id" == "$(jshon -Q -e result -e id -u < botinfo)" ]]; then
-				to_delete_id=$reply_to_id
+			&& [[ "${user_id[1]}" == "$(jshon -Q -e result -e id -u < botinfo)" ]]; then
+				to_delete_id=${message_id[1]}
 				tg_method delete_message
 			fi
 		;;
@@ -1385,11 +1377,11 @@ case_command() {
 			fi
 		;;
 		"!flush")
-			if [[ $(is_chat_admin) ]] && [[ "$reply_to_message" ]]; then
+			if [[ $(is_chat_admin) ]] && [[ "${message_id[1]}" ]]; then
 				text_id="flushing..."
 				tg_method send_message
 				flush_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
-				for x in $(seq "$message_id" -1 "$reply_to_id"); do
+				for x in $(seq "$message_id" -1 "${message_id[1]}"); do
 					to_delete_id=$x
 					tg_method delete_message &
 					sleep 0.1
@@ -1400,8 +1392,8 @@ case_command() {
 		;;
 		"!warn"|"!ban"|"!kick")
 			if [[ $(is_chat_admin) ]]; then
-				if [[ "$reply_to_user_id" ]] && [[ "$reply_to_user_id" != "$user_id" ]]; then
-					restrict_id=$reply_to_user_id
+				if [[ "${user_id[1]}" ]] && [[ "${user_id[1]}" != "$user_id" ]]; then
+					restrict_id=${user_id[1]}
 				else
 					case "${arg[0]}" in
 						[0-9]*)
@@ -1416,10 +1408,10 @@ case_command() {
 					esac
 				fi
 				if [[ "$restrict_id" ]]; then
-					if [[ "$reply_to_user_fname" == "" ]]; then
+					if [[ "${user_fname[1]}" == "" ]]; then
 						restrict_fname=$(grep -w -- "^fname" "$basedir/db/users/$restrict_id" | sed 's/.*fname: //')
 					else
-						restrict_fname=$reply_to_user_fname
+						restrict_fname=${user_fname[1]}
 					fi
 					get_member_id=$restrict_id
 					tg_method get_chat_member
@@ -1501,8 +1493,8 @@ case_command() {
 			fi
 		;;
 	esac
-	if [[ -e "$basedir/custom_commands/user_generated/$chat_id-$normal_message" ]]; then
-		text_id=$(cat -- "$basedir/custom_commands/user_generated/$chat_id-$normal_message")
+	if [[ -e "$basedir/custom_commands/user_generated/$chat_id-$user_text" ]]; then
+		text_id=$(cat -- "$basedir/custom_commands/user_generated/$chat_id-$user_text")
 		get_reply_id self
 		tg_method send_message
 	fi
@@ -1518,21 +1510,21 @@ case_normal() {
 			sender_chat_id=$chat_id
 			mmd5=$(md5sum <<< "$message" | cut -f 1 -d ' ')
 			bc_users_num=$(wc -l <<< "$bc_users")
-			if [[ ! "$reply_to_text" ]] && [[ "$reply_to_caption" ]]; then
-				reply_to_text=$reply_to_caption
+			if [[ ! "${user_text[1]}" ]] && [[ "${caption[1]}" ]]; then
+				user_text[1]=${caption[1]}
 			fi
-			if [[ "$reply_to_text" ]]; then
-				quote_reply=$(sed -n 1p <<< "$reply_to_text" | grep '^|')
+			if [[ "${user_text[1]}" ]]; then
+				quote_reply=$(sed -n 1p <<< "${user_text[1]}" | grep '^|')
 				if [[ "$quote_reply" != "" ]]; then
-					reply_to_text=$(sed '1d' <<< "$reply_to_text")
+					user_text[1]=$(sed '1d' <<< "${user_text[1]}")
 				fi
-				quote=$(head -n 1 <<< "$reply_to_text" | sed 's/^/| /g')
+				quote=$(head -n 1 <<< "${user_text[1]}" | sed 's/^/| /g')
 			fi
 			if [[ "$file_type" == "text" ]]; then
 				if [[ "$quote" ]]; then
-					text_id=$(printf '%s\n' "$quote" "#$mmd5" "$normal_message")
+					text_id=$(printf '%s\n' "$quote" "#$mmd5" "$user_text")
 				else
-					text_id=$(printf '%s\n' "#$mmd5" "$normal_message")
+					text_id=$(printf '%s\n' "#$mmd5" "$user_text")
 				fi
 				for c in $(seq "$bc_users_num"); do
 					chat_id=$(sed -n ${c}p <<< "$bc_users")
@@ -1562,7 +1554,7 @@ case_chat_id() {
 	case "$chat_id" in
 		-1001295527578|-1001402125530)
 			if [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]] \
-			&& [[ "$reply_to_message" == "" ]] \
+			&& [[ "${message_id[1]}" == "" ]] \
 			&& [[ "$chat_id" != "-1001402125530" ]]; then
 				to_delete_id=$message_id
 				tg_method delete_message
@@ -1571,18 +1563,18 @@ case_chat_id() {
 				to_delete_id=$(jshon -Q -e result -e message_id <<< "$curl_result")
 				tg_method unban_member
 				tg_method delete_message
-			elif [[ "$reply_to_message" != "" ]] \
+			elif [[ "${message_id[1]}" != "" ]] \
 			&& [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]] \
-			&& [[ "$(jshon -Q -e sender_chat <<< "$reply_to_message")" != "" ]] \
+			&& [[ "$(jshon -Q -e sender_chat <<< "${message_id[1]}")" != "" ]] \
 			&& [[ "$user_id" != "160551211" ]] \
 			&& [[ "$user_id" != "917684979" ]]; then
-				text_id="https://t.me/c/$(tail -c +5 <<< "$chat_id")/$(jshon -Q -e message_id -u <<< "$reply_to_message")/?comment=$message_id"
+				text_id="https://t.me/c/$(tail -c +5 <<< "$chat_id")/$(jshon -Q -e message_id -u <<< "${message_id[1]}")/?comment=$message_id"
 				chat_id="-1001312198683"
 				tg_method send_message
 			fi
 		;;
 		-1001332912452)
-			if [[ "$normal_message" != "" ]]; then
+			if [[ "$user_text" != "" ]]; then
 				message_link="https://t.me/c/$(tail -c +5 <<< "$chat_id")/$message_id/"
 				text_id="Y-Hell: $message_link"
 				o_chat_id=$chat_id
@@ -1592,7 +1584,7 @@ case_chat_id() {
 			fi
 		;;
 		-1001497062361)
-			case "$normal_message" in
+			case "$user_text" in
 				"!rules"|"!regole"|"!lvx"|"!dvxtime"|"!dvxdocet"|"!dvxsofia")
 					parse_mode=html
 					markdown=("<a href=\"https://t.me/c/1497062361/38916\">" "</a>")
@@ -1609,7 +1601,7 @@ case_user_id() {
 		73520494|160551211) # lynn
 			if [[ "$no_args" ]]; then
 				users=$(cat lynnmentions | cut -f 1 -d :)
-				mention=$(grep -oi "$(sed -e 's/^/\^/' -e 's/$/\$\\|/' <<< "$users" | tr '\n' ' ' | tr -d ' ' | head -c -2)" <<< "$normal_message" | tr [[:upper:]] [[:lower:]])
+				mention=$(grep -oi "$(sed -e 's/^/\^/' -e 's/$/\$\\|/' <<< "$users" | tr '\n' ' ' | tr -d ' ' | head -c -2)" <<< "$user_text" | tr [[:upper:]] [[:lower:]])
 				if [[ "$mention" ]]; then
 					tag_id=$(grep "$mention" lynnmentions | cut -f 2 -d : | head -n 1)
 					markdown=("<a href=\"tg://user?id=$tag_id\">" "</a>")
