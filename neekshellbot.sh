@@ -222,6 +222,7 @@ get_message_info() {
 		message_key[$x]=$(jshon -Q -k <<< "${message[$x]}")
 	else
 		x=0
+		message[$x]=$1
 	fi
 	for x in $(seq 0 $x); do
 		file_type[$x]=$(jshon -Q -k <<< "${message[$x]}" \
@@ -343,7 +344,7 @@ process_reply() {
 			inline_id=$(jshon -Q -e id -u <<< "$inline")
 			inline_message=$(jshon -Q -e query -u <<< "$inline")
 			im_arg=$(cut -f 2- -d ' ' <<< "$inline_message")
-			get_message_info "$message"
+			get_message_info "$inline"
 		;;
 		callback_query)
 			callback=$(jshon -Q -e callback_query <<< "$input")
@@ -355,7 +356,7 @@ process_reply() {
 			callback_message_id=$(jshon -Q -e message -e message_id -u <<< "$callback")
 			callback_message_text=$(jshon -Q -e message -e text -u <<< "$callback")
 			message=$(jshon -Q -e message <<< "$callback")
-			get_message_info "$message"
+			get_message_info "$callback"
 		;;
 	esac
 	if [[ $(is_status banned) ]]; then
