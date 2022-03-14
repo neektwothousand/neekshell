@@ -698,8 +698,8 @@ case_command() {
 						rm -f -- "video.mp4" "video-low.mp4"
 					;;
 					audio|voice)
-						[[ "${file_type[1]}" == "voice" ]] && audio_id=$voice_id
-						tg_method get_file "$audio_id"
+						[[ "${file_type[1]}" == "voice" ]] && audio_id[1]=${voice_id[1]}
+						tg_method get_file "${audio_id[1]}"
 						file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
 						ext=$(sed 's/.*\.//' <<< "$file_path")
 						cp "$file_path" "audio.$ext"
