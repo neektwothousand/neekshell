@@ -1537,6 +1537,22 @@ case_normal() {
 				else
 					caption=$(printf '%s\n' "#$mmd5" "$caption")
 				fi
+				if [[ "$file_type" == "sticker" ]]; then
+					tg_method get_file "$sticker_id"
+					file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
+
+					twd
+					convert "$file_path" sticker.png
+					document_id="@sticker.png"
+					tg_method send_document upload
+					rm -f sticker.png
+					twd exit
+
+					bc_users=$(grep -v -- "$chat_id" <<< "$bc_users")
+					bc_users_num=$((bc_users_num-1))
+					message_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
+					tg_method delete_message
+				fi
 				from_chat_id=$chat_id
 				copy_id=$message_id
 				for c in $(seq "$bc_users_num"); do
