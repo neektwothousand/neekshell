@@ -1526,9 +1526,21 @@ case_normal() {
 				else
 					text_id=$(printf '%s\n' "#$mmd5" "$user_text")
 				fi
+				if [[ "$(tail -c 5 <<< "$user_text")" == "sign" ]]; then
+					from_chat_id=$chat_id
+					forward_id=$message_id
+					method=forward_message
+					tg_method $method
+					message_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
+
+					bc_users=$(grep -v -- "$chat_id" <<< "$bc_users")
+					bc_users_num=$((bc_users_num-1))
+				else
+					method=send_message
+				fi
 				for c in $(seq "$bc_users_num"); do
 					chat_id=$(sed -n ${c}p <<< "$bc_users")
-					tg_method send_message &
+					tg_method $method &
 				done
 				wait
 			else
@@ -1545,19 +1557,24 @@ case_normal() {
 					convert "$file_path" sticker.png
 					document_id="@sticker.png"
 					tg_method send_document upload
+					message_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
 					rm -f sticker.png
 					twd exit
 
 					bc_users=$(grep -v -- "$chat_id" <<< "$bc_users")
 					bc_users_num=$((bc_users_num-1))
-					message_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
-					tg_method delete_message
 				fi
 				from_chat_id=$chat_id
-				copy_id=$message_id
+				if [[ "$(tail -c 5 <<< "$caption")" == "sign" ]]; then
+					forward_id=$message_id
+					method=forward_message
+				else
+					copy_id=$message_id
+					method=copy_message
+				fi
 				for c in $(seq "$bc_users_num"); do
 					chat_id=$(sed -n ${c}p <<< "$bc_users")
-					tg_method copy_message &
+					tg_method $method &
 				done
 				wait
 			fi
