@@ -387,7 +387,7 @@ process_reply() {
 
 			if [[ "$(grep "[^ ] [^ ]" <<< "$user_text")" ]]; then
 				if [[ "$command" ]]; then
-					arg=($(sed "s/^\s*$command\s*//" <<< "$user_text" \
+					arg=($(sed "s/^\s*.$(tail -c +2 <<< "$command")\s*//" <<< "$user_text" \
 						| tr '\n' ' ' | grep -oP "^([^\s]*\s*){10}"))
 				fi
 			else
