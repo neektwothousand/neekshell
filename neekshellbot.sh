@@ -237,89 +237,89 @@ get_message_info() {
 				fi
 				user_text[$x]=${user_text[$x]/@$(jshon -Q -e result -e username -u < botinfo)/}
 			;;
-			sticker)
-				sticker_id[$x]=$(jshon -Q -e sticker -e file_id -u <<< "${message[$x]}")
-			;;
-			animation)
-				animation_id[$x]=$(jshon -Q -e animation -e file_id -u <<< "${message[$x]}")
-			;;
-			photo)
-				last_photo=$(($(jshon -Q -e photo -l <<< "${message[$x]}") - 1))
-				photo_id[$x]=$(jshon -Q -e photo -e $last_photo -e file_id -u <<< "${message[$x]}")
-			;;
-			video)
-				video_id[$x]=$(jshon -Q -e video -e file_id -u <<< "${message[$x]}")
-			;;
-			audio)
-				audio_id[$x]=$(jshon -Q -e audio -e file_id -u <<< "${message[$x]}")
-			;;
-			voice)
-				voice_id[$x]=$(jshon -Q -e voice -e file_id -u <<< "${message[$x]}")
-			;;
-			document)
-				document_id[$x]=$(jshon -Q -e document -e file_id -u <<< "${message[$x]}")
-				file_path[$x]=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=${document_id[$x]}" | jshon -Q -e result -e file_path -u)
-				ext[$x]=$(sed 's/.*\.//' <<< "${file_path[$x]}")
-				case "${ext[$x]}" in
-					jpg|png|jpeg|JPG|PNG|JPEG)
-						file_type[$x]=photo
-						photo_id[$x]=${document_id[$x]}
+			*)
+				caption[$x]=$(jshon -Q -e caption -u <<< "${message[$x]}")
+				case "${file_type[$x]}" in
+					sticker)
+						sticker_id[$x]=$(jshon -Q -e sticker -e file_id -u <<< "${message[$x]}")
 					;;
-					gif|GIF)
-						file_type[$x]=animation
-						animation_id[$x]=${document_id[$x]}
+					animation)
+						animation_id[$x]=$(jshon -Q -e animation -e file_id -u <<< "${message[$x]}")
 					;;
-					mp4|webm|avi|mkv|MP4|WEBM|AVI|MKV)
-						file_type[$x]=video
-						video_id[$x]=${document_id[$x]}
+					photo)
+						last_photo=$(($(jshon -Q -e photo -l <<< "${message[$x]}") - 1))
+						photo_id[$x]=$(jshon -Q -e photo -e $last_photo -e file_id -u <<< "${message[$x]}")
 					;;
-					mp3|ogg|flac|wav|MP3|OGG|FLAC|WAV)
-						file_type[$x]=audio
-						audio_id[$x]=${document_id[$x]}
+					video)
+						video_id[$x]=$(jshon -Q -e video -e file_id -u <<< "${message[$x]}")
 					;;
-					*)
-						file_type[$x]=document
+					audio)
+						audio_id[$x]=$(jshon -Q -e audio -e file_id -u <<< "${message[$x]}")
+					;;
+					voice)
+						voice_id[$x]=$(jshon -Q -e voice -e file_id -u <<< "${message[$x]}")
+					;;
+					document)
+						document_id[$x]=$(jshon -Q -e document -e file_id -u <<< "${message[$x]}")
+						file_path[$x]=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=${document_id[$x]}" | jshon -Q -e result -e file_path -u)
+						ext[$x]=$(sed 's/.*\.//' <<< "${file_path[$x]}")
+						case "${ext[$x]}" in
+							jpg|png|jpeg|JPG|PNG|JPEG)
+								file_type[$x]=photo
+								photo_id[$x]=${document_id[$x]}
+							;;
+							gif|GIF)
+								file_type[$x]=animation
+								animation_id[$x]=${document_id[$x]}
+							;;
+							mp4|webm|avi|mkv|MP4|WEBM|AVI|MKV)
+								file_type[$x]=video
+								video_id[$x]=${document_id[$x]}
+							;;
+							mp3|ogg|flac|wav|MP3|OGG|FLAC|WAV)
+								file_type[$x]=audio
+								audio_id[$x]=${document_id[$x]}
+							;;
+							*)
+								file_type[$x]=document
+							;;
+						esac
+					;;
+					new_chat_members)
+						new_members[$x]=$(jshon -Q -e new_chat_members <<< "${message[$x]}")
 					;;
 				esac
-			;;
-			new_chat_members)
-				new_members[$x]=$(jshon -Q -e new_chat_members <<< "${message[$x]}")
-			;;
 		esac
 		
-		jsp=($(jshon -Q \
+		jsp=$(jshon -Q \
 			-e message_id -u -p \
 			-e chat -e type -u -p \
-				-e id -u <<< "${message[$x]}"))
-		message_id[$x]=${jsp[0]} chat_type[$x]=${jsp[1]} chat_id[$x]=${jsp[2]}
+				-e title -u -p \
+				-e id -u <<< "${message[$x]}")
+		message_id[$x]=$(sed -n 1p <<< "$jsp") \
+		chat_type[$x]=$(sed -n 2p <<< "$jsp") \
+		chat_title[$x]=$(sed -n 3p <<< "$jsp") \
+		chat_id[$x]=$(sed -n 4p <<< "$jsp")
 		case "$(grep -o "^sender_chat\|^from" <<< "${message_key[$x]}")" in
 			from)
-				jsp=($(jshon -Q -e from \
+				jsp=$(jshon -Q -e from \
 					-e id -u -p \
 					-e username -u -p \
 					-e first_name -u -p \
-					-e last_name -u <<< "${message[$x]}"))
-				user_id[$x]=${jsp[0]} user_tag[$x]=${jsp[1]} \
-				user_fname[$x]=${jsp[2]} user_lname[$x]=${jsp[3]}
+					-e last_name -u <<< "${message[$x]}")
+				user_id[$x]=$(sed -n 1p <<< "$jsp") user_tag[$x]=$(sed -n 2p <<< "$jsp") \
+				user_fname[$x]=$(sed -n 3p <<< "$jsp") user_lname[$x]=$(sed -n 4p <<< "$jsp")
 			;;
 			sender_chat)
-				jsp=($(jshon -Q -e sender_chat \
+				jsp=$(jshon -Q -e sender_chat \
 					-e id -u -p \
 					-e username -u -p \
-					-e title -u <<< "${message[$x]}"))
-				user_id[$x]=${jsp[0]} user_tag[$x]=${jsp[1]} \
-				user_fname[$x]=${jsp[2]}
+					-e title -u <<< "${message[$x]}")
+				sender_chat_id[$x]=$(sed -n 1p <<< "$jsp") \
+				sender_chat_tag[$x]=$(sed -n 2p <<< "$jsp") \
+				sender_chat_title[$x]=$(sed -n 3p <<< "$jsp")
 			;;
 		esac
-		
-		if [[ "${chat_type[$x]}" == "private" ]]; then
-			chat_title[$x]=${user_fname[$x]}
-		else
-			chat_title[$x]=$(jshon -Q -e chat -e title -u <<< "${message[$x]}")
-		fi
-		if [[ "${file_type[$x]}" != "text" ]]; then
-			caption[$x]=$(jshon -Q -e caption -u <<< "${message[$x]}")
-		fi
 	done
 }
 process_reply() {
