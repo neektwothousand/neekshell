@@ -1,3 +1,20 @@
+bot_chat_send_message() {
+	chat_id=$1
+	bot_chat_db="${bot_chat_dir}${bot_chat_id}_db"
+	if [[ ! -d "$bot_chat_db" ]]; then
+		mkdir "$bot_chat_db"
+	fi
+	bot_user_db="$bot_chat_db/$1"
+	if [[ ! -d "$bot_user_db" ]]; then
+		mkdir "$bot_user_db"
+	fi
+	if [[ "${message[1]}" ]]; then
+		reply_id=$(cat "$bot_user_db/$(jshon -Q -e date -u <<< "${message[1]}")")
+	fi
+	tg_method $method
+	printf '%s' "$(jshon -Q -e result -e message_id -u <<< "$curl_result")" \
+		> "$bot_user_db/$(jshon -Q -e result -e date -u <<< "$curl_result")"
+}
 twd() {
 	if [[ "$1" != "exit" ]]; then
 		cd "$tmpdir"
@@ -56,8 +73,8 @@ case_command() {
 								"join")
 									if [[ "$chat_type" = "private" ]]; then
 										text_id="Select chat to join:"
-										num_bot_chat=$(ls -1 "$bot_chat_dir" | wc -l)
-										list_bot_chat=$(ls -1 "$bot_chat_dir")
+										num_bot_chat=$(ls -1 "$bot_chat_dir" | grep -v "db$" | wc -l)
+										list_bot_chat=$(ls -1 "$bot_chat_dir" | grep -v "db$")
 										for j in $(seq 0 $((num_bot_chat - 1))); do
 											button_text[$j]=$(sed -n $((j+1))p <<< "$list_bot_chat")
 										done
@@ -115,8 +132,8 @@ case_command() {
 					;;
 					"list")
 						text_id=$(
-							for c in $(seq "$(ls -1 "$bot_chat_dir" | wc -l)"); do
-								bot_chat_id=$(ls -1 "$bot_chat_dir" | sed -n "${c}"p)
+							for c in $(seq "$(ls -1 "$bot_chat_dir" | grep -v "db$" | wc -l)"); do
+								bot_chat_id=$(ls -1 "$bot_chat_dir" | grep -v "db$" | sed -n "${c}"p)
 								bot_chat_users=$(sed 's/.*:\s//' "$bot_chat_dir$bot_chat_id" | tr ' ' '\n' | sed '/^$/d' | wc -l)
 								printf '%s\n' "chat: $bot_chat_id users: $bot_chat_users"
 							done
@@ -1504,82 +1521,30 @@ case_command() {
 }
 case_normal() {
 	if [[ "$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")" ]]; then
-		bc_users=$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir" | sed 's/.*:\s//' | tr ' ' '\n')
+		bot_chat=$(grep -r -- "$bot_chat_user_id" "$bot_chat_dir")
+		bot_chat_id=$(cut -f 1 -d : <<< "$bot_chat" | cut -f 3 -d /)
+		bc_users=$(sed 's/.*:\s//' <<< "$bot_chat" | tr ' ' '\n')
 		if [[ "$bc_users" ]]; then
 			to_delete_id=$message_id
-			sender_chat_id=$chat_id
-			mmd5=$(md5sum <<< "$message" | cut -f 1 -d ' ')
-			bc_users_num=$(wc -l <<< "$bc_users")
-			if [[ ! "${user_text[1]}" ]] && [[ "${caption[1]}" ]]; then
-				user_text[1]=${caption[1]}
-			fi
-			if [[ "${user_text[1]}" ]]; then
-				quote_reply=$(sed -n 1p <<< "${user_text[1]}" | grep '^|')
-				if [[ "$quote_reply" != "" ]]; then
-					user_text[1]=$(sed '1d' <<< "${user_text[1]}")
-				fi
-				quote=$(head -n 1 <<< "${user_text[1]}" | sed 's/^/| /g')
-			fi
-			if [[ "$file_type" == "text" ]]; then
-				if [[ "$quote" ]]; then
-					text_id=$(printf '%s\n' "$quote" "#$mmd5" "$user_text")
-				else
-					text_id=$(printf '%s\n' "#$mmd5" "$user_text")
-				fi
-				if [[ "$(tail -c 5 <<< "$user_text")" == "sign" ]]; then
-					from_chat_id=$chat_id
-					forward_id=$message_id
-					method=forward_message
-					tg_method $method
-					message_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
-
-					bc_users=$(grep -v -- "$chat_id" <<< "$bc_users")
-					bc_users_num=$((bc_users_num-1))
-				else
-					method=send_message
-				fi
-				for c in $(seq "$bc_users_num"); do
-					chat_id=$(sed -n ${c}p <<< "$bc_users")
-					tg_method $method &
-				done
-				wait
-			else
-				if [[ "$quote" ]]; then
-					caption=$(printf '%s\n' "$quote" "#$mmd5" "$caption")
-				else
-					caption=$(printf '%s\n' "#$mmd5" "$caption")
-				fi
-				if [[ "$file_type" == "sticker" ]]; then
-					tg_method get_file "$sticker_id"
-					file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
-
-					twd
-					convert "$file_path" sticker.png
-					document_id="@sticker.png"
-					tg_method send_document upload
-					message_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
-					rm -f sticker.png
-					twd exit
-
-					bc_users=$(grep -v -- "$chat_id" <<< "$bc_users")
-					bc_users_num=$((bc_users_num-1))
-				fi
-				from_chat_id=$chat_id
-				if [[ "$(tail -c 5 <<< "$caption")" == "sign" ]]; then
-					forward_id=$message_id
-					method=forward_message
-				else
-					copy_id=$message_id
-					method=copy_message
-				fi
-				for c in $(seq "$bc_users_num"); do
-					chat_id=$(sed -n ${c}p <<< "$bc_users")
-					tg_method $method &
-				done
-				wait
-			fi
-			chat_id=$sender_chat_id
 			tg_method delete_message
+			bc_users_num=$(wc -l <<< "$bc_users")
+			case "$file_type" in
+				text)
+					text_id=$user_text
+					method=send_message
+				;;
+				photo)
+					method=send_photo
+				;;
+				sticker)
+					method=send_sticker
+				;;
+			esac
+			for c in $(seq "$bc_users_num"); do
+				chat_id=$(sed -n ${c}p <<< "$bc_users")
+				bot_chat_send_message "$chat_id" &
+			done
+			wait
 		fi
 	fi
 }
