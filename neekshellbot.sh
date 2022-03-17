@@ -39,7 +39,7 @@ update_db() {
 				"lname: ${user_lname[1]}" > "$file_reply_user"
 		fi
 	fi
-	if [[ "$chat_id" != "" ]]; then
+	if [[ "$chat_id" ]] && [[ "$type" != "private" ]]; then
 		[[ ! -d db/chats/ ]] && mkdir -p db/chats/
 		file_chat=db/chats/"$chat_id"
 		if [[ ! -e "$file_chat" ]]; then
