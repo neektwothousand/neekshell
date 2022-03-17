@@ -17,15 +17,13 @@ update_db() {
 			"fname: $user_fname" \
 			"lname: $user_lname" > "$file_user"
 		else
-			if [[ "tag: $user_tag" != "$(grep -- "^tag" "$file_user")" ]]; then
-				sed -i "s/^tag: .*/tag: $user_tag/" "$file_user"
-			fi
-			if [[ "fname: $user_fname" != "$(grep -- "^fname" "$file_user")" ]]; then
-				sed -i "s/^fname: .*/fname: $(sed 's|/|\\/|'<<< "$user_fname")/" "$file_user"
-			fi
-			if [[ "lname: $user_lname" != "$(grep -- "^lname" "$file_user")" ]]; then
-				sed -i "s/^lname: .*/lname: $(sed 's|/|\\/|'<<< "$user_lname")/" "$file_user"
-			fi
+			value=("$user_tag" "$user_fname" "$user_lname") field=("tag" "fname" "lname")
+			for x in $(seq 0 $((${#value[@]}-1))); do
+				if [[ "${field[$x]}: ${value[$x]}" != "$(grep -- "^${field[$x]}" "$file_chat")" ]]; then
+					sed -i -- "/^${field[$x]}: .*/d" "$file_chat"
+					printf '%s\n' "${field[$x]}: ${value[$x]}" >> "$file_user"
+				fi
+			done
 		fi
 	fi
 	if [[ "${message[1]}" != "" ]]; then
@@ -46,11 +44,16 @@ update_db() {
 			printf '%s\n' \
 				"title: $chat_title" \
 				"id: $chat_id" \
+				"tag: $chat_tag" \
 				"type: $chat_type" > "$file_chat"
 		else
-			if [[ "title: $chat_title" != "$(grep -- "^title" "$file_chat")" ]]; then
-				sed -i "s/^title: .*/title: $chat_title/" "$file_chat"
-			fi
+			value=("$chat_title" "$chat_tag") field=("title" "tag")
+			for x in $(seq 0 $((${#value[@]}-1))); do
+				if [[ "${field[$x]}: ${value[$x]}" != "$(grep -- "^${field[$x]}" "$file_chat")" ]]; then
+					sed -i -- "/^${field[$x]}: .*/d" "$file_chat"
+					printf '%s\n' "${field[$x]}: ${value[$x]}" >> "$file_chat"
+				fi
+			done
 		fi
 	fi
 }
@@ -295,11 +298,13 @@ get_message_info() {
 			-e message_id -u -p \
 			-e chat -e type -u -p \
 				-e title -u -p \
+				-e username -u -p \
 				-e id -u <<< "${message[$x]}")
 		message_id[$x]=$(sed -n 1p <<< "$jsp") \
 		chat_type[$x]=$(sed -n 2p <<< "$jsp") \
 		chat_title[$x]=$(sed -n 3p <<< "$jsp") \
-		chat_id[$x]=$(sed -n 4p <<< "$jsp")
+		chat_tag[$x]=$(sed -n 4p <<< "$jsp") \
+		chat_id[$x]=$(sed -n 5p <<< "$jsp")
 		case "$(grep -o "^sender_chat\|^from" <<< "${message_key[$x]}")" in
 			from)
 				jsp=$(jshon -Q -e from \
