@@ -17,10 +17,11 @@ update_db() {
 			"fname: $user_fname" \
 			"lname: $user_lname" > "$file_user"
 		else
-			value=("$user_tag" "$user_fname" "$user_lname") field=("tag" "fname" "lname")
+			value=("$user_tag" "$user_fname" "$user_lname")
+			field=("tag" "fname" "lname")
 			for x in $(seq 0 $((${#value[@]}-1))); do
-				if [[ "${field[$x]}: ${value[$x]}" != "$(grep -- "^${field[$x]}" "$file_chat")" ]]; then
-					sed -i -- "/^${field[$x]}: .*/d" "$file_chat"
+				if [[ "${field[$x]}: ${value[$x]}" != "$(grep -- "^${field[$x]}" "$file_user")" ]]; then
+					sed -i -- "/^${field[$x]}: .*/d" "$file_user"
 					printf '%s\n' "${field[$x]}: ${value[$x]}" >> "$file_user"
 				fi
 			done
@@ -47,7 +48,8 @@ update_db() {
 				"tag: $chat_tag" \
 				"type: $chat_type" > "$file_chat"
 		else
-			value=("$chat_title" "$chat_tag") field=("title" "tag")
+			value=("$chat_title" "$chat_tag")
+			field=("title" "tag")
 			for x in $(seq 0 $((${#value[@]}-1))); do
 				if [[ "${field[$x]}: ${value[$x]}" != "$(grep -- "^${field[$x]}" "$file_chat")" ]]; then
 					sed -i -- "/^${field[$x]}: .*/d" "$file_chat"
@@ -298,31 +300,31 @@ get_message_info() {
 			-e message_id -u -p \
 			-e chat -e type -u -p \
 				-e title -u -p \
-				-e username -u -p \
-				-e id -u <<< "${message[$x]}")
+				-e id -u -p \
+				-e username -u <<< "${message[$x]}")
 		message_id[$x]=$(sed -n 1p <<< "$jsp") \
 		chat_type[$x]=$(sed -n 2p <<< "$jsp") \
 		chat_title[$x]=$(sed -n 3p <<< "$jsp") \
-		chat_tag[$x]=$(sed -n 4p <<< "$jsp") \
-		chat_id[$x]=$(sed -n 5p <<< "$jsp")
+		chat_id[$x]=$(sed -n 4p <<< "$jsp") \
+		chat_tag[$x]=$(sed -n 5p <<< "$jsp")
 		case "$(grep -o "^sender_chat\|^from" <<< "${message_key[$x]}")" in
 			from)
 				jsp=$(jshon -Q -e from \
 					-e id -u -p \
-					-e username -u -p \
 					-e first_name -u -p \
+					-e username -u -p \
 					-e last_name -u <<< "${message[$x]}")
-				user_id[$x]=$(sed -n 1p <<< "$jsp") user_tag[$x]=$(sed -n 2p <<< "$jsp") \
-				user_fname[$x]=$(sed -n 3p <<< "$jsp") user_lname[$x]=$(sed -n 4p <<< "$jsp")
+				user_id[$x]=$(sed -n 1p <<< "$jsp") user_fname[$x]=$(sed -n 2p <<< "$jsp") \
+				user_tag[$x]=$(sed -n 3p <<< "$jsp") user_lname[$x]=$(sed -n 4p <<< "$jsp")
 			;;
 			sender_chat)
 				jsp=$(jshon -Q -e sender_chat \
 					-e id -u -p \
-					-e username -u -p \
-					-e title -u <<< "${message[$x]}")
+					-e title -u -p \
+					-e username -u <<< "${message[$x]}")
 				sender_chat_id[$x]=$(sed -n 1p <<< "$jsp") \
-				sender_chat_tag[$x]=$(sed -n 2p <<< "$jsp") \
-				sender_chat_title[$x]=$(sed -n 3p <<< "$jsp")
+				sender_chat_title[$x]=$(sed -n 2p <<< "$jsp") \
+				sender_chat_tag[$x]=$(sed -n 3p <<< "$jsp")
 			;;
 		esac
 	done
