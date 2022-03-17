@@ -1539,6 +1539,15 @@ case_normal() {
 				sticker)
 					method=send_sticker
 				;;
+				video)
+					method=send_video
+				;;
+				voice)
+					method=send_voice
+				;;
+				audio)
+					method=send_audio
+				;;
 			esac
 			for c in $(seq "$bc_users_num"); do
 				chat_id=$(sed -n ${c}p <<< "$bc_users")
