@@ -302,13 +302,13 @@ get_message_info() {
 			-e message_id -u -p \
 			-e chat -e type -u -p \
 				-e id -u -p \
-				-e username -u -p \
-				-e title -u <<< "${message[$x]}")
+				-e title -u -p \
+				-e username -u <<< "${message[$x]}")
 		message_id[$x]=$(sed -n 1p <<< "$jsp") \
 		chat_type[$x]=$(sed -n 2p <<< "$jsp") \
 		chat_id[$x]=$(sed -n 3p <<< "$jsp") \
-		chat_tag[$x]=$(sed -n 4p <<< "$jsp") \
-		chat_title[$x]=$(sed -n 5p <<< "$jsp")
+		chat_title[$x]=$(sed -n 4p <<< "$jsp") \
+		chat_tag[$x]=$(sed -n 5p <<< "$jsp")
 		case "$(grep -o "^sender_chat\|^from" <<< "${message_key[$x]}")" in
 			from)
 				jsp=$(jshon -Q -e from \
