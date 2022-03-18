@@ -1,3 +1,79 @@
+video_jpg() {
+	if [[ "${file_type[1]}" == "video" ]]; then
+		audio_c="-c:a aac"
+	elif [[ "${file_type[1]}" == "animation" ]]; then
+		video_id[1]=${animation_id[1]}
+		audio_c="-an"
+
+	fi
+	case "$1" in
+		video)
+			audio_c="-c:a aac"
+		;;
+		animation)
+			audio_c="-an"
+		;;
+	esac
+	case "$2" in
+		animation)
+			video_id[1]=${animation_id[1]}
+		;;
+		videosticker)
+			video_id[1]=${sticker_id[1]}
+		;;
+	esac
+	tg_method get_file "${video_id[1]}"
+	file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
+	ext=$(sed 's/.*\.//' <<< "$file_path")
+	if [[ "$ext" == "gif" ]]; then
+		ffmpeg -i "$file_path" "video.mp4"
+	else
+		cp "$file_path" "video.$ext"
+	fi
+	loading 1
+	video_info=$(ffprobe -v error \
+		-show_entries stream=sample_rate,bit_rate,duration,width,height,r_frame_rate \
+		-of default=noprint_wrappers=1 "$file_path")
+	res[0]=$(sed -n 's/^width=//p' <<< "$video_info")
+	res[1]=$(sed -n 's/^height=//p' <<< "$video_info")
+	res[0]=$(bc <<< "${res[0]}/1.5")
+	res[1]=$(bc <<< "${res[1]}/1.5")
+	[[ "$((${res[0]}%2))" -eq "0" ]] || res[0]=$((${res[0]}-1))
+	[[ "$((${res[1]}%2))" -eq "0" ]] || res[1]=$((${res[1]}-1))
+	if [[ "${file_type[1]}" == "video" ]]; then
+		br=$(sed -n 's/^bit_rate=//p' <<< "$video_info" | head -n 1)
+		sr=$(sed -n 's/^sample_rate=//p' <<< "$video_info" | head -n 1)
+		if [[ "$br" ]] && [[ "$sr" ]]; then
+			srs=(24000 16000 11025 7350)
+			y=0 ; for x in ${srs[@]}; do
+				if [[ "$sr" == "${srs[$y]}" ]] \
+				&& [[ "$y" != "3" ]]; then
+					sr=${srs[$((y+1))]}
+					break
+				else
+					y=$((y+1))
+				fi
+				if [[ "$y" == "3" ]]; then
+					sr=${srs[0]}
+				fi
+			done
+			audio_c="$audio_c -b:a $(bc <<< "$br/2") -ar $sr"
+		fi
+	fi
+	ffmpeg -i "video.$ext" \
+		-vf "scale=${res[0]}:${res[1]}" -sws_flags fast_bilinear \
+		-crf 50 $audio_c "video-low.mp4"
+	loading 2
+	if [[ "${file_type[1]}" == "video" ]]; then
+		video_id="@video-low.mp4"
+		tg_method send_video upload
+	else
+		animation_id="@video-low.mp4"
+		tg_method send_animation upload
+	fi
+	loading 3
+	rm -f -- "video.$ext" "video-low.mp4"
+}
 bot_chat_send_message() {
 	chat_id=$1
 	bot_chat_db="${bot_chat_dir}${bot_chat_id}_db"
@@ -640,79 +716,26 @@ case_command() {
 						fi
 					;;
 					sticker)
-						tg_method get_file "${sticker_id[1]}"
-						file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
-						cp "$file_path" "sticker.webp"
-						res=($(ffprobe -v error -show_streams "sticker.webp" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
-						convert "sticker.webp" "sticker.jpg"
-						magick "sticker.jpg" -resize $(bc <<< "${res[0]}/1.5")x$(bc <<< "${res[1]}/1.5") "sticker.jpg"
-						magick "sticker.jpg" -quality 6 "sticker.jpg"
-						magick "sticker.jpg" -resize 512x512 "sticker.jpg"
-						convert "sticker.jpg" "sticker.webp"
+						if [[ "${sticker_is_animated[1]}" != "true" ]] && [[ "${sticker_is_video[1]}" != "true" ]]; then
+							tg_method get_file "${sticker_id[1]}"
+							file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
+							cp "$file_path" "sticker.webp"
+							res=($(ffprobe -v error -show_streams "sticker.webp" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
+							convert "sticker.webp" "sticker.jpg"
+							magick "sticker.jpg" -resize $(bc <<< "${res[0]}/1.5")x$(bc <<< "${res[1]}/1.5") "sticker.jpg"
+							magick "sticker.jpg" -quality 6 "sticker.jpg"
+							magick "sticker.jpg" -resize 512x512 "sticker.jpg"
+							convert "sticker.jpg" "sticker.webp"
 
-						sticker_id="@sticker.webp"
-						tg_method send_sticker upload
-
-						rm -f "sticker.webp" "sticker.jpg"
+							sticker_id="@sticker.webp"
+							tg_method send_sticker upload
+							rm -f "sticker.webp" "sticker.jpg"
+						elif [[ "${sticker_is_video[1]}" == "true" ]]; then
+							video_jpg animation videosticker
+						fi
 					;;
 					video|animation)
-						if [[ "${file_type[1]}" == "video" ]]; then
-							audio_c="-c:a aac"
-						elif [[ "${file_type[1]}" == "animation" ]]; then
-							video_id[1]=${animation_id[1]}
-							audio_c="-an"
-						fi
-						tg_method get_file "${video_id[1]}"
-						file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
-						ext=$(sed 's/.*\.//' <<< "$file_path")
-						if [[ "$ext" == "gif" ]]; then
-							ffmpeg -i "$file_path" "video.mp4"
-						else
-							cp "$file_path" "video.mp4"
-						fi
-						loading 1
-						video_info=$(ffprobe -v error \
-							-show_entries stream=sample_rate,bit_rate,duration,width,height,r_frame_rate \
-							-of default=noprint_wrappers=1 "$file_path")
-						res[0]=$(sed -n 's/^width=//p' <<< "$video_info")
-						res[1]=$(sed -n 's/^height=//p' <<< "$video_info")
-						res[0]=$(bc <<< "${res[0]}/1.5")
-						res[1]=$(bc <<< "${res[1]}/1.5")
-						[[ "$((${res[0]}%2))" -eq "0" ]] || res[0]=$((${res[0]}-1))
-						[[ "$((${res[1]}%2))" -eq "0" ]] || res[1]=$((${res[1]}-1))
-						if [[ "${file_type[1]}" == "video" ]]; then
-							br=$(sed -n 's/^bit_rate=//p' <<< "$video_info" | head -n 1)
-							sr=$(sed -n 's/^sample_rate=//p' <<< "$video_info" | head -n 1)
-							if [[ "$br" ]] && [[ "$sr" ]]; then
-								srs=(24000 16000 11025 7350)
-								y=0 ; for x in ${srs[@]}; do
-									if [[ "$sr" == "${srs[$y]}" ]] \
-									&& [[ "$y" != "3" ]]; then
-										sr=${srs[$((y+1))]}
-										break
-									else
-										y=$((y+1))
-									fi
-									if [[ "$y" == "3" ]]; then
-										sr=${srs[0]}
-									fi
-								done
-								audio_c="$audio_c -b:a $(bc <<< "$br/2") -ar $sr"
-							fi
-						fi
-						ffmpeg -i "video.mp4" \
-							-vf "scale=${res[0]}:${res[1]}" -sws_flags fast_bilinear \
-							-crf 50 $audio_c "video-low.mp4"
-						loading 2
-						if [[ "${file_type[1]}" == "video" ]]; then
-							video_id="@video-low.mp4"
-							tg_method send_video upload
-						else
-							animation_id="@video-low.mp4"
-							tg_method send_animation upload
-						fi
-						loading 3
-						rm -f -- "video.mp4" "video-low.mp4"
+						video_jpg ${file_type[1]}
 					;;
 					audio|voice)
 						[[ "${file_type[1]}" == "voice" ]] && audio_id[1]=${voice_id[1]}

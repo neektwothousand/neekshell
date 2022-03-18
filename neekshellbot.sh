@@ -247,6 +247,8 @@ get_message_info() {
 				case "${file_type[$x]}" in
 					sticker)
 						sticker_id[$x]=$(jshon -Q -e sticker -e file_id -u <<< "${message[$x]}")
+						sticker_is_animated[$x]=$(jshon -Q -e sticker -e is_animated -u <<< "${message[$x]}")
+						sticker_is_video[$x]=$(jshon -Q -e sticker -e is_video -u <<< "${message[$x]}")
 					;;
 					animation)
 						animation_id[$x]=$(jshon -Q -e animation -e file_id -u <<< "${message[$x]}")
