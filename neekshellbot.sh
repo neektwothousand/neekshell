@@ -358,11 +358,14 @@ process_reply() {
 		callback_query)
 			callback=$(jshon -Q -e callback_query <<< "$input")
 			message_key=$(jshon -Q -k <<< "$callback")
-			callback_id=$(jshon -Q -e id -u <<< "$callback")
+			jsp=$(jshon -Q -e id -u -p \
+				-e message -e chat -e id -u -p -p -p \
+				-e message -e message_id -u <<< "$callback")
+			callback_id=$(sed -n 1p <<< "$jsp") \
+			callback_chat_id=$(sed -n 2p <<< "$jsp") \
+			callback_message_id=$(sed -n 3p <<< "$jsp")
 			callback_data=$(jshon -Q -e data -u <<< "$callback")
 			callback_caption=$(jshon -Q -e message -e caption -u <<< "$callback")
-			callback_chat_id=$(jshon -Q -e message -e chat -e id -u <<< "$callback")
-			callback_message_id=$(jshon -Q -e message -e message_id -u <<< "$callback")
 			callback_message_text=$(jshon -Q -e message -e text -u <<< "$callback")
 			message=$(jshon -Q -e message <<< "$callback")
 			get_message_info "$callback"
