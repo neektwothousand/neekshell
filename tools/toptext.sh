@@ -10,18 +10,21 @@ if [[ "$(grep -P '[\p{Han}]' <<< "$toptext")" ]]; then
 else
 	font="fontfile=$(realpath ~/.local/share/fonts)/futura.otf"
 fi
-line_th=$(ffmpeg -v 24 -hide_banner -f lavfi -i color \
-	-vf "drawtext=fontfile=$fontfile:fontsize=$fs:textfile=$tts:y=print(th\,24)" \
-	-vframes 1 -f null - 2>&1 | sed -n 1p | sed 's/\..*//')
 if [[ "$2" == "" ]]; then
 	mode=top
 else
 	mode=bottom
 fi
+get_line_th() {
+	ffmpeg -v 24 -hide_banner -f lavfi -i color \
+		-vf "drawtext=fontfile=$fontfile:fontsize=$fs:textfile=$1:y=print(th\,24)" \
+		-vframes 1 -f null - 2>&1 | sed -n 1p | sed 's/\..*//'
+}
+get_line_th "$tts"
 get_nh() {
 	if [[ "$1" == "top" ]]; then
-		nh=$(bc <<< "${res[1]}+$last_ycord+($line_th/0.9)")
-		ypad_cord=$(bc <<< "$last_ycord+($line_th/0.9)")
+		nh=$(bc <<< "${res[1]}+$last_ycord+($line_th/1.4)")
+		ypad_cord=$(bc <<< "$last_ycord+($line_th/1.4)")
 	else
 		nh=$(bc <<< "$last_ycord+($line_th/0.9)")
 		ypad_cord=0
@@ -38,8 +41,12 @@ drawtext_lines() {
 		tf[$x]="toptext-$x"
 		printf '%s' "$line" > "${tf[$x]}"
 		if [[ "$x" == "$nl" ]]; then
+			line_th=$(get_line_th "${tf[$x]}")
+			line_th=$((line_th+(line_th/2)))
 			ycord=$(bc <<< "$ycord+($line_th/4)")
 		else
+			line_th=$(get_line_th "${tf[$((x+1))]}")
+			line_th=$((line_th+(line_th/2)))
 			ycord=$(bc <<< "$ycord+($line_th/1.2)")
 		fi
 		printf '%s\n' "$ycord($x) res1: ${res[1]}"
@@ -56,8 +63,9 @@ get_tw() {
 	nl=$(wc -l <<< "$toptext")
 	w_diff=$(bc <<< "${res[0]}/$tw")
 	if [[ "$w_diff" != "0" ]]; then
-		line_th=$((line_th+(line_th/4)))
 		drawtext_lines
+		line_th=$(get_line_th "$tts")
+		line_th=$((line_th+line_th))
 		get_nh "$mode"
 		case "$ext" in
 			jpg|jpeg|png|webp)
@@ -85,9 +93,7 @@ get_tw() {
 		if [[ "$((tw_c%4))" == "0" ]] && [[ "$fs" -gt "8" ]]; then
 			fs=$(bc <<< "$fs-($fs/4)")
 			printf '%s' "$(tr '\n' ' ' <<< "$toptext")" > "$tts"
-			line_th=$(ffmpeg -v 24 -hide_banner -f lavfi -i color \
-				-vf "drawtext=$font:fontsize=$fs:textfile=$tts:y=print(th\,24)" \
-				-vframes 1 -f null - 2>&1 | sed -n 1p | sed 's/\..*//')
+			line_th=$(get_line_th)
 		else
 			toptext=$(fold -s -w $(bc <<< "(($tt_wc/2)+5)-$tw_c") <<< "$unfolded" | sed -e 's/ *$//g' -e 's/^ *//g' | sed '/^ *$/d' | sed '/^$/d')
 		fi
