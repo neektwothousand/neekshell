@@ -1628,7 +1628,7 @@ case_chat_id() {
 }
 case_user_id() {
 	case "$user_id" in
-		73520494|160551211) # lynn
+		73520494) # lynn
 			if [[ "$no_args" ]]; then
 				users=$(cat lynnmentions | cut -f 1 -d :)
 				mention=$(grep -oi "$(sed -e 's/^/\^/' -e 's/$/\$\\|/' <<< "$users" | tr '\n' ' ' | tr -d ' ' | head -c -2)" <<< "$user_text" | tr [[:upper:]] [[:lower:]])
@@ -1642,6 +1642,21 @@ case_user_id() {
 				fi
 			fi
 		;;
+		492326133|160551211|917684979) # olibot
+			case "$command" in
+				"!olibot")
+					case "${arg[0]}" in
+						start|stop|restart|update)
+							source ./olibot.sh "${arg[0]}"
+							if [[ "$text_id" ]]; then
+								get_reply_id self
+								tg_method send_message
+							fi
+						;;
+					esac
+				;;
+			esac
+		;;
 	esac
 }
 
@@ -1650,7 +1665,6 @@ if [[ "$command" ]]; then
 else
 	case_normal
 fi
-
 case_chat_id
 case_user_id
 
