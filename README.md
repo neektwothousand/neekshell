@@ -7,7 +7,5 @@ Utilities used:
   - cURL<br />
   - jshon (http://kmkeen.com/jshon/index.html)
 
-PowerShell version by adamantinum: https://github.com/adamantinum/PSTelegramBot
-
 # enable administrative commands
 To use administrative commands you need a text file named `admins` with a list of admin IDs
