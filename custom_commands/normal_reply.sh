@@ -606,10 +606,13 @@ case_command() {
 			fi
 		;;
 		"!insert"|"!extract")
+			if [[ "$chat_type" == "private" ]]; then
+				file_chat=$file_user
+			fi
 			case "$command" in
 				"!insert")
 					if [[ ! "$(grep "^pool" "$file_chat")" ]]; then
-						printf '%s\n' "pool: ${arg[*]}" >> "$basedir/db/chats/$chat_id"
+						printf '%s\n' "pool: ${arg[*]}" >> "$file_chat"
 					else
 						sed -i "s/\(^pool: \).*/\1${arg[*]} /" "$file_chat"
 					fi
