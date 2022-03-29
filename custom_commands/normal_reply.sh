@@ -1091,7 +1091,7 @@ case_command() {
 					if [[ "$duration" -le "3" ]]; then
 						twd
 						loading 1
-						bot_username=$(jshon -Q -e result -e username -u < botinfo)
+						bot_username=$(jshon -Q -e result -e username -u < "$basedir/botinfo")
 						frame_rate=$(sed -n "s/^r_frame_rate=//p" <<< "$video_info" | head -n 1 | cut -f 1 -d /)
 						width=$(sed -n 's/^width=//p' <<< "$video_info")
 						height=$(sed -n 's/^height=//p' <<< "$video_info")
