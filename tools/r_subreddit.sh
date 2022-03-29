@@ -1,6 +1,8 @@
 [[ "$1" = "" ]] && exit
 enable_markdown=true
 parse_mode=html
+subreddit=$1
+[[ "$2" ]] && filter=$2
 case "$subreddit" in
 	none)
 		case "$filter" in
