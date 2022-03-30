@@ -525,7 +525,7 @@ case_command() {
 				twd
 				get_reply_id reply
 				case "${file_type[1]}" in
-					animation|photo|video|sticker)
+					animation|photo|video)
 						case "${file_type[1]}" in
 							animation)
 								media_id=${animation_id[1]}
@@ -533,31 +533,37 @@ case_command() {
 							video)
 								media_id=${video_id[1]}
 							;;
+							photo)
+								media_id=${photo_id[1]}
+							;;
 						esac
 						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
 						ext=$(sed 's/.*\.//' <<< "$file_path")
-						cp "$file_path" "video.$ext"
 						toptext=$(sed -e "s/$(head -n 1 <<< "$user_text" | cut -f 1 -d ' ') //" -e "s/,/\\\,/g" <<< "$user_text")
 						loading 1
 						case "$command" in
 							"!gtt")
 								source "$basedir/tools/toptext.sh" \
-									"$toptext"
+									"$toptext" "top" "$file_path"
 							;;
 							"!gbt")
 								source "$basedir/tools/toptext.sh" \
-									"$toptext" "bottom"
+									"$toptext" "bottom" "$file_path"
 							;;
 						esac
 						loading 2
 						case "${file_type[1]}" in
 							animation)
-								animation_id="@video-toptext.$ext"
+								animation_id="@toptext.$ext"
 								tg_method send_animation upload
 							;;
 							video)
-								video_id="@video-toptext.$ext"
+								video_id="@toptext.$ext"
 								tg_method send_video upload
+							;;
+							photo)
+								photo_id="@toptext.$ext"
+								tg_method send_photo upload
 							;;
 						esac
 						loading 3

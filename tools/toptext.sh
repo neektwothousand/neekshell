@@ -1,7 +1,7 @@
 #!/bin/mksh
-toptext=$1 size=3
+toptext=$1 media=$3 size=3
 unfolded=$toptext tt_wc=$(wc -m <<< "$toptext")
-res=($(ffprobe -v error -show_streams "video.$ext" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
+res=($(ffprobe -v error -show_streams "$media" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
 fs=$(bc <<< "(${res[1]}/$size)/2")
 tts="toptext-start"
 printf '%s' "$(tr '\n' ' ' <<< "$toptext")" > "$tts"
@@ -10,7 +10,7 @@ if [[ "$(grep -P '[\p{Han}]' <<< "$toptext")" ]]; then
 else
 	font="fontfile=$(realpath ~/.local/share/fonts)/futura.otf"
 fi
-if [[ "$2" == "" ]]; then
+if [[ "$2" == "top" ]]; then
 	mode=top
 else
 	mode=bottom
@@ -20,13 +20,13 @@ get_line_th() {
 		-vf "drawtext=fontfile=$fontfile:fontsize=$fs:textfile=$1:y=print(th\,24)" \
 		-vframes 1 -f null - 2>&1 | sed -n 1p | sed 's/\..*//'
 }
-get_line_th "$tts"
+line_th=$(get_line_th "$tts")
 get_nh() {
 	if [[ "$1" == "top" ]]; then
 		nh=$(bc <<< "${res[1]}+$last_ycord+($line_th/1.4)")
 		ypad_cord=$(bc <<< "$last_ycord+($line_th/1.4)")
 	else
-		nh=$(bc <<< "$last_ycord+($line_th/0.9)")
+		nh=$(bc <<< "$last_ycord+($line_th/1.4)")
 		ypad_cord=0
 	fi
 }
@@ -43,13 +43,16 @@ drawtext_lines() {
 		if [[ "$x" == "$nl" ]]; then
 			line_th=$(get_line_th "${tf[$x]}")
 			line_th=$((line_th+(line_th/2)))
-			ycord=$(bc <<< "$ycord+($line_th/4)")
+			if [[ "$mode" == "bottom" ]]; then
+				ycord=$(bc <<< "$ycord+($line_th/2.8)")
+			else
+				ycord=$(bc <<< "$ycord+($line_th/3.4)")
+			fi
 		else
 			line_th=$(get_line_th "${tf[$((x+1))]}")
 			line_th=$((line_th+(line_th/2)))
 			ycord=$(bc <<< "$ycord+($line_th/1.2)")
 		fi
-		printf '%s\n' "$ycord($x) res1: ${res[1]}"
 		lines[$x]="drawtext=box=1:textfile=${tf[$x]}:$font:fontsize=$fs:y=$ycord:x=(w-tw)/2,"
 	done
 	last_ycord=$ycord
@@ -69,21 +72,24 @@ get_tw() {
 		get_nh "$mode"
 		case "$ext" in
 			jpg|jpeg|png|webp)
-				ffmpeg -v error -y -i "video.$ext" \
-					-vf "pad=h=ih+$(bc <<< "$last_ycord+($line_th/0.9)"):w=iw+4:x=-1:y=$(bc <<< "$last_ycord+($line_th/0.9)")-1:color=white,$drawtext" \
-					-an "video-toptext.$ext"
+				[[ "$ypad_cord" == "0" ]] && ypad_cord=1 || ypad_cord=$((ypad_cord-1))
+				ffmpeg -v error -y -i "$media" \
+					-vf "pad=h=$nh:w=iw+4:x=-1:y=$ypad_cord:color=white,$drawtext" \
+					-f image2pipe -an - \
+					| ffmpeg -v error -y -f image2pipe \
+						-i - -filter:v "crop=iw-4:ih-1" "toptext.$ext"
 			;;
 			mp4|MP4)
 				case "${file_type[1]}" in
 					animation)
-						ffmpeg -v error -y -i "video.$ext" \
+						ffmpeg -v error -y -i "$media" \
 							-vf "pad=h=$nh:y=$ypad_cord:color=white,$drawtext" \
-							-an "video-toptext.$ext"
+							-an "toptext.$ext"
 					;;
 					video)
-						ffmpeg -v error -y -i "video.$ext" \
+						ffmpeg -v error -y -i "$media" \
 							-vf "pad=h=$nh:y=$ypad_cord:color=white,$drawtext" \
-							"video-toptext.$ext"
+							"toptext.$ext"
 					;;
 				esac
 			;;
@@ -93,7 +99,7 @@ get_tw() {
 		if [[ "$((tw_c%4))" == "0" ]] && [[ "$fs" -gt "8" ]]; then
 			fs=$(bc <<< "$fs-($fs/4)")
 			printf '%s' "$(tr '\n' ' ' <<< "$toptext")" > "$tts"
-			line_th=$(get_line_th)
+			line_th=$(get_line_th "$tts")
 		else
 			toptext=$(fold -s -w $(bc <<< "(($tt_wc/2)+5)-$tw_c") <<< "$unfolded" | sed -e 's/ *$//g' -e 's/^ *//g' | sed '/^ *$/d' | sed '/^$/d')
 		fi
