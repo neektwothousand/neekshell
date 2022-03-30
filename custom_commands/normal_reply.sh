@@ -1342,6 +1342,27 @@ case_command() {
 				tg_method send_message
 			fi
 		;;
+		"!rustc")
+			if [[ "${arg[0]}" ]] && [[ $(is_status admin) ]]; then
+				markdown=("<code>" "</code>")
+				parse_mode=html
+				twd
+				rustc=$(printf '%s\n' "fn main() {" \
+					"$(sed "s/$command \|$command//" <<< "$user_text")" \
+					"}" | rustc -o o - 2>&1)
+				if [[ -e o ]]; then
+					timeout 5s ./o 2>&1 > out
+					if [[ "$?" == "0" ]]; then
+						text_id=$(cat out)
+					else
+						text_id="timed out"
+					fi
+				else
+					text_id=$rustc
+				fi
+				tg_method send_message
+			fi
+		;;
 		"!set")
 			if [[ $(is_status admins) ]]; then
 				set_username=$(sed 's/^@//' <<< "${arg[1]}")
