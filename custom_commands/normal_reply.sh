@@ -1349,7 +1349,7 @@ case_command() {
 			fi
 		;;
 		"!rustc")
-			if [[ "${arg[0]}" ]] && [[ $(is_status admin) ]]; then
+			if [[ "${arg[0]}" ]] && [[ $(is_status admins) ]]; then
 				markdown=("<code>" "</code>")
 				parse_mode=html
 				twd
