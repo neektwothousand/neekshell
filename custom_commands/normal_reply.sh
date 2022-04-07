@@ -1173,13 +1173,11 @@ case_command() {
 					caption=$(jshon -Q -e title -u <<< "$ytdl_json")
 					if [[ "$(du -m ytdl.mp4 | cut -f 1)" -ge 2000 ]]; then
 						loading value "error"
-						rm ytdl.mp4
 					else
-						video_id="@ytdl.mp4" thumb="@thumb.jpg"
+						video_id="@ytdl.mp4"
 						loading 2
 						tg_method send_video upload
 						loading 3
-						rm "ytdl.mp4" "thumb.jpg"
 					fi
 				else
 					loading value "error"

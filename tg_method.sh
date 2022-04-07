@@ -62,7 +62,8 @@ tg_method() {
 				video_info=$(ffprobe -v error -show_entries stream=width,height -of default=noprint_wrappers=1 "${video_id/@/}")
 				width=$(sed -n 's/^width=//p' <<< "$video_info")
 				height=$(sed -n 's/^height=//p' <<< "$video_info")
-				ffmpeg -i "${video_id/@/}" -ss 01 -frames:v 1 -vf scale=320:-1 "${thumb/@/}"
+				thumb="@thumb.jpg"
+				ffmpeg -v error -i "${video_id/@/}" -ss 01 -frames:v 1 -vf scale=320:-1 "${thumb/@/}"
 			fi
 			curl -s "$TELEAPI/sendVideo" \
 				$curl_f "chat_id=$chat_id" \
