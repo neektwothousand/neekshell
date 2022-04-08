@@ -1347,22 +1347,16 @@ case_command() {
 			fi
 		;;
 		"!rustc")
-			if [[ "${arg[0]}" ]] && [[ $(is_status admins) ]]; then
+			if [[ $(is_status admins) ]]; then
 				markdown=("<code>" "</code>")
 				parse_mode=html
 				twd
-				rustc=$(printf '%s\n' "fn main() {" \
-					"$(sed "s/$command \|$command//" <<< "$user_text")" \
-					"}" | rustc -o o - 2>&1)
-				if [[ -e o ]]; then
-					timeout 5s ./o 2>&1 > out
-					if [[ "$?" == "0" ]]; then
-						text_id=$(cat out)
-					else
-						text_id="timed out"
-					fi
+				printf '%s\n' "$(sed "s/$command//" <<< "${user_text}" | sed '/^$/d')" > "$user_id.rs"
+				"$HOME/.cargo/bin/runner" "$user_id.rs" > out 2>&1
+				if [[ "$?" == "0" ]]; then
+					text_id=$(cat out)
 				else
-					text_id=$rustc
+					text_id=$(cat out | sed -z "s|$HOME/.cargo/.runner/bin/||")
 				fi
 				tg_method send_message
 			fi
