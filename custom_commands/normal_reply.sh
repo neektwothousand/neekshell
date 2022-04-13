@@ -699,7 +699,7 @@ case_command() {
 				get_reply_id reply
 				case "${file_type[1]}" in
 					text)
-						text_id=$(sed -E 's/(.).(.)/\1\2/g' <<< "${user_text[1]}")
+						text_id=$("$basedir/tools/jpg" "${user_text[1]}")
 						tg_method send_message
 					;;
 					photo)
