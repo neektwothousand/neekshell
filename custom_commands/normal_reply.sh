@@ -519,7 +519,7 @@ case_command() {
 			get_reply_id any
 			tg_method send_message
 		;;
-		"!gtt"|"!gbt")
+		"!g"[tbrl]"t")
 			[[ -e "$basedir/powersave" ]] && return
 			if [[ "${message_id[1]}" != "" ]]; then
 				twd
@@ -542,15 +542,14 @@ case_command() {
 						toptext=$(sed -e "s/$(head -n 1 <<< "$user_text" | cut -f 1 -d ' ') //" -e "s/,/\\\,/g" <<< "$user_text")
 						loading 1
 						case "$command" in
-							"!gtt")
-								source "$basedir/tools/toptext.sh" \
-									"$toptext" "top" "$file_path"
-							;;
-							"!gbt")
-								source "$basedir/tools/toptext.sh" \
-									"$toptext" "bottom" "$file_path"
-							;;
+							"!gtt") mode=top ;;
+							"!gbt") mode=bottom ;;
+							"!grt") mode=right ;;
+							"!glt") mode=left ;;
 						esac
+						source "$basedir/tools/toptext.sh" \
+							"$toptext" "$mode" "$file_path"
+
 						loading 2
 						case "${file_type[1]}" in
 							animation)
