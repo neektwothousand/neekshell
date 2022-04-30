@@ -279,7 +279,7 @@ get_message_info() {
 								file_type[$x]=animation
 								animation_id[$x]=${document_id[$x]}
 							;;
-							mp4|webm|avi|mkv|MP4|WEBM|AVI|MKV)
+							mp4|webm|avi|mkv|3gp|MP4|WEBM|AVI|MKV|3GP)
 								file_type[$x]=video
 								video_id[$x]=${document_id[$x]}
 							;;
