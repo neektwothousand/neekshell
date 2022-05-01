@@ -295,7 +295,7 @@ json_array() {
 					fi
 					for x in $(seq $(($x-1)) -1 0); do
 						obj=$(jshon -Q \
-							-e 0 \
+							-n {} \
 							-s article -i type \
 							-s "${title[$x]}" -i title \
 							-s "$RANDOM" -i id \
@@ -304,7 +304,7 @@ json_array() {
 								-s "$parse_mode" -i parse_mode \
 							-i input_message_content \
 							-s "${description[$x]}" -i description \
-							-p <<< "$obj")
+							-i $x <<< "$obj")
 					done
 					printf '%s' "$obj" | sed "s/^\s*//" | tr -d '\n'
 				;;
