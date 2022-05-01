@@ -139,15 +139,15 @@ get_tw() {
 		case "$ext" in
 			jpg|jpeg|png|webp)
 				case "$mode" in
-				top|left|right)
+				bottom|left|right)
 					ypad_cord=1
 				;;
-				bottom)
-					ypad_cord=$((y_pad_cord-1))
+				top)
+					ypad_cord=$((ypad_cord-1))
 				;;
 				esac
 				ffmpeg -v error -y -i "$media" \
-					-vf "pad=h=$nh:w=iw+4:x=-1:y=$ypad_cord:color=white,$drawtext" \
+					-vf "pad=h=$nh:w=$nw:x=$xpad_cord:y=$ypad_cord:color=white,$drawtext" \
 					-f image2pipe -an - | \
 					ffmpeg -v error -y -f image2pipe \
 						-i - -filter:v "crop=iw-4:ih-1" "toptext.$ext"
