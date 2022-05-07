@@ -122,12 +122,12 @@ get_tw() {
 			-vf "drawtext=$font:fontsize=$fs:text=$toptext:x=print(tw\,24)" \
 			-vframes 1 -f null - 2>&1 | sed -n 1p | sed 's/\..*//')
 	nl=$(wc -l <<< "$toptext")
+	get_nw
 	case "$mode" in
 		top|bottom)
 			w_diff=$(bc <<< "${res[0]}/$tw")
 		;;
 		left|right)
-			get_nw
 			w_diff=$(bc <<< "$pad_w/($tw+(${res[0]}/30))")
 		;;
 	esac
@@ -147,10 +147,10 @@ get_tw() {
 				;;
 				esac
 				ffmpeg -v error -y -i "$media" \
-					-vf "pad=h=$nh:w=$nw:x=$xpad_cord:y=$ypad_cord:color=white,$drawtext" \
+					-vf "pad=h=$nh:w=($nw+2):x=$xpad_cord:y=$ypad_cord:color=white,$drawtext" \
 					-f image2pipe -an - | \
 					ffmpeg -v error -y -f image2pipe \
-						-i - -filter:v "crop=iw-4:ih-1" "toptext.$ext"
+						-i - -filter:v "crop=iw-2:ih-1" "toptext.$ext"
 			;;
 			mp4|MP4)
 				case "${file_type[1]}" in
