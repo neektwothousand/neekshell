@@ -1217,20 +1217,29 @@ case_command() {
 		;;
 		"!broadcast")
 			if [[ $(is_status admins) ]]; then
-				listchats=$(printf '%s\n' "$(grep -r users "$basedir/db/bot_chats/" | sed 's/.*: //' | tr ' ' '\n' | sed '/^$/d')" "$(dir -1 "$basedir/db/chats/")" | sort -u | grep -vw -- "$chat_id")
+				listchats=$(printf '%s\n' "$(dir -1 "$basedir/db/chats/")" \
+					| sort -u | grep -vw -- "$chat_id")
 				numchats=$(wc -l <<< "$listchats")
 				if [[ "${arg[0]}" ]]; then
-					text_id=$(sed)
+					text_id=$(sed "s/^$command //" <<< "$user_text")
 					for x in $(seq "$numchats"); do
-						chat_id=$(sed -n ${x}p <<< "$listchats")
-						tg_method send_message
+						chat_id=$(sed -n "${x}p" <<< "$listchats")
+						type=$(set +f ; sed -n 's/^type: //p' \
+							"$basedir"/db/*/"$chat_id" ; set -f)
+						if [[ "$type" != "channel" ]]; then
+							tg_method send_message
+						fi
 					done
 				elif [[ "${message_id[1]}" != "" ]]; then
 					from_chat_id=$chat_id
 					copy_id=${message_id[1]}
 					for x in $(seq "$numchats"); do
 						chat_id=$(sed -n ${x}p <<< "$listchats")
-						tg_method copy_message
+						type=$(set +f ; sed -n 's/^type: //p' \
+						"$basedir"/db/*/"$chat_id" ; set -f)
+						if [[ "$type" != "channel" ]]; then
+							tg_method copy_message
+						fi
 					done
 				else
 					text_id="Write something after broadcast command or reply to forward"
