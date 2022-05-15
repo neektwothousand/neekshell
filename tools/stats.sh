@@ -31,14 +31,19 @@ if [[ "$chat_id" != "" ]] || [[ "$user_id" != "" ]]; then
 EOF
 		photo_id="@$data_id-out.png"
 	else
-		sed -n "s/.$chat_id./ /p" "$basedir/stats/chats-usage" | tail -n "${arg[0]}" | sed 's/^....../""/' > "$data_id-data"
+		data=$(sed -n "s/.$chat_id./ /p" "$basedir/stats/chats-usage" | tail -n "$((${arg[0]}+1))" | head -n -1 | sed 's/^....../""/')
+		printf '%s\n' "$data" | head -n 1 > "$data_id-data"
+		printf '%s\n' "$data" >> "$data_id-data"
+		printf '%s\n' "$data" | tail -n 1 >> "$data_id-data"
 		gnuplot <<EOF
 			set terminal pngcairo enhanced font "Ubuntu,14" fontscale 1.0 size 1000, 400
 			set output "$data_id-out.png"
 			set boxwidth 0.6 relative
 			set style fill pattern 7
-			set style line 1 lt 1 lc rgb '#284165'
+			set style line 1 lt 1 lc rgb '#284165' lw 2
+			set style line 2 lt 1 lc rgb '#7b284165' lw 26
 			set yrange [ 0 : * ]
+			set xrange [ 1 : * ]
 			set title "messages sent every day" font "Ubuntu,18"
 			set border 3
 			set tics nomirror
