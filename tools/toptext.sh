@@ -19,7 +19,7 @@ printf '%s' "$(tr '\n' ' ' <<< "$toptext")" > "$tts"
 if [[ "$(grep -P '[\p{Han}]' <<< "$toptext")" ]]; then
 	font="font=Noto Sans CJK HK"
 else
-	font="fontfile=$(realpath ~/.local/share/fonts)/futura_p1.otf"
+	font="fontfile=$(realpath ~/.local/share/fonts)/futura.otf"
 fi
 get_line_th() {
 	ffmpeg -v 24 -hide_banner -f lavfi -i color \
