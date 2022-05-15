@@ -292,6 +292,17 @@ case_command() {
 							;;
 						esac
 					;;
+					audio)
+						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=${audio_id[1]}" | jshon -Q -e result -e file_path -u)
+						case "${arg[0]}" in
+							mp3)
+								out_file="convert.mp3"
+								err_out=$(ffmpeg -v error -i "$file_path" -vn -acodec libmp3lame -b:a 320k "$out_file")
+								audio_id="@$out_file"
+								tg_method send_audio upload
+							;;
+						esac
+					;;
 				esac
 				loading 3
 				rm -f "$out_file"

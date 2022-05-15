@@ -283,7 +283,7 @@ get_message_info() {
 								file_type[$x]=video
 								video_id[$x]=${document_id[$x]}
 							;;
-							mp3|ogg|flac|wav|MP3|OGG|FLAC|WAV)
+							mp3|ogg|oga|flac|wav|MP3|OGG|OGA|FLAC|WAV)
 								file_type[$x]=audio
 								audio_id[$x]=${document_id[$x]}
 							;;
