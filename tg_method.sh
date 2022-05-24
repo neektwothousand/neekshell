@@ -277,9 +277,7 @@ json_array() {
 		inline)
 			case "$2" in
 				article)
-					if [[ "$button_text" ]]; then
-						x=${#message_text[@]}
-					else
+					if [[ ! "$obj" ]]; then
 						x=$((${#message_text[@]}-1))
 						obj=$(jshon -Q \
 							-n [] -n {} \
@@ -292,20 +290,37 @@ json_array() {
 							-i input_message_content \
 							-s "${description[$x]}" -i description \
 							-i $x)
+					else
+						x=${#message_text[@]}
 					fi
-					for x in $(seq $(($x-1)) -1 0); do
-						obj=$(jshon -Q \
-							-n {} \
-							-s article -i type \
-							-s "${title[$x]}" -i title \
-							-s "$RANDOM" -i id \
+					if [[ ! "$markup_id" ]]; then
+						for x in $(seq $(($x-1)) -1 0); do
+							obj=$(jshon -Q \
 								-n {} \
-								-s "${message_text[$x]}" -i message_text \
-								-s "$parse_mode" -i parse_mode \
-							-i input_message_content \
-							-s "${description[$x]}" -i description \
-							-i $x <<< "$obj")
-					done
+								-s article -i type \
+								-s "${title[$x]}" -i title \
+								-s "$RANDOM" -i id \
+									-n {} \
+									-s "${message_text[$x]}" -i message_text \
+									-s "$parse_mode" -i parse_mode \
+								-i input_message_content \
+								-s "${description[$x]}" -i description \
+								-i $x <<< "$obj")
+						done
+					else
+						for x in $(seq $(($x-1)) -1 0); do
+							obj=$(jshon -Q -e $x \
+								-s article -i type \
+								-s "${title[$x]}" -i title \
+								-s "$RANDOM" -i id \
+									-n {} \
+									-s "${message_text[$x]}" -i message_text \
+									-s "$parse_mode" -i parse_mode \
+								-i input_message_content \
+								-s "${description[$x]}" -i description \
+								-p <<< "$obj")
+						done
+					fi
 					printf '%s' "$obj" | sed "s/^\s*//" | tr -d '\n'
 				;;
 				photo)
