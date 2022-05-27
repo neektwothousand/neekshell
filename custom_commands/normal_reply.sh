@@ -774,6 +774,9 @@ case_command() {
 							-show_entries stream=sample_rate,bit_rate \
 							-of default=noprint_wrappers=1 "$file_path")
 						br=$(sed -n 's/^bit_rate=//p' <<< "$audio_info" | head -n 1)
+						if [[ "$br" == "N/A" ]]; then
+							br=128000
+						fi
 						sr=$(sed -n 's/^sample_rate=//p' <<< "$audio_info" | head -n 1)
 						srs=(24000 16000 11025 7350)
 						y=0 ; for x in ${srs[@]}; do
