@@ -54,16 +54,9 @@ case "$inline_message" in
 	;;
 	"search "*)
 		offset=$(($(jshon -Q -e offset -u <<< "$inline")+1))
-		if [[ "$offset" == "1" ]]; then
-			title=searx
-			message_text="archneek.zapto.org/searx"
-			description="searx meta-search engine"
-			tg_method send_inline article
-			return
-		fi
 		search=$(sed 's/search //' <<< "$inline_message" | sed 's/\s/%20/g')
 		pref="eJx1VUHP2zYM_TXzxUixroeechg2DCsw4Cuar7satMTInCXRpeTkc3_9KMdO7Kw7xAEp8ZF8epQMZHQshOnoMKKArzxEN4LDI8bD11Pl2YAvRgVjZsNh8Jjx6Jidx4qC7mwG4bfp-Af4hFXA3LE9fn45vVYJzpgQxHTHn6vcYcAjJwNSCabR59RwbCJemwztEm2ZGl1kf0E5Mqj5jsVVc9Qh5Ukr8ezIsMXLwYL0FdgLRIO2WRItOJSg9erF6Chqd5n7iTOnjnuITRPGROanX37z3KaM7yQ1DWW1z4JYJz7nKwjWlgRNZpmWVTOKYDRqLmSp70o9abGJ8s5tR4tx57CutnimSJk4pu0SxQtZ4jE96opDWHIW_G8jZ9xGhClg0LrqLBCT10O02-U4ATywWsrtaHrMC-KNqEJhXT6L9_2HDx_fmkYrQU5qD4iSxxY3rrlVnsqJ7wkoHYH8h5aWud81aow55MsGUcZ2chhW9lH4SnZPo-nLz3E9S63snP91zVH20C6hHbQC5bPYNwruiSbn9Bz18PKun3ZXs6C1pBtUknMMdMzbdczMfteQQ9TmA64NRFAp7CDHoDLc5HTkVJiQ8jNZJek99VrJo9d53OrBw1QHvlDJeMekuG3VkzKh0ijwidKPGkxsCHwd0BKoe4xJgVO3yZfwe4Two9iH5_3bLiBAzGTqZDr2oCQkQzor-ET-KkpLJn_nuFNSkaXOUk3_Nx33HnsyPaTNvDyN930j5ilw9LRPdBaKPYHZ1F-OIPEoZrfxnucO-O0KMe-xIEDhfB2kwP-oKnay1ylrUdxOmrfMFcb9PfUQ_BZBL0SyC4dazZn8XPQNabW2NK--sxUuE7XaTzyt7pRB8vA02FvNwTBs8vKAUXDgjevO1OqAoa8DibAsvsedPPhRm03HvykcPPXYdJx7nErUiyI3vxqDCvX7yyd9C65CuYjoU5zvTlRdCXt_J24FO823WnlRzO1Nm_RF8Hp9a-yfRdy3jWq9CuhtKM3XL38pvk4TStnz-vr5tMl3Qn9uNClLgPnGrpQ71ET_AqgHuKo="
-		searx_results=$(curl -sL "https://archneek.zapto.org/searx/?preferences=$pref&q=$search&pageno=$((offset-1))&categories=general&language=en-US&format=json")
+		searx_results=$(curl -sL "https://archneek.zapto.org/searx/?preferences=$pref&q=$search&pageno=$offset&categories=general&language=en-US&format=json")
 		nr=$(jshon -Q -e results -l <<< "$searx_results")
 		for j in $(seq 0 $(($nr-1))); do
 			title[$j]=$(jshon -Q -e results -e "$j" -e title -u <<< "$searx_results")
