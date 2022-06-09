@@ -40,9 +40,21 @@ case "$mode" in
 		oy=$mh
 	;;
 esac
+
+if [[ "${file_type[1]}" == "sticker" ]]; then
+	ext="png"
+	convert "$media" "sticker.png"
+	media="sticker.png"
+fi
+
 ffmpeg -v error -y -i "$media" -filter_complex \
 	"pad=h=$h:y=$py" \
-	"pad.mp4"
+	"pad.$ext"
 
-ffmpeg -v error -y -i "pad.mp4" -i "in.png" -filter_complex \
-	"overlay=y=$oy" "toptext.mp4"
+ffmpeg -v error -y -i "pad.$ext" -i "in.png" -filter_complex \
+	"overlay=y=$oy" "toptext.$ext"
+
+if [[ "$ext" == "png" ]] && [[ "${file_type[1]}" == "sticker" ]]; then
+	convert "toptext.$ext" "toptext.webp"
+	ext=webp
+fi

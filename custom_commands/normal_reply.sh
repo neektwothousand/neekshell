@@ -537,13 +537,13 @@ case_command() {
 			get_reply_id any
 			tg_method send_message
 		;;
-		"!g"[tbrl]"t")
+		"!g"[tb]"t")
 			[[ -e "$basedir/powersave" ]] && return
 			if [[ "${message_id[1]}" != "" ]]; then
 				twd
 				get_reply_id reply
 				case "${file_type[1]}" in
-					animation|photo|video)
+					animation|photo|video|sticker)
 						case "${file_type[1]}" in
 							animation)
 								media_id=${animation_id[1]}
@@ -554,6 +554,9 @@ case_command() {
 							photo)
 								media_id=${photo_id[1]}
 							;;
+							sticker)
+								media_id=${sticker_id[1]}
+							;;
 						esac
 						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
 						ext=$(sed 's/.*\.//' <<< "$file_path")
@@ -562,8 +565,6 @@ case_command() {
 						case "$command" in
 							"!gtt") mode=top ;;
 							"!gbt") mode=bottom ;;
-							"!grt") mode=right ;;
-							"!glt") mode=left ;;
 						esac
 						source "$basedir/tools/toptext.sh" \
 							"$toptext" "$mode" "$file_path"
@@ -581,6 +582,10 @@ case_command() {
 							photo)
 								photo_id="@toptext.$ext"
 								tg_method send_photo upload
+							;;
+							sticker)
+								sticker_id="@toptext.$ext"
+								tg_method send_sticker upload
 							;;
 						esac
 						loading 3
