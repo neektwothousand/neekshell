@@ -15,10 +15,14 @@ get_res() {
 	case "$1" in
 		width|height)
 			local p=$1
-			ffprobe -v error -show_streams "$2" \
-				| sed -n "s/^$p=\(.*\)/\1/p"
+			local res=$(ffprobe -v error -show_streams "$2" \
+				| sed -n "s/^$p=\(.*\)/\1/p")
 		;;
 	esac
+	if [[ "$((res%2))" != "0" ]]; then
+		res=$((res+1))
+	fi
+	printf '%s' "$res"
 }
 
 w=$(get_res width "$media")
