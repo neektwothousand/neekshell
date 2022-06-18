@@ -52,7 +52,7 @@ if [[ "${file_type[1]}" == "sticker" ]]; then
 fi
 
 ffmpeg -v error -y -i "$media" -filter_complex \
-	"pad=h=$h:y=$py" \
+	"pad=h=$h:y=$py:color=white" \
 	"pad.$ext"
 
 ffmpeg -v error -y -i "pad.$ext" -i "in.png" -filter_complex \
