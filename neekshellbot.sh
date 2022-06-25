@@ -315,9 +315,11 @@ get_message_info() {
 					-e id -u -p \
 					-e first_name -u -p \
 					-e username -u -p \
-					-e last_name -u <<< "${message[$x]}")
+					-e last_name -u -p \
+					-e is_premium -u <<< "${message[$x]}")
 				user_id[$x]=$(sed -n 1p <<< "$jsp") user_fname[$x]=$(sed -n 2p <<< "$jsp") \
-				user_tag[$x]=$(sed -n 3p <<< "$jsp") user_lname[$x]=$(sed -n 4p <<< "$jsp")
+				user_tag[$x]=$(sed -n 3p <<< "$jsp") user_lname[$x]=$(sed -n 4p <<< "$jsp") \
+				is_premium[$x]=$(sed -n 5p <<< "$jsp")
 			;;
 			sender_chat)
 				jsp=$(jshon -Q -e sender_chat \
