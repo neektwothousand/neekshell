@@ -18,7 +18,7 @@ ps=$(bc <<< "$w/$size")
 font="@$HOME/.local/share/fonts/upright.otf"
 convert \
 	-background none -fill white -font "$font" \
-	-stroke black -strokewidth 10 \
+	-stroke black -strokewidth 15 \
 	-gravity center -pointsize $ps \
 	-size $((cw+10))x caption:"$gtext" "$media" \
 	+swap -compose over -composite \
@@ -28,4 +28,4 @@ convert \
 	-gravity center -pointsize $ps \
 	-size ${cw}x caption:"$gtext" "out-0.png" \
 	+swap -compose over -composite \
-	"out.png"
+	"gblog.png"

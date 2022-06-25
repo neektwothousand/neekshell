@@ -593,6 +593,16 @@ case_command() {
 				esac
 			fi
 		;;
+		"!gblog")
+			if [[ "${photo_id[1]}" ]]; then
+				twd
+				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=${photo_id[1]}" | jshon -Q -e result -e file_path -u)
+				gtext=$(sed -e "s/$(head -n 1 <<< "$user_text" | cut -f 1 -d ' ') //" -e "s/,/\\\,/g" <<< "$user_text")
+				source "$basedir/tools/gblog.sh" "$file_path" "$gtext"
+				photo_id="@gblog.png"
+				tg_method send_photo upload
+			fi
+		;;
 		"!hide"|"!unhide")
 			if [[ "${message_id[1]}" ]]; then
 				if [[ "${file_type[1]}" == "photo" ]]; then
