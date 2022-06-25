@@ -1202,25 +1202,18 @@ case_command() {
 			else
 				ytdl_link=${arg[0]}
 			fi
-			if [[ "$(curl -o /dev/null -ILsw '%{http_code}\n' "$ytdl_link")" == "200" ]]; then
-				twd
-				if [[ "$(grep vm.tiktok <<< "$ytdl_link")" ]]; then
-					ua="--user-agent facebookexternalhit/1.1"
-				fi
-				loading 1
-				ytdl_json=$(~/.local/bin/yt-dlp $ua --print-json --merge-output-format mp4 -o ytdl.mp4 "$ytdl_link")
-				if [[ "$ytdl_json" != "" ]]; then
-					caption=$(jshon -Q -e title -u <<< "$ytdl_json")
-					if [[ "$(du -m ytdl.mp4 | cut -f 1)" -ge 2000 ]]; then
-						loading value "error"
-					else
-						video_id="@ytdl.mp4"
-						loading 2
-						tg_method send_video upload
-						loading 3
-					fi
-				else
+			twd
+			loading 1
+			ytdl_json=$(~/.local/bin/yt-dlp $ua --print-json --merge-output-format mp4 -o ytdl.mp4 "$ytdl_link")
+			if [[ "$ytdl_json" != "" ]]; then
+				caption=$(jshon -Q -e title -u <<< "$ytdl_json")
+				if [[ "$(du -m ytdl.mp4 | cut -f 1)" -ge 2000 ]]; then
 					loading value "error"
+				else
+					video_id="@ytdl.mp4"
+					loading 2
+					tg_method send_video upload
+					loading 3
 				fi
 			fi
 		;;
