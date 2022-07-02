@@ -171,7 +171,8 @@ get_normal_reply() {
 			else
 				case "$command" in
 					"!help")
-						text_id=$(cat "help/${arg[0]}")
+						file=$(tr -d "/." <<< "${arg[0]}")
+						text_id=$(cat "help/$file")
 					;;
 					"!bahelp")
 						text_id=$(cat "help/bot_admin/${arg[0]}")
