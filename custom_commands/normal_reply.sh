@@ -237,20 +237,27 @@ case_command() {
 						esac
 						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
 						case "${arg[0]}" in
-							animation|mp4)
+							animation|mp4|h264)
 								loading 1
 								out_file="convert.mp4"
-								if [[ "$(grep "^codec_name=h264$" <<< "$input_codecs")" ]]; then
+								crf=$(grep -o "^[0-9]*" <<< "${arg[1]}")
+								if [[ "$crf" ]]; then
+									if [[ "$crf" -lt "51" ]] || [[ "$crf" -ge "0" ]]; then
+										crf="-crf $crf"
+									fi
+								fi
+								if [[ ! "$crf" ]] \
+								&& [[ "$(grep "^codec_name=h264$" <<< "$input_codecs")" ]]; then
 									out_vcodec=copy
 								else
 									out_vcodec=h264
 								fi
 								case "${arg[0]}" in
 									animation)
-										err_out=$(ffmpeg -v error -i "$file_path" -vcodec $out_vcodec -an "$out_file")
+										err_out=$(ffmpeg -v error -i "$file_path" -vcodec $out_vcodec $crf -an "$out_file")
 									;;
-									mp4)
-										err_out=$(ffmpeg -v error -i "$file_path" -vcodec $out_vcodec "$out_file")
+									mp4|h264)
+										err_out=$(ffmpeg -v error -i "$file_path" -vcodec $out_vcodec $crf "$out_file")
 									;;
 								esac
 								loading 2
@@ -1646,7 +1653,7 @@ case_normal() {
 }
 case_chat_id() {
 	case "$chat_id" in
-		-1001295527578|-1001402125530)
+		-1001295551578|-1001402125530)
 			if [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]] \
 			&& [[ "${message_id[1]}" == "" ]] \
 			&& [[ "$chat_id" != "-1001402125530" ]]; then
