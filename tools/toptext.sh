@@ -46,14 +46,27 @@ case "$mode" in
 esac
 
 if [[ "${file_type[1]}" == "sticker" ]]; then
-	ext="png"
-	convert "$media" "sticker.png"
-	media="sticker.png"
+	if !$sticker_is_video; then
+		ext="png"
+		convert "$media" "sticker.png"
+		media="sticker.png"
+	else
+		ext="mp4"
+		file_type[1]=video
+	fi
 fi
 
-ffmpeg -v error -y -i "$media" -filter_complex \
-	"pad=h=$h:y=$py:color=white" \
-	"pad.$ext"
+if [[ "${file_type[1]}" == "photo" ]]; then
+	convert "$media" "media.png"
+	ffmpeg -v error -y -i "media.png" -filter_complex \
+		"pad=h=$h:y=$py:color=white" \
+		"pad.png"
+	convert "pad.png" "pad.$ext"
+else
+	ffmpeg -v error -y -i "$media" -filter_complex \
+		"pad=h=$h:y=$py:color=white" \
+		"pad.$ext"
+fi
 
 ffmpeg -v error -y -i "pad.$ext" -i "in.png" -filter_complex \
 	"overlay=y=$oy" "toptext.$ext"

@@ -34,8 +34,9 @@ case "$inline_message" in
 		website="gelbooru.com"
 		booru_site="gelbooru"
 		limit=5
+		api_key=$(cat gelbooru_key)
 		no_video="-video+-webm+-animated+-animated_gif+-animated_png"
-		getbooru=$(curl -A 'Mozilla/5.0' -s "https://$website/index.php?page=dapi&s=post&json=1&pid=$offset&tags=$tags+$no_video&q=index&limit=$limit")
+		getbooru=$(curl -A 'Mozilla/5.0' -s "https://$website/index.php?page=dapi&s=post&json=1&pid=$offset&tags=$tags+$no_video&q=index&limit=$limit$api_key")
 		booru_api # get n_posts
 		for x in $(seq 0 $(($n_posts - 1))); do
 			if [[ "$(booru_api has_sample)" ]]; then
