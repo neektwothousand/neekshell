@@ -52,7 +52,7 @@ if [[ "${file_type[1]}" == "sticker" ]]; then
 		media="sticker.png"
 	else
 		ext="mp4"
-		file_type[1]=video
+		file_type[1]=animation
 	fi
 fi
 
