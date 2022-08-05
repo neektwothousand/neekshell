@@ -272,6 +272,18 @@ case_command() {
 								tg_method send_animation upload
 							;;
 						esac
+						case "${arg[0]}" in
+							png|jpg|jpeg|photo)
+								case "${arg[0]}" in
+									png) ext=png ;;
+									jpg|jpeg) ext=jpg ;;
+									photo) ext=jpg ;;
+								esac
+								ffmpeg -v error -ss 0.1 -i "$file_path" -vframes 1 -f image2 "convert.$ext"
+								photo_id="@convert.$ext"
+								tg_method send_photo upload
+							;;
+						esac
 					;;
 					photo|sticker)
 						case "${file_type[1]}" in
@@ -1636,6 +1648,9 @@ case_normal() {
 				;;
 				photo)
 					method=send_photo
+				;;
+				animation)
+					method=send_animation
 				;;
 				sticker)
 					method=send_sticker
