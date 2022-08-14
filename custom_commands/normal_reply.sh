@@ -1207,9 +1207,8 @@ case_command() {
 			if [[ "$wget_link" ]]; then
 				twd
 				loading 1
-				wget_file=$(wget -E -nv "$wget_link" 2>&1 \
-					| cut -f 6 -d ' ' \
-					| sed -e s/^.// -e s/.$//)
+				wget_file=$(wget -E -nv "$(sed 's@+@ @g;s@%@\\x@g' <<< "$wget_link" | xargs -0 printf "%b")" \
+					2>&1 | cut -f 6- -d ' ' | tr ' ' '\n' | head -n -1 | tr '\n' ' ')
 				if [[ "$wget_file" ]]; then
 					document_id="@$wget_file"
 					loading 2
