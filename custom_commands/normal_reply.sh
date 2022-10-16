@@ -1227,13 +1227,14 @@ case_command() {
 			else
 				ytdl_link=${arg[0]}
 			fi
+			ytdl_link=$(sed -n "s|\(http[^\s]*\)|\1|p" <<< "$ytdl_link")
 			twd
-			loading 1
-			ytdl_json=$(~/.local/bin/yt-dlp $ua --print-json --merge-output-format mp4 -o ytdl.mp4 "$ytdl_link")
+			ytdl_json=$(~/.local/bin/yt-dlp --print-json --merge-output-format mp4 -o ytdl.mp4 "$ytdl_link")
 			if [[ "$ytdl_json" != "" ]]; then
+				loading 1
 				caption=$(jshon -Q -e title -u <<< "$ytdl_json")
 				if [[ "$(du -m ytdl.mp4 | cut -f 1)" -ge 2000 ]]; then
-					loading value "error"
+					loading value "upload limit exceeded"
 				else
 					video_id="@ytdl.mp4"
 					loading 2
