@@ -1520,6 +1520,18 @@ case_command() {
 				tg_method delete_message
 			fi
 		;;
+		"!nopremium")
+			if [[ $(is_chat_admin) ]]; then
+				if [[ "$(grep "^nopremium" "$basedir/db/chats/$chat_id")" ]]; then
+					sed -i "/^nopremium/d" "$basedir/db/chats/$chat_id"
+					text_id="nopremium disabled"
+				else
+					printf '%s\n' "nopremium" >> "$basedir/db/chats/$chat_id"
+					text_id="nopremium enabled"
+				fi
+				tg_method send_message
+			fi
+		;;
 		"!warn"|"!ban"|"!kick")
 			if [[ $(is_chat_admin) ]]; then
 				if [[ "${user_id[1]}" ]] && [[ "${user_id[1]}" != "$user_id" ]]; then
@@ -1795,5 +1807,25 @@ if [[ "$(grep "^autodel" "$basedir/db/chats/$chat_id")" ]]; then
 			curl -s "$TELEAPI/deleteMessage" \
 			--form-string "message_id=$(jshon -Q -e result -e message_id <<< "$curl_result")" \
 			--form-string "chat_id=$chat_id" > /dev/null) &
+	fi
+fi
+
+
+if [[ "$(grep "^nopremium" "$basedir/db/chats/$chat_id")" ]] && [[ $(is_chat_admin bot_only) ]] \
+	&& [[ "$is_premium" ]]; then
+	to_delete_id=$message_id
+	tg_method delete_message
+	
+	if [[ ! -e "$basedir/db/p/$chat_id-$user_id" ]]; then
+		[[ ! -d "$basedir/db/p" ]] && mkdir "$basedir/db/p"
+		cd "$basedir/db/p"
+	
+		enable_markdown=true
+		parse_mode=html
+		text_id="<a href=\"tg://user?id=$user_id\">$user_fname</a> ha perso il diritto di parola per aver pagato il premium"
+		tg_method send_message
+		
+		touch -- "$chat_id-$user_id"
+		cd -
 	fi
 fi

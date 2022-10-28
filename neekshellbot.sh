@@ -67,15 +67,25 @@ is_status() {
 	fi
 }
 is_chat_admin() {
-	for x in "$user_id" "$(jshon -Q -e result -e id -u < botinfo)"; do
-		get_member_id=$x
-		tg_method get_chat_member
-		chat_admin=$(jshon -Q -e result -e status -u <<< "$curl_result" \
-			| grep -w "creator\|administrator")
-		if [[ ! "$chat_admin" ]]; then
-			break
-		fi
-	done
+	case "$1" in
+		bot_only)
+			get_member_id=$(jshon -Q -e result -e id -u < botinfo)	
+			tg_method get_chat_member
+			chat_admin=$(jshon -Q -e result -e status -u <<< "$curl_result" \
+				| grep -w "creator\|administrator")
+		;;
+		*)
+			for x in "$user_id" "$(jshon -Q -e result -e id -u < botinfo)"; do
+				get_member_id=$x
+				tg_method get_chat_member
+				chat_admin=$(jshon -Q -e result -e status -u <<< "$curl_result" \
+					| grep -w "creator\|administrator")
+				if [[ ! "$chat_admin" ]]; then
+					break
+				fi
+			done
+		;;
+	esac
 	printf '%s' "$chat_admin"
 }
 loading() {
@@ -319,8 +329,8 @@ get_message_info() {
 					-e last_name -u -p \
 					-e is_premium -u <<< "${message[$x]}")
 				user_id[$x]=$(sed -n 1p <<< "$jsp") user_fname[$x]=$(sed -n 2p <<< "$jsp") \
-				user_tag[$x]=$(sed -n 3p <<< "$jsp") user_lname[$x]=$(sed -n 4p <<< "$jsp") \
-				is_premium[$x]=$(sed -n 5p <<< "$jsp")
+				user_tag[$x]=$(sed -n 3p <<< "$jsp") user_lname[$x]=$(sed -n 4p <<< "$jsp")
+				is_premium[$x]=$(jshon -Q -e from -e is_premium -u <<< "${message[$x]}")
 			;;
 			sender_chat)
 				jsp=$(jshon -Q -e sender_chat \
@@ -348,7 +358,6 @@ process_reply() {
 				;;
 			esac
 			get_message_info "$message"
-			update_db
 		;;
 		inline_query)
 			inline=$(jshon -Q -e inline_query <<< "$input")
@@ -377,6 +386,7 @@ process_reply() {
 	if [[ $(is_status banned) ]]; then
 		exit
 	fi
+	update_db
 	if [[ "$chat_type" == "private" ]] || [[ "$inline" ]] || [[ "$callback" ]]; then
 		bot_chat_dir="db/bot_chats/"
 		bot_chat_user_id=$user_id
