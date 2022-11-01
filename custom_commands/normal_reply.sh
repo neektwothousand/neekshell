@@ -629,6 +629,42 @@ case_command() {
 				tg_method send_photo upload
 			fi
 		;;
+		"!hanimedl")
+			[[ -e "$basedir/powersave" ]] && return
+			get_reply_id self
+			if [[ "${arg[0]}" ]]; then
+				hanime_link=${arg[0]}
+			elif [[ "${user_text[1]}" ]]; then
+				hanime_link=${user_text[1]}
+			else
+				text_id="no link provided"
+				tg_method send_message
+				return
+			fi
+			hanime_link=$(sed -n "s|.*\(http[^\s]*\)|\1|p" <<< "$hanime_link")
+			if [[ "$(grep "hanime.tv" <<< "$hanime_link")" ]]; then
+				loading 1
+				twd
+				ytdl_link=$(curl -s "$hanime_link" \
+					| grep m3u8 \
+					| sed "s/.*\"streams\":\(\[{.*extra2..null}\]\).*/\1/" \
+					| jshon -e 1 -e url -u)
+				ytdl_json=$(~/.local/bin/yt-dlp --print-json --merge-output-format mp4 -o ytdl.mp4 "$ytdl_link")
+				if [[ "$ytdl_json" != "" ]]; then
+					caption=$(jshon -Q -e title -u <<< "$ytdl_json")
+					if [[ "$(du -m ytdl.mp4 | cut -f 1)" -ge 2000 ]]; then
+						loading value "upload limit exceeded"
+					else
+						video_id="@ytdl.mp4"
+						loading 2
+						tg_method send_video upload
+						loading 3
+					fi
+				else
+					loading value "invalid link"
+				fi
+			fi
+		;;
 		"!hide"|"!unhide")
 			if [[ "${message_id[1]}" ]]; then
 				if [[ "${file_type[1]}" == "photo" ]]; then
@@ -1222,16 +1258,20 @@ case_command() {
 		"!ytdl")
 			[[ -e "$basedir/powersave" ]] && return
 			get_reply_id self
-			if [[ "${user_text[1]}" != "" ]]; then
+			if [[ "${arg[0]}" ]]; then
+				ytdl_link=${arg[0]}
+			elif [[ "${user_text[1]}" ]]; then
 				ytdl_link=${user_text[1]}
 			else
-				ytdl_link=${arg[0]}
+				text_id="no link provided"
+				tg_method send_message
+				return
 			fi
-			ytdl_link=$(sed -n "s|\(http[^\s]*\)|\1|p" <<< "$ytdl_link")
+			ytdl_link=$(sed -n "s|.*\(http[^\s]*\)|\1|p" <<< "$ytdl_link")
+			loading 1
 			twd
 			ytdl_json=$(~/.local/bin/yt-dlp --print-json --merge-output-format mp4 -o ytdl.mp4 "$ytdl_link")
 			if [[ "$ytdl_json" != "" ]]; then
-				loading 1
 				caption=$(jshon -Q -e title -u <<< "$ytdl_json")
 				if [[ "$(du -m ytdl.mp4 | cut -f 1)" -ge 2000 ]]; then
 					loading value "upload limit exceeded"
@@ -1241,6 +1281,8 @@ case_command() {
 					tg_method send_video upload
 					loading 3
 				fi
+			else
+				loading value "invalid link"
 			fi
 		;;
 
