@@ -1039,6 +1039,7 @@ case_command() {
 			if [[ "${message_id[1]}" != "" ]]; then
 				case "${file_type[1]}" in
 					"photo"|"animation"|"video")
+						disable_preview=true
 						request_id=$RANDOM
 						case "${file_type[1]}" in
 							photo) media_id=${photo_id[1]} ;;

@@ -21,6 +21,9 @@ tg_method() {
 		json_array inline button
 		markup_id=$(jshon -Q -e 0 -e reply_markup <<< "$obj")
 	fi
+	if [[ ! "$disable_preview" ]]; then
+		disable_preview=false
+	fi
 	case $2 in
 		upload)
 			curl_f="-F"
@@ -38,6 +41,7 @@ tg_method() {
 				$curl_f "parse_mode=$parse_mode" \
 				$curl_f "reply_to_message_id=$reply_id" \
 				$curl_f "reply_markup=$markup_id" \
+				$curl_f "disable_web_page_preview=$disable_preview" \
 				$curl_f "text=$text_id"
 		;;
 		send_photo)
