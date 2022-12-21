@@ -337,10 +337,11 @@ case_command() {
 					user_command="!${arg[0]}"
 				fi
 				user_command=$(tr -d '/' <<< "$user_command")
-				[[ ! -d custom_commands/user_generated/ ]] \
-					&& mkdir custom_commands/user_generated/
-				printf '%s\n' "$user_text" \
-					| sed "s/$command ${arg[0]} //" \
+				
+				[[ ! -d custom_commands/user_generated/ ]] && \
+					mkdir custom_commands/user_generated/
+				
+				printf '%s\n' "$(head -n 1 <<< "$user_text" | cut -f 3- -d ' ' | sed "/^$/d" ; sed 1d <<< "$user_text")" \
 					> "custom_commands/user_generated/$chat_id-$user_command"
 				text_id="$user_command set"
 			else
