@@ -46,7 +46,7 @@ case "$mode" in
 esac
 
 if [[ "${file_type[1]}" == "sticker" ]]; then
-	if !$sticker_is_video; then
+	if [[ "${sticker_is_video[1]}" == "false" ]]; then
 		ext="png"
 		convert "$media" "sticker.png"
 		media="sticker.png"

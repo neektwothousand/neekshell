@@ -292,28 +292,17 @@ case_command() {
 						esac
 						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
 						case "${arg[0]}" in
-							webp)
+							png|jpg|avif|heic|webp)
 								loading 1
-								out_file="convert.webp"
-								err_out=$(convert "$file_path" "$out_file")
-								loading 2
-								sticker_id="@$out_file"
-								tg_method send_sticker upload
-							;;
-							jpg)
-								loading 1
-								out_file="convert.jpg"
-								err_out=$(convert "$file_path" "$out_file")
-								loading 2
-								photo_id="@$out_file"
-								tg_method send_photo upload
-							;;
-							png)
-								loading 1
-								out_file="convert.png"
+								out_file="convert.${arg[0]}"
 								err_out=$(convert "$file_path" "$out_file")
 								loading 2
 								document_id="@$out_file"
+								tg_method send_document upload
+							;;
+							file|document)
+								loading 1
+								document_id="@$file_path"
 								tg_method send_document upload
 							;;
 						esac
