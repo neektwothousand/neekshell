@@ -1237,6 +1237,9 @@ case_command() {
 			if [[ "$wget_link" ]]; then
 				twd
 				loading 1
+				if [[ ! "$(grep "^http*" <<< "$wget_link")" ]]; then
+					wget_link="https://$wget_link"
+				fi
 				wget_file=$(wget -E -nv -- "$(sed 's@+@ @g;s@%@\\x@g' <<< "$wget_link" | xargs -0 printf "%b")" \
 					2>&1 | cut -f 6- -d ' ' | tr ' ' '\n' | head -n -1 | tr '\n' ' ')
 				if [[ "$wget_file" ]]; then
