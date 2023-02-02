@@ -71,7 +71,7 @@ case "$inline_message" in
 		if [[ $(is_status admins) ]]; then
 			join_id="917684979"
 			button_text="click to join"
-			button_url="http://t.me/neekshellbot?start=join$join_id"
+			button_url="https://t.me/neekshellbot?start=join$join_id"
 			title="anonymous group chat"
 			message_text="anonymous group chat"
 			tg_method send_inline article

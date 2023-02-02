@@ -271,6 +271,30 @@ case_command() {
 								animation_id="@$out_file"
 								tg_method send_animation upload
 							;;
+							audio|mp3|ogg)
+								loading 1
+								case "${arg[0]}" in
+									mp3|ogg)
+										ext=${arg[0]}
+									;;
+									*)
+										ext=mp3
+									;;
+								esac
+								out_file="convert.$ext"
+								case "$ext" in
+									mp3)
+										out_acodec=libmp3lame
+									;;
+									ogg)
+										out_acodec=libvorbis
+									;;
+								esac
+								ffmpeg -v error -i "$file_path" -vn -acodec $out_acodec "$out_file"
+								loading 2
+								audio_id="@$out_file"
+								tg_method send_audio upload
+							;;
 						esac
 						case "${arg[0]}" in
 							png|jpg|jpeg|photo)

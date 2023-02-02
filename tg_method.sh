@@ -384,7 +384,7 @@ json_array() {
 								-i $x -p -p -p -p <<< "$obj")
 						done
 					elif [[ "$button_url" != "" ]]; then
-						for x in $(seq $((${#button_text[@]}-2)) -1 0); do
+						for x in $(seq $((${#button_text[@]}-1)) -1 0); do
 							obj=$(jshon -e 0 -e reply_markup \
 								-e inline_keyboard \
 								-e 0 -n {} \
