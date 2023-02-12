@@ -1793,6 +1793,21 @@ case_chat_id() {
 				;;
 			esac
 		;;
+		-1001267306428|-1001175713242)
+			unset text_id
+			case "$(tr '[:upper:]' '[:lower:]' <<< "$user_text")" in
+				windows)
+					text_id="non capisci una tega ma proprio un cazzus"
+				;;
+				linux)
+					text_id="basato"
+				;;
+			esac
+			if [[ "$text_id" ]]; then
+				get_reply_id self
+				tg_method send_message
+			fi
+		;;
 	esac
 }
 case_user_id() {
