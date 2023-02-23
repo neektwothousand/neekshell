@@ -96,11 +96,11 @@ twd() {
 		cd "$tmpdir"
 		twd_id=$RANDOM
 		twd_dir="twd_$twd_id"
-		mkdir "$twd_dir" ; cd "$twd_dir"
+		mkdir "$twd_dir" && cd "$twd_dir"
 	else
-		cd "$tmpdir"
-		rm -rf "twd_$twd_id/"
-		cd "$basedir"
+		cd "$tmpdir" \
+			&& rm -rf "twd_$twd_id/" \
+			&& cd "$basedir"
 	fi
 }
 command_help() {
