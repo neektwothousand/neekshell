@@ -392,9 +392,7 @@ process_reply() {
 			get_message_info "$callback"
 		;;
 	esac
-	if [[ $(is_status banned) ]]; then
-		exit
-	fi
+	[[ $(is_status banned) ]] && exit
 	update_db
 	if [[ "$chat_type" == "private" ]] || [[ "$inline" ]] || [[ "$callback" ]]; then
 		bot_chat_dir="db/bot_chats/"
