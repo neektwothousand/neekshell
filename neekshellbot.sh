@@ -430,7 +430,7 @@ process_reply() {
 	esac
 }
 input=$1
-basedir=$(realpath .)
+basedir=$(realpath "$(dirname $0)")
 tmpdir="/tmp/neekshell"
 [[ ! -d $tmpdir ]] && mkdir $tmpdir
 process_reply
