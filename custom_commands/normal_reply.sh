@@ -1069,7 +1069,7 @@ case_command() {
 						else
 							public_path="/home/genteek/archneek/public/tmp/$request_id-sauce.$ext"
 							request_url="https://archneek.zapto.org/public/tmp/$request_id-sauce.$ext"
-							cp "$file_path" "$public_path"
+							install -m 644 "$file_path" "$public_path"
 						fi
 						if [[ "${arg[0]}" == "google" ]]; then
 							ua="User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:105.0) Gecko/20100101 Firefox/105.0"
@@ -1292,7 +1292,9 @@ case_command() {
 			ytdl_link=$(sed -n "s|.*\(http[^\s]*\)|\1|p" <<< "$ytdl_link")
 			loading 1
 			twd
-			ytdl_json=$(~/.local/bin/yt-dlp --print-json --merge-output-format mp4 -o ytdl.mp4 "$ytdl_link")
+			source "$basedir/venv/bin/activate"
+			ytdl_json=$(yt-dlp --print-json --merge-output-format mp4 -o ytdl.mp4 "$ytdl_link")
+			deactivate
 			if [[ "$ytdl_json" != "" ]]; then
 				caption=$(jshon -Q -e title -u <<< "$ytdl_json")
 				if [[ "$(du -m ytdl.mp4 | cut -f 1)" -ge 2000 ]]; then
@@ -1317,6 +1319,8 @@ case_command() {
 				bin=$(sed "s/^$command //" <<< "$user_text")
 				case "$user_text" in
 					"!bin "*)
+						export user_text
+						export reply_text=${user_text[1]}
 						text_id=$(mksh -c "$bin" 2>&1)
 					;;
 					"!archbin "*)
