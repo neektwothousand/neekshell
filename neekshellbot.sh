@@ -1,11 +1,20 @@
 #!/bin/mksh
 set -f
+
 START_TIME=$(bc <<< "$(date +%s%N) / 1000000")
+
 PS4="[$(date "+%F %H:%M:%S")] "
 exec 1>>"log.log" 2>&1
+
 TOKEN=$(cat ./token)
 TELEAPI="http://192.168.1.15:8081/bot${TOKEN}"
 PATH="$HOME/.local/bin:$PATH"
+
+input=$1
+basedir=$(realpath "$(dirname $0)")
+tmpdir="/tmp/neekshell"
+[[ ! -d $tmpdir ]] && mkdir $tmpdir
+
 update_db() {
 	if [[ "$user_id" != "" ]]; then
 		[[ ! -d db/users/ ]] && mkdir -p db/users/
@@ -429,12 +438,8 @@ process_reply() {
 		;;
 	esac
 }
-input=$1
-basedir=$(realpath "$(dirname $0)")
-tmpdir="/tmp/neekshell"
-[[ ! -d $tmpdir ]] && mkdir $tmpdir
 process_reply
-END_TIME=$(bc <<< "$(date +%s%N) / 1000000")
+
 [[ ! -d stats/ ]] && mkdir stats/
 if [[ "$chat_id" != "" ]]; then # usage in messages per chat
 	chat_usage=$(grep -w -- "$(date +%y%m%d):$chat_id" stats/chats-usage)
@@ -444,4 +449,6 @@ if [[ "$chat_id" != "" ]]; then # usage in messages per chat
 		sed -i "s/$chat_usage/$(date +%y%m%d):$chat_id:$(bc <<< "$(cut -f 3 -d ':' <<< "$chat_usage")+1")/" stats/chats-usage
 	fi
 fi
+
+END_TIME=$(bc <<< "$(date +%s%N) / 1000000")
 printf '%s\n' "[$(date "+%F %H:%M:%S")] elapsed time: $(bc <<< "$END_TIME - $START_TIME")ms"
