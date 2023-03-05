@@ -316,7 +316,7 @@ case_command() {
 						esac
 						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
 						case "${arg[0]}" in
-							png|jpg|avif|heic|webp)
+							png|jpg|avif|hei[cf]|webp)
 								loading 1
 								out_file="convert.${arg[0]}"
 								err_out=$(convert "$file_path" "$out_file")
@@ -1034,7 +1034,7 @@ case_command() {
 		"!ping")
 			text_id=$(printf '%s\n' \
 				"pong" \
-				"api: $(ping -c 1 api.telegram.org | grep time= | sed 's/.*time=//')" \
+				"api: $(ping -c 1 api.telegram.org | sed -n 's/.*time=\(.*\)/\1/p')" \
 				"response time: $(bc -l <<< "$(date +%s)-$(jshon -Q -e date -u <<< "$message")") s" \
 				"script time: $(bc <<< "$(bc <<< "$(date +%s%N) / 1000000") - $START_TIME") ms")
 			get_reply_id self
@@ -1280,10 +1280,10 @@ case_command() {
 		"!ytdl")
 			[[ -e "$basedir/powersave" ]] && return
 			get_reply_id self
-			if [[ "${arg[0]}" ]]; then
-				ytdl_link=${arg[0]}
-			elif [[ "${user_text[1]}" ]]; then
+			if [[ "${user_text[1]}" ]]; then
 				ytdl_link=${user_text[1]}
+			elif [[ "${arg[0]}" ]]; then
+				ytdl_link=${arg[0]}
 			else
 				text_id="no link provided"
 				tg_method send_message
@@ -1293,16 +1293,33 @@ case_command() {
 			loading 1
 			twd
 			source "$basedir/venv/bin/activate"
-			ytdl_json=$(yt-dlp --print-json --merge-output-format mp4 -o ytdl.mp4 "$ytdl_link")
+			if [[ "$(sed "s/.* //" <<< "${arg[*]}")" == "audio" ]]; then
+				ext=mp3
+				ytdl_json=$(yt-dlp --print-json --extract-audio --audio-format mp3 -o ytdl.$ext "$ytdl_link")
+			else
+				ext=mp4
+				ytdl_json=$(yt-dlp --print-json --merge-output-format $ext -o ytdl.$ext "$ytdl_link")
+			fi
 			deactivate
 			if [[ "$ytdl_json" != "" ]]; then
 				caption=$(jshon -Q -e title -u <<< "$ytdl_json")
-				if [[ "$(du -m ytdl.mp4 | cut -f 1)" -ge 2000 ]]; then
+				if [[ "$(du -m ytdl.$ext | cut -f 1)" -ge 2000 ]]; then
 					loading value "upload limit exceeded"
 				else
-					video_id="@ytdl.mp4"
-					loading 2
-					tg_method send_video upload
+					case "$ext" in
+						mp4)
+							video_id="@ytdl.$ext"
+							loading 2
+							tg_method send_video upload
+						;;
+						mp3)
+							mv "ytdl.$ext" "$caption.$ext"
+							audio_id="@$caption.$ext"
+							unset caption
+							loading 2
+							tg_method send_audio upload
+						;;
+					esac
 					loading 3
 				fi
 			else
