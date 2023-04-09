@@ -15,6 +15,16 @@ basedir=$(realpath "$(dirname $0)")
 tmpdir="/tmp/neekshell"
 [[ ! -d $tmpdir ]] && mkdir $tmpdir
 
+update_db_file() {
+	for x in $(seq 0 $((${#value[@]}-1))); do
+		grep_field=$(grep -- "^${field[$x]}" "$1")
+		if [[ "${field[$x]}: ${value[$x]}" != "$grep_field" ]]; then
+			sed -i -- "/^${field[$x]}: .*/d" "$1"
+			printf '%s\n' "${field[$x]}: ${value[$x]}" >> "$1"
+		fi
+	done
+}
+
 update_db() {
 	if [[ "$user_id" != "" ]]; then
 		[[ ! -d db/users/ ]] && mkdir -p db/users/
