@@ -186,9 +186,17 @@ get_normal_reply() {
 						;;
 					esac
 					set -f
-					help_list=$(grep -A 1 '^Usage' <<< "$help_list" | grep -v '^Usage\|--' | sed 's/^  //' | sort)
+					help_list=$(grep -A 1 '^Usage' <<< "$help_list" \
+						| grep -v '^Usage\|--' | sed 's/^  //' | sort)
 					text_id=$(printf '%s\n' "$help_list" "" "send !help <command> for details")
-					[[ "$command" == "!help" ]] && text_id=$(printf '%s\n' "$text_id" "!bahelp for bot admin" "!cahelp for chat admin")
+					if [[ "$command" == "!help" ]]; then
+						text_id=$(
+							printf '%s\n' \
+								"$text_id" \
+								"!bahelp for bot admin" \
+								"!cahelp for chat admin"
+						)
+					fi
 				else
 					parse_mode=html
 					markdown=('<a href="http://t.me/neekshellbot?start=help">' '</a>')
@@ -274,15 +282,19 @@ get_message_info() {
 				case "${file_type[$x]}" in
 					sticker)
 						sticker_id[$x]=$(jshon -Q -e sticker -e file_id -u <<< "${message[$x]}")
-						sticker_is_animated[$x]=$(jshon -Q -e sticker -e is_animated -u <<< "${message[$x]}")
-						sticker_is_video[$x]=$(jshon -Q -e sticker -e is_video -u <<< "${message[$x]}")
+						sticker_is_animated[$x]=$(jshon -Q -e sticker \
+							-e is_animated -u <<< "${message[$x]}")
+						sticker_is_video[$x]=$(jshon -Q -e sticker \
+							-e is_video -u <<< "${message[$x]}")
 					;;
 					animation)
-						animation_id[$x]=$(jshon -Q -e animation -e file_id -u <<< "${message[$x]}")
+						animation_id[$x]=$(jshon -Q -e animation \
+							-e file_id -u <<< "${message[$x]}")
 					;;
 					photo)
 						last_photo=$(($(jshon -Q -e photo -l <<< "${message[$x]}") - 1))
-						photo_id[$x]=$(jshon -Q -e photo -e $last_photo -e file_id -u <<< "${message[$x]}")
+						photo_id[$x]=$(jshon -Q -e photo -e $last_photo \
+							-e file_id -u <<< "${message[$x]}")
 					;;
 					video)
 						video_id[$x]=$(jshon -Q -e video -e file_id -u <<< "${message[$x]}")
