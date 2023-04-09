@@ -148,8 +148,15 @@ get_normal_reply() {
 				"help"|"/start")
 					if [[ "$chat_type" == "private" ]]; then
 						set +f
-						text_id=$(printf '%s\n' "$(cat help/* 2>/dev/null \
-							| grep -A 1 '^Usage' | grep -v '^Usage\|--' | sed 's/^  //' | sort)" "" 'send !help <command> for details')
+						text_id=$(
+							printf '%s\n' \
+								"$(cat help/* 2>/dev/null \
+									| grep -A 1 '^Usage' \
+									| grep -v '^Usage\|--' \
+									| sed 's/^  //' | sort)" \
+								"" \
+								'send !help <command> for details'
+						)
 						set -f
 					else
 						parse_mode=html
