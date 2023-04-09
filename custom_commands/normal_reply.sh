@@ -169,7 +169,8 @@ case_command() {
 								"join"*)
 									if [[ "$chat_type" = "private" ]]; then
 										join_chat=$(sed 's/^join//' <<< "${arg[0]}")
-										sed -i "s/\(users: \)/\1$user_id /" $bot_chat_dir"$join_chat"
+										sed -i "s/\(users: \)/\1$user_id /" \
+											$bot_chat_dir"$join_chat"
 										text_id="joined $join_chat"
 									fi
 								;;
