@@ -1825,10 +1825,16 @@ case_chat_id() {
 				linux)
 					text_id="basato"
 				;;
+				*💀*)
+					photo_id="https://archneek.zapto.org/public/pics/sub_fem.jpg"
+				;;
 			esac
+			
+			get_reply_id self
 			if [[ "$text_id" ]]; then
-				get_reply_id self
 				tg_method send_message
+			elif [[ "$photo_id" ]]; then
+				tg_method send_photo
 			fi
 		;;
 	esac
