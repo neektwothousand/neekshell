@@ -613,19 +613,19 @@ case_command() {
 						loading 2
 						case "${file_type[1]}" in
 							animation)
-								animation_id="@toptext.$ext"
+								animation_id="@toptext.mp4"
 								tg_method send_animation upload
 							;;
 							video)
-								video_id="@toptext.$ext"
+								video_id="@toptext.mp4"
 								tg_method send_video upload
 							;;
 							photo)
-								photo_id="@toptext.$ext"
+								photo_id="@toptext.png"
 								tg_method send_photo upload
 							;;
 							sticker)
-								sticker_id="@toptext.$ext"
+								sticker_id="@toptext.webp"
 								tg_method send_sticker upload
 							;;
 						esac
