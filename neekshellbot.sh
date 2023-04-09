@@ -38,12 +38,7 @@ update_db() {
 		else
 			value=("$user_tag" "$user_fname" "$user_lname")
 			field=("tag" "fname" "lname")
-			for x in $(seq 0 $((${#value[@]}-1))); do
-				if [[ "${field[$x]}: ${value[$x]}" != "$(grep -- "^${field[$x]}" "$file_user")" ]]; then
-					sed -i -- "/^${field[$x]}: .*/d" "$file_user"
-					printf '%s\n' "${field[$x]}: ${value[$x]}" >> "$file_user"
-				fi
-			done
+			update_db_file "$file_user"
 		fi
 	fi
 	if [[ "${message[1]}" != "" ]]; then
@@ -69,12 +64,7 @@ update_db() {
 		else
 			value=("$chat_title" "$chat_tag")
 			field=("title" "tag")
-			for x in $(seq 0 $((${#value[@]}-1))); do
-				if [[ "${field[$x]}: ${value[$x]}" != "$(grep -- "^${field[$x]}" "$file_chat")" ]]; then
-					sed -i -- "/^${field[$x]}: .*/d" "$file_chat"
-					printf '%s\n' "${field[$x]}: ${value[$x]}" >> "$file_chat"
-				fi
-			done
+			update_db_file "$file_chat"
 		fi
 	fi
 }
