@@ -466,7 +466,8 @@ if [[ "$chat_id" != "" ]]; then # usage in messages per chat
 	if [[ "$chat_usage" == "" ]]; then
 		printf '%s\n' "$(date +%y%m%d):$chat_id:1" >> stats/chats-usage
 	else
-		sed -i "s/$chat_usage/$(date +%y%m%d):$chat_id:$(bc <<< "$(cut -f 3 -d ':' <<< "$chat_usage")+1")/" stats/chats-usage
+		sed -i -- "s/$chat_usage/$(date +%y%m%d):$chat_id:$(bc \
+			<<< "$(cut -f 3 -d ':' <<< "$chat_usage")+1")/" stats/chats-usage
 	fi
 fi
 
