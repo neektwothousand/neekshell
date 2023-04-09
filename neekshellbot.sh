@@ -341,7 +341,8 @@ get_message_info() {
 		
 		jsp=$(jshon -Q \
 			-e message_id -u -p \
-			-e chat -e type -u -p \
+			-e chat \
+				-e type -u -p \
 				-e id -u -p \
 				-e title -u -p \
 				-e username -u <<< "${message[$x]}")
