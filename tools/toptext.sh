@@ -45,33 +45,36 @@ case "$mode" in
 	;;
 esac
 
-if [[ "${file_type[1]}" == "sticker" ]]; then
-	if [[ "${sticker_is_video[1]}" == "false" ]]; then
-		ext="png"
-		convert "$media" "sticker.png"
-		media="sticker.png"
-	else
-		ext="mp4"
-		file_type[1]=animation
-	fi
-fi
+set -x
 
-if [[ "${file_type[1]}" == "photo" ]]; then
-	convert "$media" "media.png"
-	ffmpeg -v error -y -i "media.png" -filter_complex \
-		"pad=h=$h:y=$py:color=white" \
-		"pad.png"
-	convert "pad.png" "pad.$ext"
-else
-	ffmpeg -v error -y -i "$media" -filter_complex \
-		"pad=h=$h:y=$py:color=white" \
-		"pad.$ext"
-fi
+case "${file_type[1]}" in
+	animation|video)
+		ext=mp4
+	;;
+	photo|sticker)
+		ext=png
+		convert "$media" "sticker.$ext"
+	;;
+esac
+
+case "${file_type[1]}" in
+	photo)
+		convert "$media" "media.$ext"
+		ffmpeg -v error -y -i "media.$ext" -filter_complex \
+			"pad=h=$h:y=$py:color=white" \
+			"pad.$ext"
+	;;
+	*)
+		ffmpeg -v error -y -i "$media" -filter_complex \
+			"pad=h=$h:y=$py:color=white" \
+			"pad.$ext"
+	;;
+esac
 
 ffmpeg -v error -y -i "pad.$ext" -i "in.png" -filter_complex \
 	"overlay=y=$oy" "toptext.$ext"
 
-if [[ "$ext" == "png" ]] && [[ "${file_type[1]}" == "sticker" ]]; then
+if [[ "${file_type[1]}" == "sticker" ]]; then
 	convert "toptext.$ext" "toptext.webp"
-	ext=webp
 fi
+
