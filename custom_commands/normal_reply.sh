@@ -1816,8 +1816,8 @@ case_chat_id() {
 				;;
 			esac
 		;;
-		-1001267306428|-1001175713242)
-			unset text_id
+		-1001267306428|-1001175713242|-1001428507662)
+			unset text_id photo_id
 			case "$(tr '[:upper:]' '[:lower:]' <<< "$user_text")" in
 				windows)
 					text_id="non capisci una tega ma proprio un cazzus"
