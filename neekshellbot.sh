@@ -307,22 +307,24 @@ get_message_info() {
 					;;
 					document)
 						document_id[$x]=$(jshon -Q -e document -e file_id -u <<< "${message[$x]}")
-						file_path[$x]=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=${document_id[$x]}" | jshon -Q -e result -e file_path -u)
+						file_path[$x]=$(curl -s "${TELEAPI}/getFile" \
+							--form-string "file_id=${document_id[$x]}" \
+							| jshon -Q -e result -e file_path -u)
 						ext[$x]=$(sed 's/.*\.//' <<< "${file_path[$x]}")
-						case "${ext[$x]}" in
-							jpg|png|jpeg|JPG|PNG|JPEG)
+						case "$(tr '[:upper:]' '[:lower:]' <<< "${ext[$x]}")" in
+							jpg|png|jpeg)
 								file_type[$x]=photo
 								photo_id[$x]=${document_id[$x]}
 							;;
-							gif|GIF)
+							gif)
 								file_type[$x]=animation
 								animation_id[$x]=${document_id[$x]}
 							;;
-							mp4|webm|avi|mkv|3gp|MP4|WEBM|AVI|MKV|3GP)
+							mp4|webm|avi|mkv|3gp)
 								file_type[$x]=video
 								video_id[$x]=${document_id[$x]}
 							;;
-							mp3|ogg|oga|flac|wav|MP3|OGG|OGA|FLAC|WAV)
+							mp3|ogg|oga|flac|wav)
 								file_type[$x]=audio
 								audio_id[$x]=${document_id[$x]}
 							;;
