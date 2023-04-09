@@ -1215,7 +1215,8 @@ case_command() {
 						-show_entries stream=duration,width,height,r_frame_rate \
 						-of default=noprint_wrappers=1 "$file_path")
 					duration=$(sed -n "s/^duration=//p" <<< "$video_info" | head -n 1 | sed "s/\..*//")
-					if [[ "$duration" -le "3" ]]; then
+					if [[ "$duration" -le "3" ]] \
+						|| [[ "$duration" == "N/A" ]]; then
 						twd
 						loading 1
 						bot_username=$(jshon -Q -e result -e username -u < "$basedir/botinfo")
