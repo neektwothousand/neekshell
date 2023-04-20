@@ -370,8 +370,10 @@ case_command() {
 				[[ ! -d custom_commands/user_generated/ ]] && \
 					mkdir custom_commands/user_generated/
 				
-				printf '%s\n' "$(head -n 1 <<< "$user_text" | cut -f 3- -d ' ' | sed "/^$/d" ; sed 1d <<< "$user_text")" \
-					> "custom_commands/user_generated/$chat_id-$user_command"
+				printf '%s\n' "$(head -n 1 <<< "$user_text" \
+					| cut -f 3- -d ' ' \
+					| sed "/^$/d" ; sed 1d <<< "$user_text")" \
+						> "custom_commands/user_generated/$chat_id-$user_command"
 				text_id="$user_command set"
 			else
 				command_help
