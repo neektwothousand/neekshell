@@ -45,8 +45,6 @@ case "$mode" in
 	;;
 esac
 
-set -x
-
 case "${file_type[1]}" in
 	animation|video)
 		ext=mp4
@@ -77,4 +75,3 @@ ffmpeg -v error -y -i "pad.$ext" -i "in.png" -filter_complex \
 if [[ "${file_type[1]}" == "sticker" ]]; then
 	convert "toptext.$ext" "toptext.webp"
 fi
-
