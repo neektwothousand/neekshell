@@ -917,7 +917,7 @@ case_command() {
 		;;
 		"!me")
 			if [[ "${arg[0]}" ]]; then
-				text_id="> $user_fname $(sed "s/^$command //" <<< "$user_text")"
+				text_id="> $user_fname $(sed "s/^.$(tail -c +2 <<< "$command") //" <<< "$user_text")"
 				tg_method send_message
 				to_delete_id=$message_id
 				tg_method delete_message
