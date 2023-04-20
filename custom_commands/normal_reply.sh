@@ -262,10 +262,14 @@ case_command() {
 								fi
 								case "${arg[0]}" in
 									animation)
-										ffmpeg -v error -i "$file_path" -vcodec $out_vcodec $crf -an "$out_file"
+										ffmpeg -v error -i "$file_path" \
+											-pix_fmt yuv420p \
+											-vcodec $out_vcodec $crf -an "$out_file"
 									;;
 									*)
-										ffmpeg -v error -i "$file_path" -vcodec $out_vcodec $crf "$out_file"
+										ffmpeg -v error -i "$file_path" \
+											-pix_fmt yuv420p \
+											-vcodec $out_vcodec $crf "$out_file"
 									;;
 								esac
 								loading 2
