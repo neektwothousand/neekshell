@@ -343,13 +343,43 @@ case_command() {
 						esac
 					;;
 					audio)
-						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=${audio_id[1]}" | jshon -Q -e result -e file_path -u)
+						file_path=$(curl -s "${TELEAPI}/getFile" \
+							--form-string "file_id=${audio_id[1]}" \
+								| jshon -Q -e result -e file_path -u)
 						case "${arg[0]}" in
 							mp3)
 								out_file="convert.mp3"
-								err_out=$(ffmpeg -v error -i "$file_path" -vn -acodec libmp3lame -b:a 320k "$out_file")
+								loading 1
+								err_out=$(ffmpeg -v error -i "$file_path" \
+									-vn -acodec libmp3lame -b:a 320k "$out_file")
 								audio_id="@$out_file"
+								loading 2
 								tg_method send_audio upload
+							;;
+							opus|vorbis|voice)
+								out_file="convert.ogg"
+								loading 1
+
+								case "${arg[0]}" in
+									opus|voice)
+										acodec="libopus"
+									;;
+									vorbis)
+										acodec="libvorbis"
+									;;
+								esac
+
+								err_out=$(ffmpeg -v error -i "$file_path" \
+									-vn -acodec $acodec "$out_file")
+
+								loading 2
+								if [[ "${arg[0]}" == "voice" ]]; then
+									voice_id="@$out_file"
+									tg_method send_voice upload
+								else
+									document_id="@$out_file"
+									tg_method send_document upload
+								fi
 							;;
 						esac
 					;;
