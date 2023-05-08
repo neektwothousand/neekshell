@@ -50,8 +50,13 @@ case "${file_type[1]}" in
 		ext=mp4
 	;;
 	photo|sticker)
-		ext=png
-		convert "$media" "sticker.$ext"
+		if [[ "${sticker_is_video[1]}" == "true" ]]; then
+			ext=mp4
+			file_type[1]=animation
+		else
+			ext=png
+			convert "$media" "sticker.$ext"
+		fi
 	;;
 esac
 
