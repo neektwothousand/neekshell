@@ -231,12 +231,15 @@ case_command() {
 				get_reply_id reply
 				case "${file_type[1]}" in
 					video|animation)
-						input_codecs=$(ffprobe -v error -show_streams "$file_path" | grep "^codec_name")
+						input_codecs=$(ffprobe -v error \
+							-show_streams "$file_path" | grep "^codec_name")
 						case "${file_type[1]}" in
-						video) media_id=${video_id[1]} ;;
-						animation) media_id=${animation_id[1]} ;;
+							video) media_id=${video_id[1]} ;;
+							animation) media_id=${animation_id[1]} ;;
 						esac
-						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
+						file_path=$(curl -s "${TELEAPI}/getFile" \
+							--form-string "file_id=$media_id" \
+								| jshon -Q -e result -e file_path -u)
 						case "${arg[0]}" in
 							animation|mp4|h264|h265|hevc)
 								loading 1
@@ -308,7 +311,8 @@ case_command() {
 									jpg|jpeg) ext=jpg ;;
 									photo) ext=jpg ;;
 								esac
-								ffmpeg -v error -ss 0.1 -i "$file_path" -vframes 1 -f image2 "convert.$ext"
+								ffmpeg -v error -ss 0.1 -i "$file_path" \
+									-vframes 1 -f image2 "convert.$ext"
 								photo_id="@convert.$ext"
 								tg_method send_photo upload
 							;;
@@ -316,10 +320,12 @@ case_command() {
 					;;
 					photo|sticker)
 						case "${file_type[1]}" in
-						photo) media_id=${photo_id[1]} ;;
-						sticker) media_id=${sticker_id[1]} ;;
+							photo) media_id=${photo_id[1]} ;;
+							sticker) media_id=${sticker_id[1]} ;;
 						esac
-						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
+						file_path=$(curl -s "${TELEAPI}/getFile" \
+							--form-string "file_id=$media_id" \
+								| jshon -Q -e result -e file_path -u)
 						case "${arg[0]}" in
 							png|jpg|avif|hei[cf]|webp)
 								loading 1
