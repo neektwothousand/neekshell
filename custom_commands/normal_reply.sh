@@ -644,9 +644,12 @@ case_command() {
 								media_id=${sticker_id[1]}
 							;;
 						esac
-						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
+						file_path=$(curl -s "${TELEAPI}/getFile" \
+							--form-string "file_id=$media_id" \
+								| jshon -Q -e result -e file_path -u)
 						ext=$(sed 's/.*\.//' <<< "$file_path")
-						toptext=$(sed -e "s/$(head -n 1 <<< "$user_text" | cut -f 1 -d ' ') //" -e "s/,/\\\,/g" <<< "$user_text")
+						toptext=$(sed -e "s/$(head -n 1 <<< "$user_text" \
+							| cut -f 1 -d ' ') //" -e "s/,/\\\,/g" <<< "$user_text")
 						loading 1
 						case "$command" in
 							"!gtt") mode=top ;;
