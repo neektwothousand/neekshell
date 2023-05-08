@@ -1102,14 +1102,17 @@ case_command() {
 			if [[ "${message_id[1]}" != "" ]]; then
 				case "${file_type[1]}" in
 					"photo"|"animation"|"video")
+						get_reply_id self
 						disable_preview=true
-						request_id=$RANDOM
+						request_id="$chat_id$message_id"
 						case "${file_type[1]}" in
 							photo) media_id=${photo_id[1]} ;;
 							animation) media_id=${animation_id[1]} ;;
 							video) media_id=${video_id[1]} ;;
 						esac
-						file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
+						file_path=$(curl -s "${TELEAPI}/getFile" \
+							--form-string "file_id=$media_id" \
+								| jshon -Q -e result -e file_path -u)
 						ext=$(sed 's/.*\.//' <<< "$file_path")
 						if [[ "$(grep -i "mp4" <<< "$ext")" ]]; then
 							public_path="/home/genteek/archneek/public/tmp/$request_id-sauce.jpg"
@@ -1121,11 +1124,7 @@ case_command() {
 							install -m 644 "$file_path" "$public_path"
 						fi
 						if [[ "${arg[0]}" == "google" ]]; then
-							ua="User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:105.0) Gecko/20100101 Firefox/105.0"
-							cookie="Cookie: NID=511=j4EBF2RK7V8ghFM53bBjehTSRlVa3cYmek8Jyf3NPX4ALwm-7CKmMSsPtGUtfF882laTDLglQZ73-4TazPVLMATjYjUgzItZasD-dUrppYd9u1EbVBTsgmlTfZie7GH9JxGE8MaFemokCz_FNf6vuksC5ZZc_Kzb6wJpPWCq7VKbRNGxpVnxllGqEGUzzFqygpOLLDu7E93blC3Apc8gwKp3NKC--4Diwh9-B7mQjOzNJg3n8w; SID=QAgH_B5ysAK509G8BfvujHMje5ZtFfLEASOehviSEv_yt5bCJZxkz0BWyXe0hFbNjzQUvg.; __Secure-1PSID=QAgH_B5ysAK509G8BfvujHMje5ZtFfLEASOehviSEv_yt5bCv5wdyQ57VMXWh4bs9PG68g.; __Secure-3PSID=QAgH_B5ysAK509G8BfvujHMje5ZtFfLEASOehviSEv_yt5bC-3iyoSUioIaiC3RHXQKF4Q.; HSID=AGiCCoiXhpZJqxaky; SSID=AEh7KGFeSW_Au486P; APISID=lNH8N0CtS834xswk/AtYbtiJPusuG0XzTM; SAPISID=_bWaHYWWbIs_8ZDr/A6vo_qwPiAHocLNgB; __Secure-1PAPISID=_bWaHYWWbIs_8ZDr/A6vo_qwPiAHocLNgB; __Secure-3PAPISID=_bWaHYWWbIs_8ZDr/A6vo_qwPiAHocLNgB; SIDCC=AIKkIs2tvglMZlEiWcEAoYEFCcd3YFTjeho4yTqW14vMlFKJ0kN6c3W9KEoMrFUqJ7yEgVQZ3g; __Secure-1PSIDCC=AIKkIs2cbeBqioM1cAx_kjT8Xg7EcB4V_0mPSuM6wTzHXU6d5ihmBKODaxwfDgtARxXRKvI9Njo; __Secure-3PSIDCC=AIKkIs0PovLfN0FU2iXuEvHVUtjhUiK1tMZElZbiOBiVaeKJdBKEUYLDuuVindzBqk7QmE_7WOY; SEARCH_SAMESITE=CgQI45YB; __Secure-ENID=8.SE=x9Ip7DYMZ8hnTgcgqF_T161DJZ8ltrdnrUQzlaVz83wUfIrobISMN-AwXFVxJRhxJvxe3dn8Z8GOT-m1Bgi8JhsFVwt8cqbt0meA5TvLoTZVFHtZRhJoszkG-HlWIH6VXT55rEanAPO0_3gqojPhjdc5vbwBiadlEZettztvcg5nnkLS7gs_wqKmpzl-HzLRXWxjrEoAmsZPvCX7RpGL9e8ZiHePdkMqAa7lgVLozMSeyjgZABc6RXa_0gCiGu4KPmHF; AEC=AakniGNW_8xrFsU-s2nXJqoy_tSMev0Ctesf0svY116S3fPbZNVbB9P1Bw; OSID=QggH_HAI314qmadnRW8HBokCT2k7H2DCuWEDaBBkAra75YYLAzjKkHR-GUkTcYDoFIg0XA.; __Secure-OSID=QggH_HAI314qmadnRW8HBokCT2k7H2DCuWEDaBBkAra75YYLpJmS_IMhrL9kwzJV4ZO4Dw.; OTZ=6765924_52_52_123900_48_436380"
-							text_id=$(curl -vv -H "$ua" -H "$cookie" \
-								"https://lens.google.com/uploadbyurl?url=$request_url" 2>&1 \
-								| grep location | sed 's/..location.//')
+							text_id="https://lens.google.com/uploadbyurl?url=$request_url"
 						else
 							api_key=$(cat saucenao_key)
 							params="output_type=2&numres=32&api_key=$api_key&url=$request_url"
@@ -1133,7 +1132,8 @@ case_command() {
 							numres=$(jshon -Q -e results -l <<< "$sauce")
 							if [[ "$numres" ]]; then
 								for x in $(seq 0 $((numres-1))); do
-									ext_url[$x]=$(jshon -Q -e results -e $x -e data -e ext_urls -e 0 -u <<< "$sauce")
+									ext_url[$x]=$(jshon -Q -e results \
+										-e $x -e data -e ext_urls -e 0 -u <<< "$sauce")
 								done
 								text_id=$(tr ' ' '\n' <<< "${ext_url[*]}")
 							else
@@ -1141,7 +1141,6 @@ case_command() {
 							fi
 						fi
 						tg_method send_message
-						rm -f "$public_path"
 					;;
 				esac
 			fi
