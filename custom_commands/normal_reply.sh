@@ -499,6 +499,9 @@ case_command() {
 			esac
 		;;
 		"!parrot")
+			if [[ "$chat_id" == "-1001267306428" ]]; then
+				return
+			fi
 			get_member_id=$(jshon -Q -e result -e id -u < botinfo)
 			tg_method get_chat_member
 			if [[ "$(jshon -Q -e result -e status -u <<< "$curl_result" | grep -w "administrator")" != "" ]]; then
