@@ -1930,10 +1930,13 @@ case_user_id
 
 case "$file_type" in
 	"new_chat_members")
-		if [[ "$(jshon -Q -e 0 -e id -u <<< "$new_members")" == "$(jshon -Q -e result -e id -u < botinfo)" ]]; then
-			voice_id="https://archneek.zapto.org/webaudio/oh_my.ogg"
+		new_member_id=$(jshon -Q -e 0 -e id -u <<< "$new_members")
+		if [[ "$new_member_id" == "$(jshon -Q -e result -e id -u < botinfo)" ]]; then
+			voice_id="https://archneek.zapto.org/public/audio/oh_my.ogg"
+		elif [[ "$(grep "160551211\|917684979" <<< "$new_member_id")" ]]; then
+			voice_id="https://archneek.zapto.org/public/audio/the_holy.ogg"
 		else
-			voice_id="https://archneek.zapto.org/webaudio/fanfare.ogg"
+			voice_id="https://archneek.zapto.org/public/audio/fanfare.ogg"
 		fi
 		get_reply_id self
 		tg_method send_voice
