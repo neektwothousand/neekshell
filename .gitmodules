@@ -1,0 +1,3 @@
+[submodule "tools/flag"]
+	path = tools/flag
+	url = https://github.com/nik012003/flag.sh

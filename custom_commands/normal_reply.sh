@@ -539,6 +539,27 @@ case_command() {
 				fi
 			fi
 		;;
+		"!flag")
+			[[ -e "$basedir/powersave" ]] && return
+			if [[ "${message_id[1]}" ]] && [[ "${arg[0]}" ]] \
+				&& [[ "${file_type[1]}" == "photo" ]]; then
+
+				case "${arg[0]}" in
+					[0-9])
+						get_reply_id self
+						twd
+						media_id=${photo_id[1]}
+						file_path=$(curl -s "${TELEAPI}/getFile" \
+							--form-string "file_id=$media_id" \
+								| jshon -Q -e result -e file_path -u)
+						"$basedir"/tools/flag/flag.sh "$file_path" "${arg[0]}" "flag.png"
+						photo_id=@flag.png
+						tg_method send_photo upload
+						rm -vf flag.png
+					;;
+				esac
+			fi
+		;;
 		"!fortune")
 			if [[ "${arg[0]}" = "" ]]; then
 				text_id=$(/usr/bin/fortune fortunes paradoxum goedel | tr '\n' ' ' | awk '{$2=$2};1')
