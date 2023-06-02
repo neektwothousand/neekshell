@@ -1365,10 +1365,12 @@ case_command() {
 			source "$basedir/venv/bin/activate"
 			if [[ "$(sed "s/.* //" <<< "${arg[*]}")" == "audio" ]]; then
 				ext=mp3
-				ytdl_json=$(yt-dlp --print-json --extract-audio --audio-format mp3 -o ytdl.$ext "$ytdl_link")
+				ytdl_json=$(yt-dlp --print-json --extract-audio \
+					--audio-format mp3 -o ytdl.$ext "$ytdl_link")
 			else
 				ext=mp4
-				ytdl_json=$(yt-dlp --print-json --merge-output-format $ext -o ytdl.$ext "$ytdl_link")
+				ytdl_json=$(yt-dlp --print-json \
+					--merge-output-format $ext -o ytdl.$ext "$ytdl_link")
 			fi
 			deactivate
 			if [[ "$ytdl_json" != "" ]]; then
