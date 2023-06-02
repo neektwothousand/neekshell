@@ -1,4 +1,4 @@
-#!/bin/mksh
+#!/usr/bin/env mksh
 set -f
 
 START_TIME=$(bc <<< "$(date +%s%N) / 1000000")
