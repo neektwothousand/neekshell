@@ -2,6 +2,7 @@
 if [[ "$chat_id" != "" ]] || [[ "$user_id" != "" ]]; then
 	twd
 	data_id=$RANDOM
+	num_arg=$(grep -o "[0-9]*" <<< "${arg[0]}")
 	if [[ "$s_target" == "users" ]]; then
 		if [[ "$s_time" == "today" ]]; then
 			usage=$(grep -w -- "$(date +%y%m%d):$user_id" stats/users-usage | cut -f 3 -d :)
@@ -14,7 +15,7 @@ if [[ "$chat_id" != "" ]] || [[ "$user_id" != "" ]]; then
 				text_id="Yesterday usage in ms: $usage"
 			fi
 		fi
-	elif [[ ! "$(grep "[0-9]*" <<< "${arg[0]}")" ]]; then
+	elif [[ ! "$num_arg" ]]; then
 		sed -n "s/.$chat_id./ /p" "$basedir/stats/chats-usage" | tail -n 7 | sed -e 's/^..//' -e 's/^../&\//' -e 's/^...../"&"/' > "$data_id-data"
 		gnuplot -persist <<EOF
 			set terminal pngcairo enhanced font "Ubuntu,14" fontscale 1.0 size 1280, 720
@@ -31,7 +32,7 @@ if [[ "$chat_id" != "" ]] || [[ "$user_id" != "" ]]; then
 EOF
 		photo_id="@$data_id-out.png"
 	else
-		data=$(sed -n "s/.$chat_id./ /p" "$basedir/stats/chats-usage" | tail -n "$((${arg[0]}+1))" | head -n -1 | sed 's/^....../""/')
+		data=$(sed -n "s/.$chat_id./ /p" "$basedir/stats/chats-usage" | tail -n "$(($num_arg+1))" | head -n -1 | sed 's/^....../""/')
 		printf '%s\n' "$data" | head -n 1 > "$data_id-data"
 		printf '%s\n' "$data" >> "$data_id-data"
 		printf '%s\n' "$data" | tail -n 1 >> "$data_id-data"
