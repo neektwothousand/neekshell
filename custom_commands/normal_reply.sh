@@ -242,6 +242,11 @@ case_command() {
 								| jshon -Q -e result -e file_path -u)
 						case "${arg[0]}" in
 							animation|mp4|h264|h265|hevc)
+								cpu_model=$(lscpu -J | jshon -Q -e lscpu -e 6 -e data -u)
+								if [[ "$cpu_model" == "Cortex-A72" ]] \
+								&& [[ "$(grep "h265\|hevc" <<< "${arg[0]}")" ]]; then
+									return
+								fi
 								loading 1
 								out_file="convert.mp4"
 								crf=$(grep -o "^[0-9]*" <<< "${arg[1]}")
