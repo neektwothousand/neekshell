@@ -1904,6 +1904,9 @@ case_chat_id() {
 				*💀*)
 					photo_id="https://archneek.zapto.org/public/pics/sub_fem.jpg"
 				;;
+				"mi dissocio")
+					text_id="mi associo fortissimo"
+				;;
 			esac
 			
 			get_reply_id self
