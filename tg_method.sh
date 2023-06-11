@@ -82,10 +82,17 @@ tg_method() {
 				$curl_f "video=$video_id"
 		;;
 		send_mediagroup)
-			curl -s "$TELEAPI/sendMediaGroup" \
-				$curl_f "chat_id=$chat_id" \
-				$curl_f "reply_to_message_id=$reply_id" \
-				$curl_f "media=$mediagroup_id"
+			if [[ "$2" == "upload" ]]; then
+				curl -s "$TELEAPI/sendMediaGroup" \
+					$curl_f "chat_id=$chat_id" \
+					$curl_f "reply_to_message_id=$reply_id" \
+					$curl_f "media=$mediagroup_id" ${mediagroup_upload[*]}
+			else
+				curl -s "$TELEAPI/sendMediaGroup" \
+					$curl_f "chat_id=$chat_id" \
+					$curl_f "reply_to_message_id=$reply_id" \
+					$curl_f "media=$mediagroup_id"
+			fi
 		;;
 		send_audio)
 			curl -s "$TELEAPI/sendAudio" \

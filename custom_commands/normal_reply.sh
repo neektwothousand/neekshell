@@ -827,53 +827,54 @@ case_command() {
 				;;
 			esac
 		;;
-		"!insta")
+		"!instaloader")
 			[[ -e "$basedir/powersave" ]] && return
-			if [[ "${arg[0]}" ]]; then
-				if [[ "$(grep '^@' <<< "${arg[0]}")" != "" ]]; then
-					arg[0]=${arg[0]/@/}
-				fi
-				if [[ "$(grep '[^_.a-zA-Z]' <<< "${arg[0]}")" != "" ]]; then
-					return
-				fi
-				loading 1
-				ig_user=$(sed -n 1p ig_key)
-				ig_pass=$(sed -n 2p ig_key)
-				twd
-				ig_scraper=$(~/.local/bin/instagram-scraper -u $ig_user -p $ig_pass -m 50 "${arg[0]}")
-				if [[ "$(grep "^ERROR" <<< "$ig_scraper")" != "" ]]; then
-					loading 3
-					return
-				fi
-				loading 2
-				ls -t -1 "${arg[0]}" > ig_list
-				printf '%s' "$user_id" > ig_userid
-				if [[ "$(sed -n 2p ig_list)" != "" ]]; then
-					button_text=(">")
-					button_data=("insta + ${arg[0]} $chat_id")
-					markup_id=$(json_array inline button)
-				fi
-				printf '%s' "1" > ig_page
-				media_id="@$(sed -n 1p ig_list)"
-				ext=$(grep -o "...$" <<< "$media_id")
-				loading 3
-				case "$ext" in
-					jpg)
-						photo_id=$media_id
-						tg_method send_photo upload
-						ig_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
-					;;
-					mp4)
-						video_id=$media_id
-						tg_method send_video upload
-						ig_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
-					;;
-				esac
-				printf '%s' "$ig_id" > ig_id
+			get_reply_id self
+			if [[ "${user_text[1]}" ]]; then
+				ig_link=${user_text[1]}
+			elif [[ "${arg[0]}" ]]; then
+				ig_link=${arg[0]}
 			else
-				command_help
+				text_id="no link provided"
 				tg_method send_message
+				return
 			fi
+			ig_post=$(sed -n "s|.*\(http[^\s]*\)|\1|p" <<< "$ig_link" | \
+				sed -n 's/.*instagram.com\/p\///p' | sed 's/\/.*//')
+			if [[ ! "$ig_post" ]]; then
+				text_id="post not found"
+				tg_method send_message
+				return
+			fi
+			loading 1
+			twd
+			source "$basedir/venv/bin/activate"
+			instaloader -- "-${ig_post}"
+			deactivate
+			cd -- "-${ig_post}" || return
+			media=($(dir -N1 . | grep ".jpg$"))
+			if [[ ! "$media" ]]; then
+				text_id="no pictures found"
+				tg_method send_message
+				return
+			fi
+			loading 2
+			if [[ "${#media[*]}" -lt 2 ]]; then
+				photo_id="@${media[$x]}"
+				tg_method send_photo upload
+			else
+				media=($(dir -N1 . | grep ".jpg$"))
+				for x in $(seq 0 $((${#media[@]}-1))); do
+					mediagroup_upload[$x]="-F photo$x=@${media[$x]}"
+					attach_file_id="attach://photo$x"
+					media[$x]=$attach_file_id
+				done
+				mediagroup_id=$(json_array mediagroup upload)
+				tg_method send_mediagroup upload
+			fi
+			loading 3
+			cd ..
+			rm -rf -- "-${ig_post}"
 		;;
 		"!jpg")
 			[[ -e "$basedir/powersave" ]] && return
