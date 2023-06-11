@@ -1949,6 +1949,17 @@ case_user_id() {
 				;;
 			esac
 		;;
+		990220458|160551211|917684979)
+			case "$command" in
+				"!sofiabot")
+					source ./rewindbot.sh
+					if [[ "$text_id" ]]; then
+						get_reply_id self
+						tg_method send_message
+					fi
+				;;
+			esac
+		;;
 	esac
 }
 
