@@ -1173,7 +1173,7 @@ case_command() {
 		;;
 		"!sed")
 			[[ "${caption[1]}" != "" ]] && user_text[1]=${caption[1]}
-			if [[ "${user_text[1]}" != "" ]]; then
+			if [[ "${user_text[1]}" != "" ]] && [[ "${arg[0]}" ]]; then
 				pattern=$(sed "s/^.sed //" <<< "$user_text")
 				text_id=$(sed --sandbox "$pattern" <<< "${user_text[1]}" 2>&1)
 				get_reply_id reply
