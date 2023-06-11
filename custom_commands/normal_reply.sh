@@ -1934,7 +1934,7 @@ case_user_id() {
 				fi
 			fi
 		;;
-		492326133|160551211|917684979) # olibot
+		492326133) # olibot
 			case "$command" in
 				"!olibot")
 					case "${arg[0]}" in
