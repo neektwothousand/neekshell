@@ -1851,37 +1851,6 @@ case_normal() {
 }
 case_chat_id() {
 	case "$chat_id" in
-		-1001295551578|-1001402125530)
-			if [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]] \
-			&& [[ "${message_id[1]}" == "" ]] \
-			&& [[ "$chat_id" != "-1001402125530" ]]; then
-				to_delete_id=$message_id
-				tg_method delete_message
-				ban_id=$user_id unban_id=$user_id
-				tg_method ban_member
-				to_delete_id=$(jshon -Q -e result -e message_id <<< "$curl_result")
-				tg_method unban_member
-				tg_method delete_message
-			elif [[ "${message_id[1]}" != "" ]] \
-			&& [[ "$(jshon -Q -e sender_chat <<< "$message")" == "" ]] \
-			&& [[ "$(jshon -Q -e sender_chat <<< "${message_id[1]}")" != "" ]] \
-			&& [[ "$user_id" != "160551211" ]] \
-			&& [[ "$user_id" != "917684979" ]]; then
-				text_id="https://t.me/c/$(tail -c +5 <<< "$chat_id")/$(jshon -Q -e message_id -u <<< "${message_id[1]}")/?comment=$message_id"
-				chat_id="-1001312198683"
-				tg_method send_message
-			fi
-		;;
-		-1001332912452)
-			if [[ "$user_text" != "" ]]; then
-				message_link="https://t.me/c/$(tail -c +5 <<< "$chat_id")/$message_id/"
-				text_id="Y-Hell: $message_link"
-				o_chat_id=$chat_id
-				chat_id="-1001067362020"
-				tg_method send_message
-				chat_id=$o_chat_id
-			fi
-		;;
 		-1001497062361)
 			case "$user_text" in
 				"!rules"|"!regole"|"!lvx"|"!dvxtime"|"!dvxdocet"|"!dvxsofia")
