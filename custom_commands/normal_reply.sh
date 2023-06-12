@@ -849,7 +849,7 @@ case_command() {
 			loading 1
 			twd
 			source "$basedir/venv/bin/activate"
-			instaloader -- "-${ig_post}"
+			instaloader -- "-${ig_post}" > /dev/null 2>&1
 			deactivate
 			cd -- "-${ig_post}" || return
 			media=($(dir -N1 . | grep ".jpg$"))
