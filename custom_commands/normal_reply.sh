@@ -856,9 +856,20 @@ case_command() {
 			loading 1
 			twd
 			source "$basedir/venv/bin/activate"
-			instaloader -- "-${ig_post}" > /dev/null 2>&1
+			request_id=$RANDOM
+			instaloader=$(instaloader -q \
+				--no-profile-pic \
+				--dirname-pattern "$request_id" \
+				-l "$(cut -f 1 -d ":" "$basedir/ig_key")" \
+				-- "-${ig_post}" 2>&1)
+			if [[ ! -d "$request_id" ]]; then
+				loading 3
+				text_id=$instaloader
+				tg_method send_message
+				return
+			fi
 			deactivate
-			cd -- "-${ig_post}" || return
+			cd -- "$request_id" || return
 			media=($(dir -N1 . | grep ".jpg$"))
 			if [[ ! "$media" ]]; then
 				text_id="no pictures found"
@@ -867,7 +878,7 @@ case_command() {
 			fi
 			loading 2
 			if [[ "${#media[*]}" -lt 2 ]]; then
-				photo_id="@${media[$x]}"
+				photo_id="@$media"
 				tg_method send_photo upload
 			else
 				media=($(dir -N1 . | grep ".jpg$"))
@@ -881,7 +892,7 @@ case_command() {
 			fi
 			loading 3
 			cd ..
-			rm -rf -- "-${ig_post}"
+			rm -rf -- "$request_id"
 		;;
 		"!jpg")
 			[[ -e "$basedir/powersave" ]] && return
