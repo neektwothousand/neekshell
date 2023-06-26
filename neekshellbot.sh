@@ -84,7 +84,12 @@ is_chat_admin() {
 				| grep -w "creator\|administrator")
 		;;
 		*)
-			for x in "$user_id" "$(jshon -Q -e result -e id -u < botinfo)"; do
+			if [[ "$sender_chat_id" ]]; then
+				local check_id=$sender_chat_id
+			else
+				local check_id=$user_id
+			fi
+			for x in "$check_id" "$(jshon -Q -e result -e id -u < botinfo)"; do
 				get_member_id=$x
 				tg_method get_chat_member
 				chat_admin=$(jshon -Q -e result -e status -u <<< "$curl_result" \
