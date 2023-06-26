@@ -420,7 +420,7 @@ process_reply() {
 		;;
 	esac
 	[[ $(is_status banned) ]] && exit
-	update_db
+	update_db &
 	if [[ "$chat_type" == "private" ]] || [[ "$inline" ]] || [[ "$callback" ]]; then
 		bot_chat_dir="db/bot_chats/"
 		bot_chat_user_id=$user_id
@@ -448,6 +448,7 @@ process_reply() {
 		;;
 	esac
 	source tg_method.sh
+	wait
 	case "$update_type" in
 		message|channel_post)
 			get_normal_reply
