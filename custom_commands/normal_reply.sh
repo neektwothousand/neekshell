@@ -1606,7 +1606,7 @@ case_command() {
 				if [[ "$?" == "0" ]]; then
 					text_id=$(cat out)
 				else
-					text_id=$(cat out | sed -z "s|$HOME/.cargo/.runner/bin/||")
+					text_id=$(cat out | sed -z "s|$HOME/.cargo/.runner/bin/||g")
 				fi
 				tg_method send_message
 			fi
