@@ -584,13 +584,19 @@ case_command() {
 			if [[ "${arg[0]}" ]]; then
 				get_reply_id self
 				loading 1
+				source "$basedir/venv/bin/activate"
 				gallery_json=$(gallery-dl -sj "${arg[0]}" 2>/dev/null)
 				if [[ "$gallery_json" ]]; then
 					gallery_type=$(jshon -Q -e 0 -e 1 -e type -u <<< "$gallery_json")
 					if [[ "$gallery_type" == "ugoira" ]]; then
 						twd
-						gallery-dl -q --ugoira-conv-lossless -d . -D . -f out.webm "${arg[0]}"
-						ffmpeg -v error -i out.webm -vcodec h264 -crf 14 -an out.mp4
+						gallery-dl -q \
+							--ugoira-conv-lossless \
+							-d . -D . -f out.webm "${arg[0]}"
+						ffmpeg -v error -i out.webm \
+							-vcodec h264 \
+							-pix_fmt yuv420p \
+							-crf 14 -an out.mp4
 						animation_id="@out.mp4"
 						loading 2
 						tg_method send_animation upload
@@ -601,6 +607,7 @@ case_command() {
 				else
 					loading value "invalid link"
 				fi
+				deactivate
 			fi
 		;;
 		"!gayscale"|"!gs")
