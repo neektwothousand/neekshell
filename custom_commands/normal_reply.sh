@@ -1126,9 +1126,13 @@ case_command() {
 			fi
 		;;
 		"!ping")
+			markdown=("<code>" "</code>")
+			parse_mode=html
 			text_id=$(printf '%s\n' \
 				"pong" \
-				"api: $(ping -c 1 api.telegram.org | sed -n 's/.*time=\(.*\)/\1/p')" \
+				"/getMe method time: $({ time tg_method get_me; } 2>&1 1>/dev/null \
+					| tr -s " " \
+					| cut -f 2 -d " ")" \
 				"response time: $(bc -l <<< "$(date +%s)-$(jshon -Q -e date -u <<< "$message")") s" \
 				"script time: $(bc <<< "$(bc <<< "$(date +%s%N) / 1000000") - $START_TIME") ms")
 			get_reply_id self
