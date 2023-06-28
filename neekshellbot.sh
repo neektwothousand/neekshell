@@ -432,7 +432,7 @@ process_reply() {
 		text)
 			pf=$(head -n 1 <<< "$user_text" | grep -o '^.')
 			case "$pf" in
-				"/"|"$"|"&"|"%"|";"|"!")
+				"$"|"&"|"%"|"!")
 					command=$(head -n 1 <<< "$user_text" | sed -e "s/ .*//" -e "s/^./!/")
 				;;
 			esac
