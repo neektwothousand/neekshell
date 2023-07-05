@@ -229,6 +229,10 @@ case_command() {
 			if [[ "${message_id[1]}" ]] && [[ "${arg[0]}" ]]; then
 				twd
 				get_reply_id reply
+				if [[ "${sticker_is_video[1]}" ]]; then
+					file_type[1]=animation
+					animation_id[1]=${sticker_id[1]}
+				fi
 				case "${file_type[1]}" in
 					video|animation)
 						input_codecs=$(ffprobe -v error \
