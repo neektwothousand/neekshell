@@ -1134,7 +1134,7 @@ case_command() {
 			parse_mode=html
 			text_id=$(printf '%s\n' \
 				"pong" \
-				"/getMe method time: $({ time tg_method get_me; } 2>&1 1>/dev/null \
+				"api: /getMe method time: $({ time tg_method get_me; } 2>&1 1>/dev/null \
 					| tr -s " " \
 					| cut -f 2 -d " ")" \
 				"response time: $(bc -l <<< "$(date +%s)-$(jshon -Q -e date -u <<< "$message")") s" \
