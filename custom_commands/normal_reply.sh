@@ -561,8 +561,10 @@ case_command() {
 						file_path=$(curl -s "${TELEAPI}/getFile" \
 							--form-string "file_id=$media_id" \
 								| jshon -Q -e result -e file_path -u)
-						"$basedir"/tools/flag/flag.sh "$file_path" "${arg[0]}" "flag.png"
+						text_id=$("$basedir"/tools/flag/flag.sh \
+							"$file_path" "${arg[0]}" "flag.png")
 						photo_id=@flag.png
+						tg_method send_message
 						tg_method send_photo upload
 						rm -vf flag.png
 					;;
