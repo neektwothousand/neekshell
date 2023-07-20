@@ -4,7 +4,6 @@ video_jpg() {
 	elif [[ "${file_type[1]}" == "animation" ]]; then
 		video_id[1]=${animation_id[1]}
 		audio_c="-an"
-
 	fi
 	case "$1" in
 		video)
@@ -36,8 +35,8 @@ video_jpg() {
 		-of default=noprint_wrappers=1 "$file_path")
 	res[0]=$(sed -n 's/^width=//p' <<< "$video_info")
 	res[1]=$(sed -n 's/^height=//p' <<< "$video_info")
-	res[0]=$(bc <<< "${res[0]}/1.5")
-	res[1]=$(bc <<< "${res[1]}/1.5")
+	res[0]=$(bc <<< "${res[0]}/$factor")
+	res[1]=$(bc <<< "${res[1]}/$factor")
 	[[ "$((${res[0]}%2))" -eq "0" ]] || res[0]=$((${res[0]}-1))
 	[[ "$((${res[1]}%2))" -eq "0" ]] || res[1]=$((${res[1]}-1))
 	if [[ "${file_type[1]}" == "video" ]]; then
@@ -905,6 +904,14 @@ case_command() {
 			if [[ "${message_id[1]}" != "" ]]; then
 				twd
 				get_reply_id reply
+				case "${arg[0]}" in
+					[1-9])
+						factor=$((2+${arg[0]}))
+					;;
+					*)
+						factor=2
+					;;
+				esac
 				case "${file_type[1]}" in
 					text)
 						text_id=$("$basedir/tools/jpg" "${user_text[1]}")
@@ -928,8 +935,8 @@ case_command() {
 								| sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
 							magick "pic.$ext" -resize \
 								$(printf '%.0f\n' \
-									"$(bc -l <<< "${res[0]}/2.5")")x$(printf '%.0f\n' \
-										"$(bc -l <<< "${res[1]}/2.5")") "pic.$ext"
+									"$(bc -l <<< "${res[0]}/$factor")")x$(printf '%.0f\n' \
+										"$(bc -l <<< "${res[1]}/$factor")") "pic.$ext"
 							magick "pic.$ext" -quality 4 "pic.$ext"
 							photo_id="@pic.$ext"
 							tg_method send_photo upload
@@ -946,8 +953,9 @@ case_command() {
 								| sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
 							convert "sticker.webp" "sticker.jpg"
 							magick "sticker.jpg" -resize \
-								$(bc <<< "${res[0]}/1.5")x$(bc <<< "${res[1]}/1.5") "sticker.jpg"
-							magick "sticker.jpg" -quality 6 "sticker.jpg"
+								$(bc <<< "${res[0]}/$factor")x$(bc <<< "${res[1]}/$factor") \
+									"sticker.jpg"
+							magick "sticker.jpg" -quality 4 "sticker.jpg"
 							magick "sticker.jpg" -resize 512x512 "sticker.jpg"
 							convert "sticker.jpg" "sticker.webp"
 
@@ -991,7 +999,7 @@ case_command() {
 						done
 						ffmpeg -v error \
 							-i "audio.$ext" -vn -acodec aac \
-							-b:a $(bc <<< "$br/2") \
+							-b:a $(bc <<< "$br/$factor") \
 							-ar $sr \
 							-strict -2 "audio-jpg.aac"
 						loading 2
