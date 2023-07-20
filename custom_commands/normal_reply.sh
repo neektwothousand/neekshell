@@ -1973,7 +1973,7 @@ case_user_id() {
 				"!olibot")
 					case "${arg[0]}" in
 						start|stop|restart|update)
-							source ./olibot.sh "${arg[0]}"
+							source ./olibot.sh "${arg[0]}" "${arg[1]}"
 							if [[ "$text_id" ]]; then
 								get_reply_id self
 								tg_method send_message
