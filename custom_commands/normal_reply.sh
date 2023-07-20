@@ -1149,14 +1149,45 @@ case_command() {
 			get_reply_id self
 			tg_method send_message
 		;;
-		"!reddit")
-			get_reply_id self
-			if [[ "${arg[0]}" ]]; then
-				source tools/r_subreddit.sh "${arg[0]}" "${arg[1]}"
+		"!reverse")
+			file_name="reverse"
+			if [[ "${video_id[1]}" ]]; then
+				media=${video_id[1]}
+				filters="-vf reverse -af areverse"
+				method=send_video
+				video_id="@$file_name.mp4"
+				ext=mp4
+			elif [[ "${animation_id[1]}" ]]; then
+				media=${animation_id[1]}
+				filters="-vf reverse"
+				method=send_animation
+				animation_id="@$file_name.mp4"
+				ext=mp4
+			elif [[ "${audio_id[1]}" ]]; then
+				media=${audio_id[1]}
+				filters="-af areverse"
+				method=send_audio
+				audio_id="@$file_name.mp3"
+				ext=mp3
+			elif [[ "${voice_id[1]}" ]]; then
+				media=${voice_id[1]}
+				filters="-af areverse"
+				method=send_voice
+				voice_id="@$file_name.ogg"
+				ext=ogg
 			else
-				command_help
-				tg_method send_message
+				return
 			fi
+			get_reply_id self
+			loading 1
+
+			twd
+			tg_method get_file "$media"
+			file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
+			ffmpeg -v error -i "$file_path" $filters $file_name.$ext
+			loading 2
+			tg_method $method upload
+			loading 3
 		;;
 		"!sauce")
 			if [[ "${message_id[1]}" != "" ]]; then
