@@ -554,7 +554,7 @@ case_command() {
 				&& [[ "${file_type[1]}" == "photo" ]]; then
 
 				case "${arg[0]}" in
-					[0-9])
+					[1-9]|[1-9][0-9]|[1-9][0-9][0-9])
 						get_reply_id self
 						twd
 						media_id=${photo_id[1]}
