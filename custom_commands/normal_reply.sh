@@ -922,8 +922,12 @@ case_command() {
 									cp "$file_path" "pic.jpg"
 								;;
 							esac
-							res=($(ffprobe -v error -show_streams "pic.$ext" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
-							magick "pic.$ext" -resize $(printf '%.0f\n' "$(bc -l <<< "${res[0]}/2.5")")x$(printf '%.0f\n' "$(bc -l <<< "${res[1]}/2.5")") "pic.$ext"
+							res=($(ffprobe -v error -show_streams "pic.$ext" \
+								| sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
+							magick "pic.$ext" -resize \
+								$(printf '%.0f\n' \
+									"$(bc -l <<< "${res[0]}/2.5")")x$(printf '%.0f\n' \
+										"$(bc -l <<< "${res[1]}/2.5")") "pic.$ext"
 							magick "pic.$ext" -quality 4 "pic.$ext"
 							photo_id="@pic.$ext"
 							tg_method send_photo upload
@@ -931,13 +935,16 @@ case_command() {
 						fi
 					;;
 					sticker)
-						if [[ "${sticker_is_animated[1]}" != "true" ]] && [[ "${sticker_is_video[1]}" != "true" ]]; then
+						if [[ "${sticker_is_animated[1]}" != "true" ]] \
+						&& [[ "${sticker_is_video[1]}" != "true" ]]; then
 							tg_method get_file "${sticker_id[1]}"
 							file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
 							cp "$file_path" "sticker.webp"
-							res=($(ffprobe -v error -show_streams "sticker.webp" | sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
+							res=($(ffprobe -v error -show_streams "sticker.webp" \
+								| sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
 							convert "sticker.webp" "sticker.jpg"
-							magick "sticker.jpg" -resize $(bc <<< "${res[0]}/1.5")x$(bc <<< "${res[1]}/1.5") "sticker.jpg"
+							magick "sticker.jpg" -resize \
+								$(bc <<< "${res[0]}/1.5")x$(bc <<< "${res[1]}/1.5") "sticker.jpg"
 							magick "sticker.jpg" -quality 6 "sticker.jpg"
 							magick "sticker.jpg" -resize 512x512 "sticker.jpg"
 							convert "sticker.jpg" "sticker.webp"
