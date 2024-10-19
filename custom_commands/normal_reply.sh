@@ -931,6 +931,7 @@ case_command() {
 		;;
 		"!top")
 			get_reply_id self
+			top_info="gs"
 			list_top=$(grep -r "^$top_info" "$basedir/db/users/" | cut -d : -f 1)
 			if [[ "$list_top" != "" ]]; then
 				for x in $(seq $(wc -l <<< "$list_top")); do
