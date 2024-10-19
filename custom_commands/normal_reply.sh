@@ -22,12 +22,13 @@ video_jpg() {
 		;;
 	esac
 	tg_method get_file "${video_id[1]}"
-	file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
+	file_path="${TELEAPI_BASE_URL}/file/bot$TOKEN/$(jshon -Q -e result -e file_path -u <<< "$curl_result")"
+
 	ext=$(sed 's/.*\.//' <<< "$file_path")
 	if [[ "$ext" == "gif" ]]; then
-		ffmpeg -i "$file_path" "video.mp4"
+		ffmpeg -v error -i "$file_path" "video.mp4"
 	else
-		cp "$file_path" "video.$ext"
+		ffmpeg -v error -i "$file_path" -codec copy "video.$ext"
 	fi
 	loading 1
 	video_info=$(ffprobe -v error \
@@ -59,7 +60,7 @@ video_jpg() {
 			audio_c="$audio_c -b:a $(bc <<< "$br/2") -ar $sr"
 		fi
 	fi
-	ffmpeg -i "video.$ext" \
+	ffmpeg -v error -i "video.$ext" \
 		-vf "scale=${res[0]}:${res[1]}" -sws_flags fast_bilinear \
 		-crf 50 $audio_c "video-low.mp4"
 	loading 2
@@ -234,15 +235,15 @@ case_command() {
 				fi
 				case "${file_type[1]}" in
 					video|animation)
+						tg_method get_file "${animation_id[1]}"
+						file_path="$(jshon -Q -e result -e file_path -u <<< "$curl_result")"
+						remote_file_path="${TELEAPI_BASE_URL}/file/bot$TOKEN/$file_path"
 						input_codecs=$(ffprobe -v error \
-							-show_streams "$file_path" | grep "^codec_name")
+							-show_streams "$remote_file_path" | grep "^codec_name")
 						case "${file_type[1]}" in
 							video) media_id=${video_id[1]} ;;
 							animation) media_id=${animation_id[1]} ;;
 						esac
-						file_path=$(curl -s "${TELEAPI}/getFile" \
-							--form-string "file_id=$media_id" \
-								| jshon -Q -e result -e file_path -u)
 						case "${arg[0]}" in
 							animation|mp4|h264|h265|hevc)
 								cpu_model=$(lscpu -J | jshon -Q -e lscpu -e 6 -e data -u)
@@ -273,12 +274,12 @@ case_command() {
 								fi
 								case "${arg[0]}" in
 									animation)
-										ffmpeg -v error -i "$file_path" \
+										ffmpeg -v error -i "$remote_file_path" \
 											-pix_fmt yuv420p \
 											-vcodec $out_vcodec $crf -an "$out_file"
 									;;
 									*)
-										ffmpeg -v error -i "$file_path" \
+										ffmpeg -v error -i "$remote_file_path" \
 											-pix_fmt yuv420p \
 											-vcodec $out_vcodec $crf "$out_file"
 									;;
@@ -306,7 +307,7 @@ case_command() {
 										out_acodec=libvorbis
 									;;
 								esac
-								ffmpeg -v error -i "$file_path" -vn -acodec $out_acodec "$out_file"
+								ffmpeg -v error -i "$remote_file_path" -vn -acodec $out_acodec "$out_file"
 								loading 2
 								audio_id="@$out_file"
 								tg_method send_audio upload
@@ -319,7 +320,7 @@ case_command() {
 									jpg|jpeg) ext=jpg ;;
 									photo) ext=jpg ;;
 								esac
-								ffmpeg -v error -ss 0.1 -i "$file_path" \
+								ffmpeg -v error -ss 0.1 -i "$remote_file_path" \
 									-vframes 1 -f image2 "convert.$ext"
 								photo_id="@convert.$ext"
 								tg_method send_photo upload
@@ -331,29 +332,31 @@ case_command() {
 							photo) media_id=${photo_id[1]} ;;
 							sticker) media_id=${sticker_id[1]} ;;
 						esac
-						file_path=$(curl -s "${TELEAPI}/getFile" \
-							--form-string "file_id=$media_id" \
-								| jshon -Q -e result -e file_path -u)
+						tg_method get_file "${media_id}"
+						file_path="$(jshon -Q -e result -e file_path -u <<< "$curl_result")"
+						remote_file_path="${TELEAPI_BASE_URL}/file/bot$TOKEN/$file_path"
 						case "${arg[0]}" in
 							png|jpg|avif|hei[cf]|webp)
 								loading 1
 								out_file="convert.${arg[0]}"
-								err_out=$(convert "$file_path" "$out_file")
+								err_out=$(ffmpeg -v error -i "$remote_file_path" "$out_file")
 								loading 2
 								document_id="@$out_file"
 								tg_method send_document upload
 							;;
 							file|document)
 								loading 1
-								document_id="@$file_path"
+								out_file="convert.${arg[0]}"
+								wget -q -O "$out_file" "$remote_file_path"
+								document_id="@$out_file"
 								tg_method send_document upload
 							;;
 						esac
 					;;
 					audio)
-						file_path=$(curl -s "${TELEAPI}/getFile" \
-							--form-string "file_id=${audio_id[1]}" \
-								| jshon -Q -e result -e file_path -u)
+						tg_method get_file "${audio_id[1]}"
+						file_path="$(jshon -Q -e result -e file_path -u <<< "$curl_result")"
+						remote_file_path="${TELEAPI_BASE_URL}/file/bot$TOKEN/$file_path"
 						case "${arg[0]}" in
 							mp3)
 								out_file="convert.mp3"
@@ -424,71 +427,15 @@ case_command() {
 			fi
 			tg_method send_message
 		;;
-		"!deemix")
-			[[ -e "$basedir/powersave" ]] && return
-			if [[ "${user_text[1]}" != "" ]] || [[ "${arg[0]}" != "" ]]; then
-				if [[ "${user_text[1]}" != "" ]]; then
-					deemix_link=$(grep -o 'https://www.deezer.*\|https://deezer.*' <<< "${user_text[1]}" | cut -f 1 -d ' ')
-				elif [[ "${arg[0]}" != "" ]]; then
-					deemix_link=${arg[0]}
-				fi
-				if [[ "$(grep 'track\|album\|deezer.page.link' <<< "$deemix_link")" != "" ]]; then
-					twd
-					loading 1
-					export LC_ALL=C.UTF-8
-					export LANG=C.UTF-8
-					~/.local/bin/deemix -b flac -p ./ "$deemix_link" 2>&1 > /dev/null
-					downloaded=$(dir -N1)
-					if [[ "$(dir -N1 "$downloaded" | wc -l)" -gt "1" ]]; then
-						up_type=archive
-						set +f
-						zip -r "$downloaded.zip" "$downloaded" > /dev/null
-						set -f
-						document_id="@$downloaded.zip"
-					else
-						up_type=audio
-						audio_id="@$downloaded"
-					fi
-					get_reply_id any
-					case "$up_type" in
-						archive)
-							if [[ "$(du -m -- "$downloaded.zip" | cut -f 1)" -ge 2000 ]]; then
-								loading 3
-								text_id="file size exceeded"
-								tg_method send_message
-							else
-								loading 2
-								tg_method send_document upload
-								loading 3
-							fi
-						;;
-						audio)
-							if [[ "$(du -m -- "$downloaded" | cut -f 1)" -ge 2000 ]]; then
-								loading 3
-								text_id="file size exceeded"
-								tg_method send_message
-							else
-								loading 2
-								tg_method send_audio upload
-								loading 3
-							fi
-						;;
-					esac
-				fi
-			else
-				command_help
-				tg_method send_message
-			fi
-		;;
 		"!d"|"!dice")
 			get_reply_id self
 			case "${arg[0]}" in
 				[0-9]*|[0-9]*"*"[0-9]*)
 					if [[ "$(grep "*" <<< "$user_text")" != "" ]]; then
-						normaldice=$(sed "s/!d//" <<< "$user_text" | cut -d "*" -f 1)
-						mul=$(sed "s/!d//" <<< "$user_text" | cut -d "*" -f 2)
+						normaldice=$(sed "s/$command//" <<< "$user_text" | cut -d "*" -f 1)
+						mul=$(sed "s/$command//" <<< "$user_text" | cut -d "*" -f 2)
 					else
-						normaldice=$(sed "s/!d//" <<< "$user_text")
+						normaldice=$(sed "s/$command//" <<< "$user_text")
 						mul=1
 					fi
 					for x in $(seq "$mul"); do
@@ -505,21 +452,6 @@ case_command() {
 					tg_method send_message
 				;;
 			esac
-		;;
-		"!parrot")
-			if [[ "$chat_id" == "-1001267306428" ]]; then
-				return
-			fi
-			get_member_id=$(jshon -Q -e result -e id -u < botinfo)
-			tg_method get_chat_member
-			if [[ "$(jshon -Q -e result -e status -u <<< "$curl_result" | grep -w "administrator")" != "" ]]; then
-				ban_id=$user_id
-				tg_method ban_member
-				if [[ "$(jshon -Q -e ok -u <<< "$curl_result")" != "false" ]]; then
-					unban_id=$user_id
-					tg_method unban_member
-				fi
-			fi
 		;;
 		"!ffprobe")
 			if [[ "${message_id[1]}" ]]; then
@@ -539,8 +471,10 @@ case_command() {
 				esac
 				if [[ "$media_id" ]]; then
 					get_reply_id self
-					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=$media_id" | jshon -Q -e result -e file_path -u)
-					text_id=$(ffprobe "$file_path" 2>&1 | grep -v '^  lib' | sed '1,5d' | sed 's/^  //')
+					tg_method get_file "$media_id"
+					file_path="$(jshon -Q -e result -e file_path -u <<< "$curl_result")"
+					remote_file_path="${TELEAPI_BASE_URL}/file/bot$TOKEN/$file_path"
+					text_id=$(ffprobe "$remote_file_path" 2>&1 | grep -v '^  lib' | sed '1,5d' | sed 's/^  //')
 					markdown=("<code>" "</code>")
 					parse_mode=html
 					tg_method send_message
@@ -557,11 +491,10 @@ case_command() {
 						get_reply_id self
 						twd
 						media_id=${photo_id[1]}
-						file_path=$(curl -s "${TELEAPI}/getFile" \
-							--form-string "file_id=$media_id" \
-								| jshon -Q -e result -e file_path -u)
-						text_id=$("$basedir"/tools/flag/flag.sh \
-							"$file_path" "${arg[0]}" "flag.png")
+						tg_method get_file "$media_id"
+						file_path="$(jshon -Q -e result -e file_path -u <<< "$curl_result")"
+						remote_file_path="${TELEAPI_BASE_URL}/file/bot$TOKEN/$file_path"
+						text_id=$("$basedir"/tools/flag/flag.sh "$file_path" "${arg[0]}" "flag.png")
 						photo_id=@flag.png
 						tg_method send_message
 						tg_method send_photo upload
@@ -582,37 +515,6 @@ case_command() {
 			else
 				command_help
 				tg_method send_message
-			fi
-		;;
-		"!ugoira-dl")
-			[[ -e "$basedir/powersave" ]] && return
-			if [[ "${arg[0]}" ]]; then
-				get_reply_id self
-				loading 1
-				source "$basedir/venv/bin/activate"
-				gallery_json=$(gallery-dl -sj "${arg[0]}" 2>/dev/null)
-				if [[ "$gallery_json" ]]; then
-					gallery_type=$(jshon -Q -e 0 -e 1 -e type -u <<< "$gallery_json")
-					if [[ "$gallery_type" == "ugoira" ]]; then
-						twd
-						gallery-dl -q \
-							--ugoira-conv-lossless \
-							-d . -D . -f out.webm "${arg[0]}"
-						ffmpeg -v error -i out.webm \
-							-vcodec h264 \
-							-pix_fmt yuv420p \
-							-crf 14 -an out.mp4
-						animation_id="@out.mp4"
-						loading 2
-						tg_method send_animation upload
-						loading 3
-					else
-						loading value "ugoira not found"
-					fi
-				else
-					loading value "invalid link"
-				fi
-				deactivate
 			fi
 		;;
 		"!gayscale"|"!gs")
@@ -693,8 +595,9 @@ case_command() {
 							"!gtt") mode=top ;;
 							"!gbt") mode=bottom ;;
 						esac
+						remote_file_path="${TELEAPI_BASE_URL}/file/bot$TOKEN/$file_path"
 						source "$basedir/tools/toptext.sh" \
-							"$toptext" "$mode" "$file_path"
+							"$toptext" "$mode" "$remote_file_path"
 
 						loading 2
 						case "${file_type[1]}" in
@@ -720,185 +623,6 @@ case_command() {
 				esac
 			fi
 		;;
-		"!gblog")
-			if [[ "${photo_id[1]}" ]]; then
-				twd
-				file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=${photo_id[1]}" | jshon -Q -e result -e file_path -u)
-				gtext=$(sed -e "s/$(head -n 1 <<< "$user_text" | cut -f 1 -d ' ') //" -e "s/,/\\\,/g" <<< "$user_text")
-				source "$basedir/tools/gblog.sh" "$file_path" "$gtext"
-				photo_id="@gblog.png"
-				tg_method send_photo upload
-			fi
-		;;
-		"!hanimedl")
-			[[ -e "$basedir/powersave" ]] && return
-			get_reply_id self
-			if [[ "${arg[0]}" ]]; then
-				hanime_link=${arg[0]}
-			elif [[ "${user_text[1]}" ]]; then
-				hanime_link=${user_text[1]}
-			else
-				text_id="no link provided"
-				tg_method send_message
-				return
-			fi
-			hanime_link=$(sed -n "s|.*\(http[^\s]*\)|\1|p" <<< "$hanime_link")
-			if [[ "$(grep "hanime.tv" <<< "$hanime_link")" ]]; then
-				loading 1
-				twd
-				ytdl_link=$(curl -s "$hanime_link" \
-					| grep m3u8 \
-					| sed "s/.*\"streams\":\(\[{.*extra2..null}\]\).*/\1/" \
-					| jshon -e 1 -e url -u)
-				ytdl_json=$(~/.local/bin/yt-dlp --print-json --merge-output-format mp4 -o ytdl.mp4 "$ytdl_link")
-				if [[ "$ytdl_json" != "" ]]; then
-					caption=$(jshon -Q -e title -u <<< "$ytdl_json")
-					if [[ "$(du -m ytdl.mp4 | cut -f 1)" -ge 2000 ]]; then
-						loading value "upload limit exceeded"
-					else
-						video_id="@ytdl.mp4"
-						loading 2
-						tg_method send_video upload
-						loading 3
-					fi
-				else
-					loading value "invalid link"
-				fi
-			fi
-		;;
-		"!hide"|"!unhide")
-			if [[ "${message_id[1]}" ]]; then
-				if [[ "${file_type[1]}" == "photo" ]]; then
-					twd
-					get_reply_id reply
-					file_path=$(curl -s "${TELEAPI}/getFile" --form-string "file_id=${photo_id[1]}" | jshon -Q -e result -e file_path -u)
-					ext=$(sed 's/.*\.//' <<< "$file_path")
-					cp "$file_path" "pic.$ext"
-					if [[ "${arg[1]}" == "" ]]; then
-						seed="defaultpasswordthatisreallyhardtoguessiguess"
-					else
-						seed="${arg[1]}"
-					fi
-					case "$command" in
-						"!hide")
-							result=$(imageobfuscator \
-								-i "pic.$ext" \
-								-e -p "${arg[0]}" -s "$seed")
-							if [[ "$result" == "Saved." ]]; then
-								document_id="@pic_encoded.png"
-								tg_method send_document upload
-								rm -f "pic_encoded.png"
-							fi
-						;;
-						"!unhide")
-							text_id=$(imageobfuscator \
-								-i "pic.$ext" -d -s "$seed" \
-								| cut -f 2 -d ' ')
-							if [[ "$text_id" == "" ]]; then
-								text_id="Wrong password, image has no hidden data."
-							fi
-							tg_method send_message
-						;;
-					esac
-				fi
-			else
-				command_help
-				tg_method send_message
-			fi
-		;;
-		"!insert"|"!extract")
-			if [[ "$chat_type" == "private" ]]; then
-				file_chat=$file_user
-			fi
-			case "$command" in
-				"!insert")
-					if [[ ! "$(grep "^pool" "$file_chat")" ]]; then
-						printf '%s\n' "pool: ${arg[*]}" >> "$file_chat"
-					else
-						sed -i "s/\(^pool: \).*/\1${arg[*]} /" "$file_chat"
-					fi
-					text_id=$(grep "^pool:" "$file_chat")
-					tg_method send_message
-				;;
-				"!extract")
-					case "${arg[0]}" in
-						[1-9]*)
-							pool=($(sed -n "s/^pool: //p" "$file_chat"))
-							if [[ "${arg[0]}" -gt "${#pool[@]}" ]]; then
-								arg[0]=${#pool[@]}
-							fi
-							for x in $(seq 0 $((${arg[0]}-1))); do
-								pool=(${pool[@]})
-								pool_rand=$((RANDOM % ${#pool[@]}))
-								text_id="${pool[$pool_rand]} $text_id"
-								unset pool[$pool_rand]
-							done
-							tg_method send_message
-						;;
-					esac
-				;;
-			esac
-		;;
-		"!instaloader")
-			[[ -e "$basedir/powersave" ]] && return
-			get_reply_id self
-			if [[ "${user_text[1]}" ]]; then
-				ig_link=${user_text[1]}
-			elif [[ "${arg[0]}" ]]; then
-				ig_link=${arg[0]}
-			else
-				text_id="no link provided"
-				tg_method send_message
-				return
-			fi
-			ig_post=$(sed -n "s|.*\(http[^\s]*\)|\1|p" <<< "$ig_link" | \
-				sed -n 's/.*instagram.com\/p\///p' | sed 's/\/.*//')
-			if [[ ! "$ig_post" ]]; then
-				text_id="post not found"
-				tg_method send_message
-				return
-			fi
-			loading 1
-			twd
-			source "$basedir/venv/bin/activate"
-			request_id=$RANDOM
-			instaloader=$(instaloader -q \
-				--no-profile-pic \
-				--dirname-pattern "$request_id" \
-				-l "$(cut -f 1 -d ":" "$basedir/ig_key")" \
-				-- "-${ig_post}" 2>&1)
-			if [[ ! -d "$request_id" ]]; then
-				loading 3
-				text_id=$instaloader
-				tg_method send_message
-				return
-			fi
-			deactivate
-			cd -- "$request_id" || return
-			media=($(dir -N1 . | grep ".jpg$"))
-			if [[ ! "$media" ]]; then
-				text_id="no pictures found"
-				tg_method send_message
-				return
-			fi
-			loading 2
-			if [[ "${#media[*]}" -lt 2 ]]; then
-				photo_id="@$media"
-				tg_method send_photo upload
-			else
-				media=($(dir -N1 . | grep ".jpg$"))
-				for x in $(seq 0 $((${#media[@]}-1))); do
-					mediagroup_upload[$x]="-F photo$x=@${media[$x]}"
-					attach_file_id="attach://photo$x"
-					media[$x]=$attach_file_id
-				done
-				mediagroup_id=$(json_array mediagroup upload)
-				tg_method send_mediagroup upload
-			fi
-			loading 3
-			cd ..
-			rm -rf -- "$request_id"
-		;;
 		"!jpg")
 			[[ -e "$basedir/powersave" ]] && return
 			if [[ "${message_id[1]}" != "" ]]; then
@@ -919,16 +643,16 @@ case_command() {
 					;;
 					photo)
 						tg_method get_file "${photo_id[1]}"
-						file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
-						ext=$(sed 's/.*\.//' <<< "$file_path")
+						remote_file_path="${TELEAPI_BASE_URL}/file/bot$TOKEN/$(jshon -Q -e result -e file_path -u <<< "$curl_result")"
+						ext=$(sed 's/.*\.//' <<< "$remote_file_path")
 						if [[ "$(grep "png\|jpg\|jpeg" <<< "$ext")" != "" ]]; then
 							case "$ext" in
 								png)
-									convert "$file_path" "pic.jpg"
+									convert "$remote_file_path" "pic.jpg"
 									ext=jpg
 								;;
 								jpg|jpeg)
-									cp "$file_path" "pic.jpg"
+									wget -q -O "pic.jpg" "$remote_file_path"
 								;;
 							esac
 							res=($(ffprobe -v error -show_streams "pic.$ext" \
@@ -947,8 +671,8 @@ case_command() {
 						if [[ "${sticker_is_animated[1]}" != "true" ]] \
 						&& [[ "${sticker_is_video[1]}" != "true" ]]; then
 							tg_method get_file "${sticker_id[1]}"
-							file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
-							cp "$file_path" "sticker.webp"
+							remote_file_path="${TELEAPI_BASE_URL}/file/bot$TOKEN/$(jshon -Q -e result -e file_path -u <<< "$curl_result")"
+							wget -q -O "sticker.webp" "$remote_file_path"
 							res=($(ffprobe -v error -show_streams "sticker.webp" \
 								| sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
 							convert "sticker.webp" "sticker.jpg"
@@ -970,15 +694,17 @@ case_command() {
 						video_jpg ${file_type[1]}
 					;;
 					audio|voice)
-						[[ "${file_type[1]}" == "voice" ]] && audio_id[1]=${voice_id[1]}
+						if [[ "${file_type[1]}" == "voice" ]] then
+							audio_id[1]=${voice_id[1]}
+						fi
 						tg_method get_file "${audio_id[1]}"
-						file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
-						ext=$(sed 's/.*\.//' <<< "$file_path")
-						cp "$file_path" "audio.$ext"
+						remote_file_path="${TELEAPI_BASE_URL}/file/bot$TOKEN/$(jshon -Q -e result -e file_path -u <<< "$curl_result")"
+						ext=$(sed 's/.*\.//' <<< "$remote_file_path")
+						wget -q -O "audio.$ext" "$remote_file_path"
 						loading 1
 						audio_info=$(ffprobe -v error \
 							-show_entries stream=sample_rate,bit_rate \
-							-of default=noprint_wrappers=1 "$file_path")
+							-of default=noprint_wrappers=1 "$remote_file_path")
 						br=$(sed -n 's/^bit_rate=//p' <<< "$audio_info" | head -n 1)
 						if [[ "$br" == "N/A" ]]; then
 							br=128000
@@ -1017,11 +743,11 @@ case_command() {
 		"!json")
 			twd
 			update_id="${message_id}${user_id}"
-			printf '%s' "$input" | sed -e 's/{"/{\n"/g' -e 's/,"/,\n"/g' > decode-$update_id.json
-			document_id=@decode-$update_id.json
+			jshon -Q <<< "$input" > "$update_id.json"
+			document_id="@$update_id.json"
 			get_reply_id any
 			tg_method send_document upload
-			rm decode-$update_id.json
+			rm "$update_id.json"
 		;;
 		"!me")
 			if [[ "${arg[0]}" ]]; then
@@ -1074,51 +800,6 @@ case_command() {
 			parse_mode=html
 			get_reply_id self
 			tg_method send_message
-		;;
-		"!nh")
-			[[ -e "$basedir/powersave" ]] && return
-			if [[ "${arg[0]}" ]]; then
-				get_reply_id self
-				twd
-				user_agent="Mozilla/5.0 (X11; Linux x86_64; rv:100.0) Gecko/20100101 Firefox/100.0"
-				# cookie generated by firefox
-				printf '%s\n' \
-					"#HttpOnly_.nhentai.net	TRUE	/	TRUE	1685879961	cf_clearance	AyWRO9tBWCMI81tbLt3fmzmYM9CMQ3OteHbcqbBlPxk-1654340361-0-150" \
-					> cookies.txt
-				nhentai_id=$(cut -d / -f 5 <<< "${arg[0]}")
-				nhentai_check=$(curl -s -A "$user_agent" -b cookies.txt "https://nhentai.net/g/$nhentai_id/1/")
-				loading 1
-				if [[ "$nhentai_check" != "" ]]; then
-					p_offset=1
-					numpages=$(grep 'num-pages' <<< "$nhentai_check" \
-						| sed -e 's/.*<span class="num-pages">//' -e 's/<.*//')
-					for j in $(seq 0 $((numpages - 1))); do
-						wget -q -O pic.jpg "$(curl -s -A "$user_agent" -b cookies.txt "https://nhentai.net/g/$nhentai_id/$p_offset/" \
-							| grep 'img src' \
-							| sed -e 's/.*<img src="//' -e 's/".*//')"
-						graph_element[$j]=$(curl -s "https://telegra.ph/upload" -F "file=@pic.jpg" | jshon -Q -e 0 -e src -u)
-						rm -f pic.jpg
-						p_offset=$((p_offset + 1))
-					done
-					graph_title=$(curl -s -A "$user_agent" -b cookies.txt "https://nhentai.net/g/$nhentai_id/" \
-						| grep 'meta itemprop="name"' \
-						| sed -e 's/.*<meta itemprop="name" content="//' -e 's/".*//')
-					loading 2
-					GRAPHTOKEN=$(jshon -Q -e result -e access_token -u < "$basedir/telegraph_data")
-					GRAPHAPI="https://api.telegra.ph"
-					for x in $(seq 0 $((${#graph_element[@]}-1))); do
-						graph_content[$x]="{\"tag\":\"img\",\"attrs\":{\"src\":\"${graph_element[$x]}\"}},"
-					done
-					graph_content="[$(printf '%s' "${graph_content[*]}" | head -c -1)]"
-					text_id=$(curl -s "$GRAPHAPI/createPage" -X POST -H 'Content-Type: application/json' \
-						-d "{\"access_token\":\"$GRAPHTOKEN\",\"title\":\"$graph_title\",\"content\":${graph_content}}" \
-						| jshon -Q -e result -e url -u)
-					loading 3
-					tg_method send_message
-				else
-					loading value "invalid id"
-				fi
-			fi
 		;;
 		"!owo")
 			if [[ "${user_text[1]}" ]]; then
@@ -1193,58 +874,12 @@ case_command() {
 
 			twd
 			tg_method get_file "$media"
-			file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
-			ffmpeg -v error -i "$file_path" $filters $file_name.$ext
+			file_path="$(jshon -Q -e result -e file_path -u <<< "$curl_result")"
+			remote_file_path="${TELEAPI_BASE_URL}/file/bot$TOKEN/$file_path"
+			ffmpeg -v error -i "$remote_file_path" $filters "$file_name.$ext"
 			loading 2
 			tg_method $method upload
 			loading 3
-		;;
-		"!sauce")
-			if [[ "${message_id[1]}" != "" ]]; then
-				case "${file_type[1]}" in
-					"photo"|"animation"|"video")
-						get_reply_id self
-						disable_preview=true
-						request_id="$chat_id$message_id"
-						case "${file_type[1]}" in
-							photo) media_id=${photo_id[1]} ;;
-							animation) media_id=${animation_id[1]} ;;
-							video) media_id=${video_id[1]} ;;
-						esac
-						file_path=$(curl -s "${TELEAPI}/getFile" \
-							--form-string "file_id=$media_id" \
-								| jshon -Q -e result -e file_path -u)
-						ext=$(sed 's/.*\.//' <<< "$file_path")
-						if [[ "$(grep -i "mp4" <<< "$ext")" ]]; then
-							public_path="/home/genteek/archneek/public/tmp/$request_id-sauce.jpg"
-							request_url="https://archneek.zapto.org/public/tmp/$request_id-sauce.jpg"
-							ffmpeg -ss 0.1 -i "$file_path" -vframes 1 -f image2 "$public_path"
-						else
-							public_path="/home/genteek/archneek/public/tmp/$request_id-sauce.$ext"
-							request_url="https://archneek.zapto.org/public/tmp/$request_id-sauce.$ext"
-							install -m 644 "$file_path" "$public_path"
-						fi
-						if [[ "${arg[0]}" == "google" ]]; then
-							text_id="https://lens.google.com/uploadbyurl?url=$request_url"
-						else
-							api_key=$(cat saucenao_key)
-							params="output_type=2&numres=32&api_key=$api_key&url=$request_url"
-							sauce=$(curl -s "https://saucenao.com/search.php?$params")
-							numres=$(jshon -Q -e results -l <<< "$sauce")
-							if [[ "$numres" ]]; then
-								for x in $(seq 0 $((numres-1))); do
-									ext_url[$x]=$(jshon -Q -e results \
-										-e $x -e data -e ext_urls -e 0 -u <<< "$sauce")
-								done
-								text_id=$(tr ' ' '\n' <<< "${ext_url[*]}")
-							else
-								text_id="no results"
-							fi
-						fi
-						tg_method send_message
-					;;
-				esac
-			fi
 		;;
 		"!sed")
 			[[ "${caption[1]}" != "" ]] && user_text[1]=${caption[1]}
@@ -1296,16 +931,6 @@ case_command() {
 		;;
 		"!top")
 			get_reply_id self
-			case "${arg[0]}" in
-				gs|gayscale)
-					top_info="gs"
-				;;
-				*)
-					command_help
-					tg_method send_message
-					return
-				;;
-			esac
 			list_top=$(grep -r "^$top_info" "$basedir/db/users/" | cut -d : -f 1)
 			if [[ "$list_top" != "" ]]; then
 				for x in $(seq $(wc -l <<< "$list_top")); do
@@ -1320,87 +945,6 @@ case_command() {
 				parse_mode=html
 				text_id=$(sort -nr <<< "$(printf '%s\n' "${user_entry[@]}")" | head -n 10)
 				tg_method send_message
-			fi
-		;;
-		"!trad")
-			if [[ "${user_text[1]}" ]]; then
-				to_trad=${user_text[1]}
-			elif [[ "${caption[1]}" ]]; then
-				to_trad=${caption[1]}
-			elif [[ "${arg[0]}" ]]; then
-				to_trad=$(sed "s/$command //" <<< "$user_text")
-			fi
-			if [[ "$to_trad" ]]; then
-				text_id=$(trans :en -j -b "$to_trad")
-				get_reply_id self
-				tg_method send_message
-			fi
-		;;
-		"!tuxi")
-			text_id=$(PATH=~/go/bin:~/.local/bin:$PATH tuxi -q -r -- "${arg[*]}")
-			get_reply_id self
-			tg_method send_message
-		;;
-		"!videosticker")
-			[[ -e "$basedir/powersave" ]] && return
-			if [[ "${message_id[1]}" ]]; then
-				get_reply_id self
-				if [[ "${file_type[1]}" == "animation" ]]; then
-					tg_method get_file "${animation_id[1]}"
-					file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
-					ext=$(sed 's/.*\.//' <<< "$file_path")
-					case "$ext" in
-						mp4|gif|MP4|GIF)
-							video_id[1]=${animation_id[1]}
-							file_type[1]=video
-						;;
-					esac
-				fi
-				if [[ "${file_type[1]}" == "video" ]]; then
-					[[ ! "$file_path" ]] \
-						&& tg_method get_file "${video_id[1]}" \
-						&& file_path=$(jshon -Q -e result -e file_path -u <<< "$curl_result")
-					video_info=$(ffprobe -v error \
-						-show_entries stream=duration,width,height,r_frame_rate \
-						-of default=noprint_wrappers=1 "$file_path")
-					duration=$(sed -n "s/^duration=//p" <<< "$video_info" | head -n 1 | sed "s/\..*//")
-					if [[ "$duration" -le "3" ]] \
-						|| [[ "$duration" == "N/A" ]]; then
-						twd
-						loading 1
-						bot_username=$(jshon -Q -e result -e username -u < "$basedir/botinfo")
-						frame_rate=$(sed -n "s/^r_frame_rate=//p" <<< "$video_info" | head -n 1 | cut -f 1 -d /)
-						width=$(sed -n 's/^width=//p' <<< "$video_info")
-						height=$(sed -n 's/^height=//p' <<< "$video_info")
-						if [[ "$width" -ge "$height" ]]; then
-							filter="-vf scale=512:-1"
-						else
-							filter="-vf scale=-1:512"
-						fi
-						if [[ "$frame_rate" -gt "30" ]]; then
-							filter="$filter,fps=30"
-						fi
-						ffmpeg -v error -ss 0 -i "$file_path" \
-							-vcodec vp9 -b:v 600k -an \
-							-pix_fmt yuva420p $filter -t 3 sticker.webm
-						sticker_id=@sticker.webm
-						sticker_hash=$(md5sum sticker.webm | cut -f 1 -d ' ')
-						loading 2
-						curl -s "$TELEAPI/createNewStickerSet" \
-							-F "user_id=$user_id" \
-							-F "name=s${sticker_hash}_by_$bot_username" \
-							-F "title=${sticker_hash}" \
-							-F "webm_sticker=$sticker_id" \
-							-F "emojis=⬛️" > /dev/null
-						video_id=$sticker_id
-						caption="https://t.me/addstickers/s${sticker_hash}_by_$bot_username"
-						tg_method send_video upload
-						loading 3
-					else
-						text_id="video duration must not exceed 3 seconds"
-						tg_method send_message
-					fi
-				fi
 			fi
 		;;
 		"!wget")
@@ -1482,7 +1026,7 @@ case_command() {
 
 		# bot admin
 
-		"!bin"|"!archbin")
+		"!bin")
 			markdown=("<code>" "</code>")
 			parse_mode=html
 			if [[ $(is_status admins) ]]; then
@@ -1492,9 +1036,6 @@ case_command() {
 						export user_text
 						export reply_text=${user_text[1]}
 						text_id=$(mksh -c "$bin" 2>&1)
-					;;
-					"!archbin "*)
-						text_id=$(ssh neek@192.168.1.25 -p 24 "$bin")
 					;;
 				esac
 				if [[ "$text_id" = "" ]]; then
@@ -1591,54 +1132,6 @@ case_command() {
 				tg_method send_message
 			fi
 		;;
-		"!loading")
-			if [[ $(is_status admins) ]]; then
-				cd "$tmpdir"
-				case "${arg[0]}" in
-					start)
-						enable_markdown=true
-						parse_mode=html
-						text_id="<code>.. owo  owo ..</code>"
-						tg_method send_message
-						processing_id=$(jshon -Q -e result -e message_id -u <<< "$curl_result")
-						printf '%s' "$processing_id" > loading-$user_id-$chat_id
-						l_s=(" " "o" "w" "o" " " " " "o" "w" "o" " ")
-						[[ "$processing_id" != "" ]] && load_status=true
-						while [[ "$load_status" != "false" ]]; do
-							for shift in $(seq $((${#l_s[*]}-1))); do
-								shift=$((shift+1))
-								y=$((shift-1))
-								z=$y
-								for x in $(seq 0 $((${#l_s[*]}-1))); do
-									if [[ "$shift" = "" ]]; then
-										x=$((x-z))
-										load_text="${load_text}${l_s[$x]}"
-									else
-										s_e=$((${#l_s[*]}-y))
-										s_a[$y]=${l_s[$s_e]}
-										load_text="${load_text}${s_a[$y]}"
-										y=$((y-1))
-										[[ y -eq 0 ]] && unset shift
-									fi
-								done
-								sleep 3
-								loading value "<code>..${load_text}..</code>"
-								load_status=$(jshon -Q -e ok -u <<< "$curl_result")
-								unset load_text
-							done
-							sleep 3
-							loading value "<code>.. owo  owo ..</code>"
-							load_status=$(jshon -Q -e ok -u <<< "$curl_result")
-						done
-					;;
-					stop)
-						processing_id=$(cat loading-$user_id-$chat_id)
-						loading 3
-					;;
-				esac
-				cd "$basedir"
-			fi
-		;;
 		"!powersave")
 			if [[ $(is_status admins) ]]; then
 				if [[ ! -e "$basedir/powersave" ]]; then
@@ -1649,21 +1142,6 @@ case_command() {
 					text_id="powersave unset"
 				fi
 				get_reply_id self
-				tg_method send_message
-			fi
-		;;
-		"!rustc")
-			if [[ $(is_status admins) ]]; then
-				markdown=("<code>" "</code>")
-				parse_mode=html
-				twd
-				printf '%s\n' "$(sed "s/$command//" <<< "${user_text}" | sed '/^$/d')" > "$user_id.rs"
-				"$HOME/.cargo/bin/runner" "$user_id.rs" > out 2>&1
-				if [[ "$?" == "0" ]]; then
-					text_id=$(cat out)
-				else
-					text_id=$(cat out | sed -z "s|$HOME/.cargo/.runner/bin/||g")
-				fi
 				tg_method send_message
 			fi
 		;;
@@ -1923,107 +1401,21 @@ case_normal() {
 		fi
 	fi
 }
-case_chat_id() {
-	case "$chat_id" in
-		-1001497062361)
-			case "$user_text" in
-				"!rules"|"!regole"|"!lvx"|"!dvxtime"|"!dvxdocet"|"!dvxsofia")
-					parse_mode=html
-					markdown=("<a href=\"https://t.me/c/1497062361/38916\">" "</a>")
-					text_id="Allora praticamente Sofia disse:"
-					get_reply_id self
-					tg_method send_message
-				;;
-			esac
-		;;
-		-1001267306428|-1001175713242|-1001428507662)
-			unset text_id photo_id
-			case "$(tr '[:upper:]' '[:lower:]' <<< "$user_text")" in
-				windows)
-					text_id="non capisci una tega ma proprio un cazzus"
-				;;
-				linux)
-					text_id="basato"
-				;;
-				*💀*)
-					photo_id="https://archneek.zapto.org/public/pics/sub_fem.jpg"
-				;;
-				"mi dissocio")
-					text_id="mi associo fortissimo"
-				;;
-			esac
-			
-			get_reply_id self
-			if [[ "$text_id" ]]; then
-				tg_method send_message
-			elif [[ "$photo_id" ]]; then
-				tg_method send_photo
-			fi
-		;;
-	esac
-}
-case_user_id() {
-	case "$user_id" in
-		73520494) # lynn
-			if [[ "$no_args" ]]; then
-				users=$(cat lynnmentions | cut -f 1 -d :)
-				mention=$(grep -oi "$(sed -e 's/^/\^/' -e 's/$/\$\\|/' <<< "$users" | tr '\n' ' ' | tr -d ' ' | head -c -2)" <<< "$user_text" | tr [[:upper:]] [[:lower:]])
-				if [[ "$mention" ]]; then
-					tag_id=$(grep "$mention" lynnmentions | cut -f 2 -d : | head -n 1)
-					markdown=("<a href=\"tg://user?id=$tag_id\">" "</a>")
-					parse_mode=html
-					text_id=$mention
-					get_reply_id self
-					tg_method send_message
-				fi
-			fi
-		;;
-		492326133) # olibot
-			case "$command" in
-				"!olibot")
-					case "${arg[0]}" in
-						start|stop|restart|update)
-							source ./olibot.sh "${arg[0]}" "${arg[1]}"
-							if [[ "$text_id" ]]; then
-								get_reply_id self
-								tg_method send_message
-							fi
-						;;
-					esac
-				;;
-			esac
-		;;
-		990220458|160551211|917684979)
-			case "$command" in
-				"!sofiabot")
-					source ./rewindbot.sh
-					if [[ "$text_id" ]]; then
-						get_reply_id self
-						tg_method send_message
-					fi
-				;;
-			esac
-		;;
-	esac
-}
-
 if [[ "$command" ]]; then
 	case_command
 else
 	case_normal
 fi
-case_chat_id
-case_user_id
 
 case "$file_type" in
 	"new_chat_members")
 		new_member_id=$(jshon -Q -e 0 -e id -u <<< "$new_members")
 		if [[ "$new_member_id" == "$(jshon -Q -e result -e id -u < botinfo)" ]]; then
-			voice_id="https://archneek.zapto.org/public/audio/oh_my.ogg"
+			voice_id="https://archneek.me/public/audio/oh_my.ogg"
 		elif [[ "$(grep "160551211\|917684979" <<< "$new_member_id")" ]]; then
-			voice_id="https://archneek.zapto.org/public/audio/the_holy.ogg"
+			voice_id="https://archneek.me/public/audio/the_holy.ogg"
 		else
-			voice_id="https://archneek.zapto.org/public/audio/fanfare.ogg"
+			voice_id="https://archneek.me/public/audio/fanfare.ogg"
 		fi
 		get_reply_id self
 		tg_method send_voice
@@ -2064,12 +1456,6 @@ if [[ "$(grep "^nopremium" "$basedir/db/chats/$chat_id")" ]] && [[ $(is_chat_adm
 	if [[ ! -e "$basedir/db/p/$chat_id-$user_id" ]]; then
 		[[ ! -d "$basedir/db/p" ]] && mkdir "$basedir/db/p"
 		cd "$basedir/db/p"
-	
-		enable_markdown=true
-		parse_mode=html
-		text_id="<a href=\"tg://user?id=$user_id\">$user_fname</a> ha perso il diritto di parola per aver pagato il premium"
-		tg_method send_message
-		
 		touch -- "$chat_id-$user_id"
 		cd -
 	fi

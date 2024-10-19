@@ -7,7 +7,8 @@ PS4="[$(date "+%F %H:%M:%S")] "
 exec 1>>"log.log" 2>&1
 
 TOKEN=$(cat ./token)
-TELEAPI="http://192.168.1.15:8081/bot${TOKEN}"
+TELEAPI_BASE_URL="https://api.telegram.org"
+TELEAPI="${TELEAPI_BASE_URL}/bot${TOKEN}"
 PATH="$HOME/.local/bin:$PATH"
 
 input=$1
@@ -17,7 +18,7 @@ tmpdir="/tmp/neekshell"
 
 update_db_file() {
 	for x in $(seq 0 $((${#value[@]}-1))); do
-		grep_field=$(grep -- "^${field[$x]}" "$1")
+		grep_field=$(grep -s -- "^${field[$x]}" "$1")
 		if [[ "${field[$x]}: ${value[$x]}" != "$grep_field" ]]; then
 			sed -i -- "/^${field[$x]}: .*/d" "$1"
 			printf '%s\n' "${field[$x]}: ${value[$x]}" >> "$1"
@@ -72,7 +73,7 @@ is_status() {
 	s_file=$1
 	if [[ -e "$s_file" ]]; then
 		[[ ! "$user_id" ]] && user_id=null
-		grep -w -- "^$user_id" "$s_file"
+		grep -s -w -- "^$user_id" "$s_file"
 	fi
 }
 is_chat_admin() {

@@ -3,7 +3,7 @@ toptext=$1 mode=$2 media=$3 size=12
 if [[ "$(grep -P '[\p{Han}]' <<< "$toptext")" ]]; then
 	font="Noto Sans CJK HK"
 else
-	font="FuturaPTCondExtraBold"
+	font="Futura PT Cond"
 fi
 get_line_th() {
 	ffmpeg -v 24 -hide_banner -f lavfi -i color \
@@ -11,7 +11,6 @@ get_line_th() {
 		-vframes 1 -f null - 2>&1 | sed -n 1p | sed 's/\..*//'
 }
 get_res() {
-	[[ ! -e "$2" ]] && return
 	case "$1" in
 		width|height)
 			local p=$1
@@ -55,14 +54,14 @@ case "${file_type[1]}" in
 			file_type[1]=animation
 		else
 			ext=png
-			convert "$media" "sticker.$ext"
+			magick "$media" "sticker.$ext"
 		fi
 	;;
 esac
 
 case "${file_type[1]}" in
 	photo)
-		convert "$media" "media.$ext"
+		magick "$media" "media.$ext"
 		ffmpeg -v error -y -i "media.$ext" -filter_complex \
 			"pad=h=$h:y=$py:color=white" \
 			"pad.$ext"
@@ -78,5 +77,5 @@ ffmpeg -v error -y -i "pad.$ext" -i "in.png" -filter_complex \
 	"overlay=y=$oy" "toptext.$ext"
 
 if [[ "${file_type[1]}" == "sticker" ]]; then
-	convert "toptext.$ext" "toptext.webp"
+	magick "toptext.$ext" "toptext.webp"
 fi
