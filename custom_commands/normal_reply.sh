@@ -21,16 +21,9 @@ video_jpg() {
 			video_id[1]=${sticker_id[1]}
 		;;
 	esac
+	loading 1
 	tg_method get_file "${video_id[1]}"
 	file_path="${TELEAPI_BASE_URL}/file/bot$TOKEN/$(jshon -Q -e result -e file_path -u <<< "$curl_result")"
-
-	ext=$(sed 's/.*\.//' <<< "$file_path")
-	if [[ "$ext" == "gif" ]]; then
-		ffmpeg -v error -i "$file_path" "video.mp4"
-	else
-		ffmpeg -v error -i "$file_path" -codec copy "video.$ext"
-	fi
-	loading 1
 	video_info=$(ffprobe -v error \
 		-show_entries stream=sample_rate,bit_rate,duration,width,height,r_frame_rate \
 		-of default=noprint_wrappers=1 "$file_path")
@@ -60,7 +53,7 @@ video_jpg() {
 			audio_c="$audio_c -b:a $(bc <<< "$br/2") -ar $sr"
 		fi
 	fi
-	ffmpeg -v error -i "video.$ext" \
+	ffmpeg -v error -i "$file_path" \
 		-vf "scale=${res[0]}:${res[1]}" -sws_flags fast_bilinear \
 		-crf 50 $audio_c "video-low.mp4"
 	loading 2
