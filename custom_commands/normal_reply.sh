@@ -665,16 +665,15 @@ case_command() {
 						&& [[ "${sticker_is_video[1]}" != "true" ]]; then
 							tg_method get_file "${sticker_id[1]}"
 							remote_file_path="${TELEAPI_BASE_URL}/file/bot$TOKEN/$(jshon -Q -e result -e file_path -u <<< "$curl_result")"
-							wget -q -O "sticker.webp" "$remote_file_path"
-							res=($(ffprobe -v error -show_streams "sticker.webp" \
+							res=($(ffprobe -v error -show_streams "$remote_file_path" \
 								| sed -n -e 's/^width=\(.*\)/\1/p' -e 's/^height=\(.*\)/\1/p'))
-							convert "sticker.webp" "sticker.jpg"
+							magick "$remote_file_path" "sticker.jpg"
 							magick "sticker.jpg" -resize \
 								$(bc <<< "${res[0]}/$factor")x$(bc <<< "${res[1]}/$factor") \
 									"sticker.jpg"
 							magick "sticker.jpg" -quality 4 "sticker.jpg"
 							magick "sticker.jpg" -resize 512x512 "sticker.jpg"
-							convert "sticker.jpg" "sticker.webp"
+							magick "sticker.jpg" "sticker.webp"
 
 							sticker_id="@sticker.webp"
 							tg_method send_sticker upload
